@@ -320,6 +320,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     <button class="tab-btn" onclick="showTab('prospects')">👥 Prospects</button>
     <button class="tab-btn" onclick="showTab('planning')">🎯 Objectif</button>
     <button class="tab-btn" onclick="showTab('calendrier')">📆 Calendrier</button>
+    <button class="tab-btn" onclick="showTab('documents')">📁 Documents</button>
     <button class="tab-btn" onclick="showTab('pitch')">📢 Pitch</button>
     <button class="tab-btn" onclick="showTab('offres')">💼 Offres</button>
     <button class="tab-btn" onclick="showTab('marches')">🏛️ Marchés</button>
@@ -454,6 +455,30 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
       </div>
       <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="obj-filters"></div>
       <div id="obj-content"></div>
+    </div>
+
+    <!-- DOCUMENTS -->
+    <div id="panel-documents" class="panel">
+      <div id="doc-upload-zone" style="border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:.2s;background:#fff;margin-bottom:14px" onclick="document.getElementById('doc-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='#eff9ff'" ondragleave="this.style.borderColor='var(--border)';this.style.background='#fff'" ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='#fff';handleDocUpload(event.dataTransfer.files)">
+        <div style="font-size:40px;margin-bottom:8px">📁</div>
+        <div style="font-size:15px;font-weight:700;color:var(--primary);margin-bottom:4px">Glissez vos fichiers ici</div>
+        <div style="font-size:12px;color:var(--muted)">ou cliquez pour parcourir · PDF, Word, Excel, images, et plus</div>
+        <input type="file" id="doc-file-input" multiple style="display:none" onchange="handleDocUpload(this.files)">
+      </div>
+      <div id="doc-progress-zone" style="display:none;margin-bottom:12px"></div>
+      <div class="toolbar" style="margin-bottom:12px">
+        <input type="text" id="doc-search" class="search-box" placeholder="🔍 Rechercher un document..." oninput="renderDocList()">
+        <select id="doc-filter" class="form-select" style="width:150px" onchange="renderDocList()">
+          <option value="">Tous les types</option>
+          <option value="pdf">📕 PDF</option>
+          <option value="word">📝 Word</option>
+          <option value="excel">📊 Excel</option>
+          <option value="img">🖼️ Images</option>
+          <option value="other">📎 Autres</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="loadDocuments()">🔄 Actualiser</button>
+      </div>
+      <div class="card" id="doc-list-wrap"><div id="doc-list" style="min-height:80px"></div></div>
     </div>
 
     <!-- PITCH COMMERCIAL -->
@@ -1050,7 +1075,7 @@ function setSyncPill(s){
   el.textContent=cfg.t;el.style.background=cfg.bg;el.style.color=cfg.c;
 }
 function updateHeaderDate(){const now=new Date();const days=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];const months=['jan','fév','mars','avr','mai','juin','juil','août','sep','oct','nov','déc'];document.getElementById('header-date').textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear()+' — '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
-function showTab(tab){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+tab).classList.add('active');document.querySelectorAll('.tab-btn').forEach(b=>{if(b.getAttribute('onclick').includes("'"+tab+"'"))b.classList.add('active');});if(tab==='dashboard')renderDashboard();if(tab==='planning')renderObjectifDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='pitch')renderPitch();}
+function showTab(tab){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+tab).classList.add('active');document.querySelectorAll('.tab-btn').forEach(b=>{if(b.getAttribute('onclick').includes("'"+tab+"'"))b.classList.add('active');});if(tab==='dashboard')renderDashboard();if(tab==='planning')renderObjectifDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='pitch')renderPitch();if(tab==='documents')loadDocuments();}
 let objStatus=load('obj_status',{});
 
 // ═══ DASHBOARD ══════════════════════════════════════════════
@@ -2287,6 +2312,133 @@ function renderPitch(){
 }
 
 function initPitch(){renderPitch();}
+
+// ═══ DOCUMENTS ══════════════════════════════════════════════
+const DOC_BUCKET='kipsafe-docs';
+const DOC_FOLDER='docs';
+let docFiles=[];
+
+function docFileIcon(name){
+  const ext=(name.split('.').pop()||'').toLowerCase();
+  if(ext==='pdf') return '📕';
+  if(['doc','docx'].includes(ext)) return '📝';
+  if(['xls','xlsx','csv'].includes(ext)) return '📊';
+  if(['ppt','pptx'].includes(ext)) return '📊';
+  if(['jpg','jpeg','png','gif','webp','svg','bmp'].includes(ext)) return '🖼️';
+  if(['zip','rar','7z'].includes(ext)) return '📦';
+  if(['mp4','mov','avi','mkv'].includes(ext)) return '🎬';
+  if(['mp3','wav','aac'].includes(ext)) return '🎵';
+  if(ext==='txt') return '📄';
+  return '📎';
+}
+
+function docTypeFilter(name){
+  const ext=(name.split('.').pop()||'').toLowerCase();
+  if(ext==='pdf') return 'pdf';
+  if(['doc','docx'].includes(ext)) return 'word';
+  if(['xls','xlsx','csv'].includes(ext)) return 'excel';
+  if(['jpg','jpeg','png','gif','webp','svg','bmp'].includes(ext)) return 'img';
+  return 'other';
+}
+
+function docFormatSize(b){
+  if(!b||b===0) return '—';
+  if(b<1024) return b+'B';
+  if(b<1048576) return Math.round(b/1024)+'KB';
+  return (b/1048576).toFixed(1)+'MB';
+}
+
+function docCleanName(raw){return raw.replace(/^\d{10,}_/,'');}
+
+async function handleDocUpload(files){
+  if(!files||!files.length) return;
+  if(!sbClient){toast('⚠️ Supabase non connecté');return;}
+  const pz=document.getElementById('doc-progress-zone');
+  pz.style.display='block'; pz.innerHTML='';
+  let ok=0;
+  for(const file of files){
+    const pid='dp'+Date.now()+Math.random().toString(36).slice(2);
+    pz.innerHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px">
+      <span>${docFileIcon(file.name)}</span>
+      <div style="flex:1"><div style="margin-bottom:2px">${esc(file.name)} <span style="color:var(--muted)">(${docFormatSize(file.size)})</span></div>
+        <div style="height:4px;background:var(--border);border-radius:99px"><div id="${pid}" style="height:4px;border-radius:99px;background:var(--accent);width:20%;transition:.3s"></div></div>
+      </div></div>`;
+    const path=DOC_FOLDER+'/'+Date.now()+'_'+file.name;
+    document.getElementById(pid).style.width='50%';
+    const {error}=await sbClient.storage.from(DOC_BUCKET).upload(path,file,{upsert:true});
+    if(error){document.getElementById(pid).style.background='var(--red)';toast('❌ '+file.name+' : '+error.message);continue;}
+    document.getElementById(pid).style.width='100%';
+    document.getElementById(pid).style.background='var(--green)';
+    ok++;
+  }
+  setTimeout(()=>{pz.style.display='none';pz.innerHTML='';},2500);
+  if(ok>0) toast('✅ '+ok+' fichier(s) uploadé(s)');
+  loadDocuments();
+}
+
+async function loadDocuments(){
+  const list=document.getElementById('doc-list');
+  if(!list) return;
+  if(!sbClient){list.innerHTML='<div class="empty"><div class="empty-icon">☁️</div><div class="empty-text">Supabase non connecté — connectez-vous d\'abord</div></div>';return;}
+  list.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">⏳ Chargement...</div>';
+  const {data,error}=await sbClient.storage.from(DOC_BUCKET).list(DOC_FOLDER,{sortBy:{column:'created_at',order:'desc'}});
+  if(error){list.innerHTML=`<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Bucket introuvable — vérifiez que <strong>kipsafe-docs</strong> existe dans Supabase Storage</div></div>`;return;}
+  docFiles=(data||[]).filter(f=>f.name&&f.name!=='.emptyFolderPlaceholder');
+  renderDocList();
+}
+
+function renderDocList(){
+  const list=document.getElementById('doc-list');if(!list) return;
+  const q=(document.getElementById('doc-search')?.value||'').toLowerCase();
+  const tf=document.getElementById('doc-filter')?.value||'';
+  const filtered=docFiles.filter(f=>{
+    if(q&&!f.name.toLowerCase().includes(q)&&!docCleanName(f.name).toLowerCase().includes(q)) return false;
+    if(tf&&docTypeFilter(f.name)!==tf) return false;
+    return true;
+  });
+  if(!filtered.length){
+    list.innerHTML=`<div class="empty"><div class="empty-icon">${docFiles.length===0?'📁':'🔍'}</div><div class="empty-text">${docFiles.length===0?'Aucun document. Glissez des fichiers dans la zone ci-dessus.':'Aucun fichier ne correspond.'}</div></div>`;
+    return;
+  }
+  list.innerHTML=filtered.map(f=>{
+    const cleanName=docCleanName(f.name);
+    const path=DOC_FOLDER+'/'+f.name;
+    const {data:urlData}=sbClient.storage.from(DOC_BUCKET).getPublicUrl(path);
+    const date=f.created_at?new Date(f.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+    const size=docFormatSize(f.metadata?.size||0);
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);transition:.15s" onmouseover="this.style.background='var(--light)'" onmouseout="this.style.background=''">
+      <div style="font-size:28px;flex-shrink:0">${docFileIcon(cleanName)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(cleanName)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${size} · Ajouté le ${date}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <a href="${urlData?.publicUrl||'#'}" target="_blank" download="${esc(cleanName)}" class="btn btn-sm btn-primary" onclick="toast('⬇️ Téléchargement...')">⬇️ Télécharger</a>
+        <button class="btn btn-sm btn-outline" onclick="previewDoc('${urlData?.publicUrl||''}','${esc(cleanName)}')">👁</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteDocument('${path}','${esc(cleanName)}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function previewDoc(url,name){
+  if(!url){toast('⚠️ URL indisponible');return;}
+  const ext=(name.split('.').pop()||'').toLowerCase();
+  const canPreview=['pdf','jpg','jpeg','png','gif','webp','svg'].includes(ext);
+  if(canPreview){
+    openModal('👁 '+esc(name),`<iframe src="${url}" style="width:100%;height:500px;border:none;border-radius:8px"></iframe>`,[{label:'Télécharger',cls:'btn-primary',fn:`window.open('${url}','_blank')`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
+  } else {
+    window.open(url,'_blank');
+  }
+}
+
+async function deleteDocument(path,name){
+  if(!confirm('Supprimer "'+name+'" ?')) return;
+  const {error}=await sbClient.storage.from(DOC_BUCKET).remove([path]);
+  if(error){toast('❌ '+error.message);return;}
+  toast('🗑️ Fichier supprimé');
+  loadDocuments();
+}
 
 // ═══ OFFRES ═════════════════════════════════════════════════
 function renderOffres(){const od=[{cls:'debal',name:'🔵 Debal Cyber',sub:'Audit & Protection Cybersécurité',color:'var(--accent)',stats:[{v:prospects.filter(p=>p.offre==='Debal Cyber').length,l:'Prospects'},{v:'48h',l:'Délai audit'},{v:'1 500€',l:'Prix d\'appel'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'CTA "Audit gratuit" en ligne'},{ok:false,t:'2 témoignages clients'},{ok:true,t:'Grille tarifaire définie'},{ok:false,t:'Landing page dédiée'}]},{cls:'info',name:'🟢 Infogérance',sub:'Pilotage SI Externalisé',color:'var(--green)',stats:[{v:prospects.filter(p=>p.offre==='Infogérance').length,l:'Prospects'},{v:'30€',l:'User/mois'},{v:'12 mois',l:'Engagement'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'Comparatif DSI vs Infogérance'},{ok:false,t:'Grille tarifaire publiée'},{ok:false,t:'Formulaire contact direct'},{ok:false,t:'SLA document finalisé'}]},{cls:'pem',name:'🟠 PEM Promisec',sub:'Gestion Accès & Identités',color:'var(--orange)',stats:[{v:prospects.filter(p=>p.offre==='PEM Promisec').length,l:'Prospects'},{v:'10j',l:'Déploiement'},{v:'NIS2',l:'Conformité'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'Logo Promisec intégré'},{ok:false,t:'Section FAQ réglementaire'},{ok:false,t:'Badges certifications'},{ok:false,t:'Démo vidéo disponible'}]}];let html='';od.forEach(o=>{const done=o.items.filter(i=>i.ok).length,pct=Math.round(done/o.items.length*100);html+=`<div class="offre-card ${o.cls}"><div class="offre-name" style="color:${o.color}">${o.name}</div><div class="offre-promise">${o.sub}</div><div class="offre-stat">${o.stats.map(s=>`<div class="ostat"><div class="ostat-val">${s.v}</div><div class="ostat-lbl">${s.l}</div></div>`).join('')}</div><div style="margin-bottom:10px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:700">COMPLÉTION ${pct}%</div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${o.color}"></div></div></div><ul class="checklist">${o.items.map(i=>`<li><span style="color:${i.ok?'var(--green)':'var(--orange)'}">${i.ok?'✅':'⏳'}</span>${esc(i.t)}</li>`).join('')}</ul></div>`;});document.getElementById('offres-grid').innerHTML=html;}
