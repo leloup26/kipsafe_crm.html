@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>KIPSAFE CRM</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{color-scheme:light;--primary:#0A2E5C;--secondary:#16529E;--accent:#00AEEF;--orange:#F07D00;--green:#228B22;--red:#C00000;--purple:#5B2D8E;--light:#F2F5F8;--white:#FFFFFF;--text:#1a1a2e;--muted:#6b7280;--border:#e2e8f0;--shadow:0 2px 12px rgba(10,46,92,.10)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--light);color:var(--text);min-height:100vh}
+#pin-screen{position:fixed;inset:0;background:var(--primary);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:18px}
+.pin-box{background:#fff;border-radius:20px;padding:36px 32px;width:320px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+.pin-logo{font-size:28px;font-weight:900;color:var(--primary);letter-spacing:2px;margin-bottom:4px}
+.pin-sub{font-size:12px;color:var(--muted);margin-bottom:20px}
+.pin-title{font-size:15px;font-weight:600;color:var(--secondary);margin-bottom:14px}
+.pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:10px}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--secondary);background:transparent;transition:.2s}
+.pin-dot.filled{background:var(--secondary);border-color:var(--secondary)}
+.pin-error{color:var(--red);font-size:12px;height:18px;margin-bottom:8px}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+.pin-key{padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--light);font-size:18px;font-weight:600;cursor:pointer;transition:.15s;color:var(--primary)}
+.pin-key:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pin-key.del{background:#fef2f2;border-color:#fca5a5;color:var(--red);font-size:14px}
+.pin-key.del:hover{background:var(--red);color:#fff}
+.pin-hint{font-size:11px;color:rgba(255,255,255,.6);margin-top:10px;text-align:center}
+#app{display:none;flex-direction:column;height:100vh}
+header{background:var(--primary);color:#fff;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:54px;flex-shrink:0;box-shadow:var(--shadow)}
+.h-logo{font-weight:800;font-size:18px;letter-spacing:1px;display:flex;align-items:center;gap:8px}
+.h-logo .badge{background:var(--accent);color:#fff;font-size:9px;padding:2px 6px;border-radius:99px;font-weight:700;letter-spacing:.5px}
+.h-right{display:flex;align-items:center;gap:12px;font-size:13px}
+.h-date{opacity:.8}
+.lock-btn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s}
+.lock-btn:hover{background:rgba(255,255,255,.3)}
+nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid var(--border);flex-shrink:0;overflow-x:auto}
+.tab-btn{padding:13px 14px;border:none;background:transparent;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:.2s}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--accent);font-weight:700}
+.tab-btn:hover:not(.active){color:var(--secondary)}
+.panels{flex:1;overflow-y:auto;padding:20px}
+.panel{display:none}.panel.active{display:block}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.card{background:#fff;border-radius:12px;padding:18px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.card-title{font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-value{font-size:32px;font-weight:800;color:var(--primary);line-height:1}
+.kpi-sub{font-size:12px;color:var(--muted);margin-top:4px}
+.kpi-icon{font-size:24px;float:right;opacity:.4}
+.section-title{font-size:16px;font-weight:700;color:var(--primary);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.section-title .pill{font-size:10px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:99px;font-weight:600}
+.schedule{border-radius:10px;overflow:hidden;border:1px solid var(--border)}
+.schedule-header{background:var(--primary);color:#fff;padding:10px 16px;font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.schedule-row{display:flex;align-items:stretch;border-bottom:1px solid var(--border);transition:.15s}
+.schedule-row:last-child{border-bottom:none}
+.schedule-row.now{background:#eff9ff}
+.schedule-row.done{opacity:.5}
+.schedule-row.break{background:#fffbeb}
+.s-time{min-width:110px;padding:10px 14px;font-weight:700;font-size:12px;color:var(--secondary);display:flex;align-items:center;border-right:1px solid var(--border)}
+.s-dur{width:50px;padding:10px 8px;font-size:11px;color:var(--muted);display:flex;align-items:center;border-right:1px solid var(--border)}
+.s-action{padding:10px 14px;flex:1;font-size:13px;display:flex;align-items:center}
+.s-axe{width:90px;padding:10px 8px;display:flex;align-items:center;justify-content:center}
+.axe-badge{font-size:10px;padding:3px 8px;border-radius:99px;font-weight:700}
+.axe-Supports{background:#dbeafe;color:#1d4ed8}.axe-Marketing{background:#cffafe;color:#0e7490}
+.axe-Commercial{background:#dcfce7;color:#15803d}.axe-Web{background:#fef3c7;color:#b45309}
+.axe-Marchés{background:#fce7f3;color:#be185d}.axe-Bilan{background:#ede9fe;color:#7c3aed}
+.axe-Pause{background:#fef9c3;color:#a16207}.axe-Admin{background:#f1f5f9;color:#475569}
+.toolbar{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+.search-box{flex:1;padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;min-width:180px}
+.search-box:focus{outline:none;border-color:var(--accent)}
+.btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:.15s;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--secondary)}
+.btn-accent{background:var(--accent);color:#fff}.btn-accent:hover{opacity:.85}
+.btn-sm{padding:4px 9px;font-size:11px}
+.btn-xs{padding:3px 7px;font-size:10px}
+.btn-danger{background:#fef2f2;color:var(--red);border:1px solid #fca5a5}.btn-danger:hover{background:var(--red);color:#fff}
+.btn-success{background:#f0fdf4;color:var(--green);border:1px solid #86efac}.btn-success:hover{background:var(--green);color:#fff}
+.btn-outline{background:#fff;color:var(--primary);border:1px solid var(--border)}.btn-outline:hover{background:var(--light)}
+.btn-linkedin{background:#0A66C2;color:#fff}.btn-linkedin:hover{background:#004182}
+.btn-lusha{background:#8B5CF6;color:#fff}.btn-lusha:hover{background:#6D28D9}
+.btn-apollo{background:#2563EB;color:#fff}.btn-apollo:hover{background:#1D4ED8}
+.btn-pappers{background:#E11D48;color:#fff}.btn-pappers:hover{background:#BE123C}
+.btn-clay{background:#000;color:#fff}.btn-clay:hover{background:#333}
+.btn-hubspot{background:#FF7A59;color:#fff}.btn-hubspot:hover{background:#E8613C}
+.view-toggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.view-toggle button{padding:7px 12px;border:none;background:#fff;cursor:pointer;font-size:12px;transition:.15s}
+.view-toggle button.active{background:var(--primary);color:#fff}
+.kanban-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}
+.kanban-col{min-width:210px;background:var(--light);border-radius:10px;padding:10px;border:1px solid var(--border)}
+.kanban-col-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:6px 4px 10px;display:flex;align-items:center;justify-content:space-between}
+.col-count{background:var(--border);color:var(--muted);font-size:11px;padding:2px 7px;border-radius:99px}
+.kanban-card{background:#fff;border-radius:8px;padding:12px;margin-bottom:8px;border:1px solid var(--border);cursor:pointer;transition:.15s;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.kanban-card:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(0,174,239,.15)}
+.kc-name{font-weight:700;font-size:13px;margin-bottom:2px}
+.kc-poste{font-size:11px;color:var(--secondary);margin-bottom:2px}
+.kc-company{font-size:11px;color:var(--muted);margin-bottom:6px}
+.kc-offre{font-size:10px;padding:2px 7px;border-radius:99px;display:inline-block;margin-bottom:6px}
+.offre-debal{background:#dbeafe;color:#1d4ed8}.offre-info{background:#dcfce7;color:#15803d}
+.offre-pem{background:#fef3c7;color:#b45309}.offre-multi{background:#ede9fe;color:#7c3aed}
+.kc-meta{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:6px}
+.kc-links{display:flex;gap:3px;flex-wrap:wrap}
+.source-badge{font-size:9px;padding:2px 5px;border-radius:99px;border:1px solid var(--border);color:var(--muted)}
+.prospects-table{width:100%;border-collapse:collapse;font-size:12px}
+.prospects-table th{background:var(--primary);color:#fff;padding:9px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.prospects-table td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.prospects-table tr:hover td{background:#f8fbff}
+.status-badge{font-size:10px;padding:3px 8px;border-radius:99px;font-weight:700;white-space:nowrap}
+.st-nouveau{background:#f0f9ff;color:#0369a1}.st-contacte{background:#eff6ff;color:#1d4ed8}
+.st-rdv{background:#ecfdf5;color:#059669}.st-proposition{background:#fffbeb;color:#d97706}
+.st-signe{background:#f0fdf4;color:var(--green)}.st-perdu{background:#fef2f2;color:var(--red)}
+.plan-table{width:100%;border-collapse:collapse;font-size:13px}
+.plan-table th{background:var(--primary);color:#fff;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.plan-table td{padding:10px 14px;border-bottom:1px solid var(--border)}
+.plan-table tr.today td{background:#eff9ff;font-weight:600}
+.plan-table tr.done td{opacity:.5}
+.plan-table tr:hover:not(.today) td{background:#f8fbff}
+.done-check{cursor:pointer;font-size:16px}
+.offre-card{border-top:4px solid;border-radius:12px;padding:20px;background:#fff;box-shadow:var(--shadow)}
+.offre-card.debal{border-color:var(--accent)}.offre-card.info{border-color:var(--green)}.offre-card.pem{border-color:var(--orange)}
+.offre-name{font-size:18px;font-weight:800;margin-bottom:4px}
+.offre-promise{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5}
+.offre-stat{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.ostat{text-align:center;background:var(--light);border-radius:8px;padding:10px 16px}
+.ostat-val{font-size:20px;font-weight:800;color:var(--primary)}
+.ostat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase}
+.checklist{list-style:none}
+.checklist li{padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;display:flex;align-items:center;gap:8px}
+.checklist li:last-child{border-bottom:none}
+.marche-table{width:100%;border-collapse:collapse;font-size:13px}
+.marche-table th{background:var(--primary);color:#fff;padding:10px 14px;font-size:11px;text-align:left;text-transform:uppercase;letter-spacing:.3px}
+.marche-table td{padding:10px 14px;border-bottom:1px solid var(--border)}
+.marche-table tr:hover td{background:#f8fbff}
+.urgence-haute{color:var(--red);font-weight:700}.urgence-med{color:var(--orange);font-weight:600}.urgence-ok{color:var(--green)}
+/* INTEGRATIONS */
+.connector-card{border-radius:12px;padding:16px;border:2px solid var(--border);background:#fff;transition:.2s;position:relative}
+.connector-card.connected{border-color:var(--green)}
+.connector-card.available{border-color:var(--border)}
+.connector-logo{font-size:24px;margin-bottom:8px}
+.connector-name{font-weight:800;font-size:15px;margin-bottom:4px}
+.connector-desc{font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5}
+.connector-tag{position:absolute;top:12px;right:12px;font-size:9px;padding:2px 8px;border-radius:99px;font-weight:700}
+.tag-connected{background:#dcfce7;color:var(--green)}
+.tag-available{background:#f1f5f9;color:var(--muted)}
+.tag-native{background:#dbeafe;color:#1d4ed8}
+.export-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.export-card{border:1px solid var(--border);border-radius:10px;padding:14px;background:#fff;transition:.15s}
+.export-card:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(0,174,239,.12)}
+.export-card-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.export-logo{font-size:20px}
+.export-name{font-weight:700;font-size:13px}
+.export-desc{font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5}
+.export-format{font-size:10px;background:var(--light);padding:3px 8px;border-radius:4px;color:var(--muted);margin-bottom:10px;font-family:monospace}
+.import-tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:2px solid var(--border)}
+.import-tab{padding:8px 14px;border:none;background:transparent;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:.2s}
+.import-tab.active{color:var(--primary);border-bottom-color:var(--accent)}
+.import-panel{display:none}.import-panel.active{display:block}
+.csv-textarea{width:100%;height:160px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:11px;font-family:monospace;resize:vertical}
+.csv-textarea:focus{outline:none;border-color:var(--accent)}
+.preview-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}
+.preview-table th{background:var(--primary);color:#fff;padding:6px 10px}
+.preview-table td{padding:6px 10px;border-bottom:1px solid var(--border)}
+.preview-table tr:nth-child(even) td{background:var(--light)}
+.modal-overlay{position:fixed;inset:0;background:rgba(10,46,92,.5);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.modal-box{background:#fff;border-radius:16px;padding:28px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-title{font-size:18px;font-weight:800;color:var(--primary);margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{cursor:pointer;font-size:20px;color:var(--muted);background:none;border:none}
+.form-group{margin-bottom:14px}
+.form-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);margin-bottom:5px;display:block}
+.form-input{width:100%;padding:9px 13px;border:1px solid var(--border);border-radius:8px;font-size:13px;transition:.2s}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,174,239,.12)}
+.form-select{width:100%;padding:9px 13px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;cursor:pointer}
+.form-textarea{width:100%;padding:9px 13px;border:1px solid var(--border);border-radius:8px;font-size:13px;min-height:70px;resize:vertical;font-family:inherit}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+.settings-section{background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.settings-title{font-size:14px;font-weight:700;color:var(--primary);margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px}
+.soir-banner{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.soir-title{font-size:15px;font-weight:700}.soir-sub{font-size:12px;opacity:.8;margin-top:2px}
+.soir-badge{background:var(--accent);color:#fff;font-size:11px;padding:4px 10px;border-radius:99px;font-weight:700}
+.progress-bar{background:var(--border);border-radius:99px;height:8px;overflow:hidden}
+.progress-fill{height:100%;border-radius:99px;background:var(--accent);transition:.5s}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:12px}.empty-text{font-size:14px}
+.sync-pill{font-size:10px;padding:3px 9px;border-radius:99px;font-weight:700;transition:.3s;cursor:default}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--primary);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transform:translateY(10px);transition:.3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@media(max-width:600px){.grid-3,.grid-4{grid-template-columns:1fr 1fr}.grid-2{grid-template-columns:1fr}.kanban-board{flex-direction:column}.kanban-col{min-width:unset}.tab-btn{padding:12px 9px;font-size:11px}.export-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div id="pin-screen">
+  <div class="pin-box">
+    <div class="pin-logo">🔒 KIPSAFE</div>
+    <div class="pin-sub">CRM Sécurisé</div>
+    <div class="pin-title" id="pin-title">Entrez votre code PIN</div>
+    <div class="pin-dots" id="pin-dots">
+      <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+      <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <div class="pin-keypad">
+      <button class="pin-key" onclick="pinPress('1')">1</button><button class="pin-key" onclick="pinPress('2')">2</button><button class="pin-key" onclick="pinPress('3')">3</button>
+      <button class="pin-key" onclick="pinPress('4')">4</button><button class="pin-key" onclick="pinPress('5')">5</button><button class="pin-key" onclick="pinPress('6')">6</button>
+      <button class="pin-key" onclick="pinPress('7')">7</button><button class="pin-key" onclick="pinPress('8')">8</button><button class="pin-key" onclick="pinPress('9')">9</button>
+      <button class="pin-key" style="background:transparent;border-color:transparent"></button><button class="pin-key" onclick="pinPress('0')">0</button><button class="pin-key del" onclick="pinDel()">⌫</button>
+    </div>
+  </div>
+  <div class="pin-hint" id="pin-hint">Premier lancement : définissez votre PIN à 4 chiffres</div>
+</div>
+
+<div id="app" style="display:none;flex-direction:column;height:100vh">
+  <header>
+    <div class="h-logo">🔒 KIPSAFE CRM <span class="badge">SECURE</span></div>
+    <div class="h-right"><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span class="h-date" id="header-date"></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
+  </header>
+  <nav>
+    <button class="tab-btn active" onclick="showTab('dashboard')">🏠 Dashboard</button>
+    <button class="tab-btn" onclick="showTab('prospects')">👥 Prospects</button>
+    <button class="tab-btn" onclick="showTab('planning')">📅 Plan 30J</button>
+    <button class="tab-btn" onclick="showTab('offres')">💼 Offres</button>
+    <button class="tab-btn" onclick="showTab('marches')">🏛️ Marchés</button>
+    <button class="tab-btn" onclick="showTab('integrations')">🔗 Intégrations</button>
+    <button class="tab-btn" onclick="showTab('settings')">⚙️ Paramètres</button>
+  </nav>
+  <div class="panels">
+
+    <!-- DASHBOARD -->
+    <div id="panel-dashboard" class="panel active">
+      <div id="soir-banner"></div>
+      <div class="grid-4" style="margin-bottom:16px" id="kpis"></div>
+      <div class="grid-2">
+        <div>
+          <div class="section-title">📅 Planning du jour <span class="pill" id="today-label"></span></div>
+          <div class="schedule" id="schedule-today"></div>
+        </div>
+        <div>
+          <div class="section-title">🎯 Pipeline en cours</div>
+          <div id="pipeline-summary"></div>
+          <div style="margin-top:16px"><div class="section-title">📋 Action du jour (Plan 30J)</div><div id="plan-today-action"></div></div>
+          <div style="margin-top:16px"><div class="section-title">✅ Tâches rapides</div><div id="quick-tasks"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROSPECTS -->
+    <div id="panel-prospects" class="panel">
+      <div class="toolbar">
+        <input type="text" class="search-box" id="search-prospect" placeholder="🔍 Rechercher nom, société, poste..." oninput="renderProspects()">
+        <select class="form-select" style="width:150px" id="filter-offre" onchange="renderProspects()">
+          <option value="">Toutes offres</option>
+          <option value="Debal Cyber">Debal Cyber</option>
+          <option value="Infogérance">Infogérance</option>
+          <option value="PEM Promisec">PEM Promisec</option>
+          <option value="Multi">Multi-offres</option>
+        </select>
+        <select class="form-select" style="width:130px" id="filter-source" onchange="renderProspects()">
+          <option value="">Toutes sources</option>
+          <option value="LinkedIn">LinkedIn</option>
+          <option value="Lusha">Lusha</option>
+          <option value="Apollo">Apollo.io</option>
+          <option value="Pappers">Pappers.fr</option>
+          <option value="Manuel">Manuel</option>
+        </select>
+        <div class="view-toggle">
+          <button id="view-kanban-btn" class="active" onclick="setView('kanban')">🗂 Kanban</button>
+          <button id="view-list-btn" onclick="setView('list')">☰ Liste</button>
+        </div>
+        <button class="btn btn-primary" onclick="openAddProspect()">+ Ajouter</button>
+      </div>
+      <div id="prospects-container"></div>
+    </div>
+
+    <!-- PLANNING 30J -->
+    <div id="panel-planning" class="panel">
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="card" style="flex:1;min-width:140px"><div class="card-title">Jours planifiés</div><div class="kpi-value">22</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill" id="plan-progress" style="width:0%"></div></div><div class="kpi-sub" id="plan-done-label">0 / 22 complétés</div></div>
+        <div class="card" style="flex:1;min-width:140px"><div class="card-title">Axe du moment</div><div class="kpi-value" style="font-size:20px" id="plan-axe-now">—</div></div>
+        <div class="card" style="flex:1;min-width:140px"><div class="card-title">Semaine en cours</div><div class="kpi-value" id="plan-week">S1</div></div>
+      </div>
+      <div class="card">
+        <table class="plan-table"><thead><tr><th style="width:40px"></th><th>Date</th><th>Axe</th><th>Action</th><th style="width:90px">Statut</th></tr></thead><tbody id="plan-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- OFFRES -->
+    <div id="panel-offres" class="panel"><div class="grid-3" id="offres-grid"></div></div>
+
+    <!-- MARCHÉS -->
+    <div id="panel-marches" class="panel">
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="openAddMarche()">+ Ajouter AO</button>
+        <div style="font-size:12px;color:var(--muted);margin-left:4px">BOAMP · Maximilien · UGAP · Achatpublic</div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <table class="marche-table"><thead><tr><th>Référence</th><th>Acheteur</th><th>Offre</th><th>Montant</th><th>Limite</th><th>Statut</th><th></th></tr></thead><tbody id="marche-tbody"></tbody></table>
+      </div>
+      <div class="section-title">🌐 Plateformes</div>
+      <div class="grid-3">
+        <div class="card"><div class="card-title">BOAMP</div><div style="font-size:12px;color:var(--muted)">Filtres : cybersécurité, infogérance, SI</div><a href="https://www.boamp.fr" target="_blank" class="btn btn-outline btn-sm" style="margin-top:10px">Ouvrir →</a></div>
+        <div class="card"><div class="card-title">Maximilien (IDF)</div><div style="font-size:12px;color:var(--muted)">Collectivités, EHPAD, lycées IDF</div><a href="https://www.maximilien.fr" target="_blank" class="btn btn-outline btn-sm" style="margin-top:10px">Ouvrir →</a></div>
+        <div class="card"><div class="card-title">UGAP</div><div style="font-size:12px;color:var(--muted)">Référencer KIPSAFE comme prestataire IT</div><a href="https://www.ugap.fr" target="_blank" class="btn btn-outline btn-sm" style="margin-top:10px">Ouvrir →</a></div>
+      </div>
+    </div>
+
+    <!-- INTÉGRATIONS -->
+    <div id="panel-integrations" class="panel">
+
+      <!-- Connecteurs MCP -->
+      <div class="section-title">🔌 Connecteurs MCP disponibles <span class="pill">À installer dans Cowork</span></div>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#92400e">
+        💡 <strong>Comment installer :</strong> Dans Cowork, va dans le menu latéral → Plugins/Connecteurs → cherche le nom ci-dessous → Installer. Une fois connecté, je peux enrichir tes prospects directement depuis le CRM.
+      </div>
+      <div class="grid-3" style="margin-bottom:24px">
+        <div class="connector-card available">
+          <span class="connector-tag tag-available">À installer</span>
+          <div class="connector-logo">💜</div>
+          <div class="connector-name">Lusha</div>
+          <div class="connector-desc">Enrichissement contacts B2B : email pro, téléphone direct, profil LinkedIn. Idéal pour compléter tes prospects.</div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">🛠️ contacts_search · prospecting_contact_enrich · companies_search</div>
+          <a href="https://www.lusha.com" target="_blank" class="btn btn-lusha btn-sm">Aller sur Lusha →</a>
+        </div>
+        <div class="connector-card available">
+          <span class="connector-tag tag-available">À installer</span>
+          <div class="connector-logo">🔵</div>
+          <div class="connector-name">Apollo.io</div>
+          <div class="connector-desc">Base de 270M+ contacts. Recherche par poste, secteur, taille d'entreprise. Données LinkedIn agrégées.</div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">🛠️ apollo_search_people · apollo_enrich_person · apollo_search_organizations</div>
+          <a href="https://www.apollo.io" target="_blank" class="btn btn-apollo btn-sm">Aller sur Apollo →</a>
+        </div>
+        <div class="connector-card available">
+          <span class="connector-tag tag-available">À installer</span>
+          <div class="connector-logo">🟤</div>
+          <div class="connector-name">Vibe Prospecting</div>
+          <div class="connector-desc">150M+ entreprises, 800M+ professionnels. Données LinkedIn, events business, intent data.</div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">🛠️ enrich-prospects · fetch-entities · export-to-csv</div>
+          <a href="https://vibeprospecting.explorium.ai" target="_blank" class="btn btn-outline btn-sm">En savoir plus →</a>
+        </div>
+        <div class="connector-card available">
+          <span class="connector-tag tag-available">À installer</span>
+          <div class="connector-logo">⚫</div>
+          <div class="connector-name">Clay</div>
+          <div class="connector-desc">Prospection avancée + personnalisation outreach. Connecte 75+ sources de données pour enrichir chaque contact.</div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">🛠️ find-and-enrich-contacts · find-and-enrich-company</div>
+          <a href="https://clay.com" target="_blank" class="btn btn-clay btn-sm">Aller sur Clay →</a>
+        </div>
+        <div class="connector-card available">
+          <span class="connector-tag tag-available">À installer</span>
+          <div class="connector-logo">🟠</div>
+          <div class="connector-name">HubSpot</div>
+          <div class="connector-desc">Sync bidirectionnel CRM. Tes prospects KIPSAFE → HubSpot + retour des données enrichies automatiquement.</div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">🛠️ search_crm_objects · get_crm_objects · get_properties</div>
+          <a href="https://www.hubspot.com" target="_blank" class="btn btn-hubspot btn-sm">Aller sur HubSpot →</a>
+        </div>
+        <div class="connector-card" style="border-color:#e2e8f0;background:#fafafa">
+          <span class="connector-tag" style="background:#fee2e2;color:var(--red)">API fermée</span>
+          <div class="connector-logo">🔵</div>
+          <div class="connector-name">LinkedIn</div>
+          <div class="connector-desc">Pas d'API officielle disponible. Utilise Apollo.io, Lusha ou Vibe Prospecting qui agrègent les données LinkedIn.</div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">Alternative : exporte depuis Sales Navigator en CSV puis importe ici</div>
+          <a href="https://www.linkedin.com/sales/ssi" target="_blank" class="btn btn-linkedin btn-sm">Sales Navigator →</a>
+        </div>
+      </div>
+
+      <!-- EXPORTS -->
+      <div class="section-title">📤 Exporter les prospects vers...</div>
+      <div class="export-grid" style="margin-bottom:24px">
+        <div class="export-card">
+          <div class="export-card-header"><span class="export-logo">💼</span><span class="export-name" style="color:#0A66C2">LinkedIn Sales Nav.</span></div>
+          <div class="export-desc">Format CSV importable directement dans Sales Navigator et LinkedIn Campaign Manager</div>
+          <div class="export-format">First Name, Last Name, Email, Company, Title, LinkedIn URL</div>
+          <button class="btn btn-linkedin btn-sm" onclick="exportLinkedIn()">⬇ Exporter CSV</button>
+        </div>
+        <div class="export-card">
+          <div class="export-card-header"><span class="export-logo">💜</span><span class="export-name" style="color:#8B5CF6">Lusha</span></div>
+          <div class="export-desc">Format compatible Lusha pour enrichissement et import dans leur interface web</div>
+          <div class="export-format">First Name, Last Name, Job Title, Company, Email, Phone</div>
+          <button class="btn btn-lusha btn-sm" onclick="exportLusha()">⬇ Exporter CSV</button>
+        </div>
+        <div class="export-card">
+          <div class="export-card-header"><span class="export-logo">🔵</span><span class="export-name" style="color:#2563EB">Apollo.io</span></div>
+          <div class="export-desc">Format CSV pour import dans Apollo et enrichissement des données manquantes</div>
+          <div class="export-format">First Name, Last Name, Email, Company, Title, Phone</div>
+          <button class="btn btn-apollo btn-sm" onclick="exportApollo()">⬇ Exporter CSV</button>
+        </div>
+        <div class="export-card">
+          <div class="export-card-header"><span class="export-logo">🟠</span><span class="export-name" style="color:#FF7A59">HubSpot</span></div>
+          <div class="export-desc">Format natif HubSpot CRM — import direct sans remapping des colonnes</div>
+          <div class="export-format">First Name, Last Name, Email, Phone, Company, Job Title</div>
+          <button class="btn btn-hubspot btn-sm" onclick="exportHubspot()">⬇ Exporter CSV</button>
+        </div>
+        <div class="export-card">
+          <div class="export-card-header"><span class="export-logo">⚫</span><span class="export-name">Clay</span></div>
+          <div class="export-desc">Format complet pour Clay — inclut l'offre KIPSAFE, statut pipeline et notes</div>
+          <div class="export-format">Name, Email, Company, Title, Offer, Status, Notes</div>
+          <button class="btn btn-clay btn-sm" onclick="exportClay()">⬇ Exporter CSV</button>
+        </div>
+        <div class="export-card">
+          <div class="export-card-header"><span class="export-logo">🔴</span><span class="export-name" style="color:#E11D48">Pappers.fr</span></div>
+          <div class="export-desc">Export des sociétés pour recherche SIREN/SIRET et données légales sur Pappers</div>
+          <div class="export-format">Société, SIREN (à compléter), Secteur</div>
+          <button class="btn btn-pappers btn-sm" onclick="exportPappers()">⬇ Exporter CSV</button>
+        </div>
+      </div>
+
+      <!-- IMPORT -->
+      <div class="section-title">📥 Importer des prospects</div>
+      <div class="card">
+        <div class="import-tabs">
+          <button class="import-tab active" onclick="setImportTab('linkedin')">💼 LinkedIn</button>
+          <button class="import-tab" onclick="setImportTab('lusha')">💜 Lusha</button>
+          <button class="import-tab" onclick="setImportTab('apollo')">🔵 Apollo.io</button>
+          <button class="import-tab" onclick="setImportTab('custom')">📋 CSV libre</button>
+        </div>
+        <div id="import-linkedin" class="import-panel active">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Dans Sales Navigator → Listes → Exporter → copie/colle le CSV ci-dessous.<br>Colonnes attendues : <code>First Name, Last Name, Email Address, Company, Title, LinkedIn Member URL</code></p>
+          <textarea class="csv-textarea" id="csv-linkedin" placeholder="Colle ici ton export CSV LinkedIn Sales Navigator..."></textarea>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button class="btn btn-linkedin" onclick="previewImport('linkedin')">👁 Prévisualiser</button>
+            <button class="btn btn-primary" onclick="importCSV('linkedin')">✅ Importer dans le CRM</button>
+          </div>
+        </div>
+        <div id="import-lusha" class="import-panel">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Dans Lusha → My Prospects → Export CSV → colle ici.<br>Colonnes : <code>First Name, Last Name, Job Title, Company Name, Email, Phone Number, LinkedIn URL</code></p>
+          <textarea class="csv-textarea" id="csv-lusha" placeholder="Colle ici ton export CSV Lusha..."></textarea>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button class="btn btn-lusha" onclick="previewImport('lusha')">👁 Prévisualiser</button>
+            <button class="btn btn-primary" onclick="importCSV('lusha')">✅ Importer dans le CRM</button>
+          </div>
+        </div>
+        <div id="import-apollo" class="import-panel">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Dans Apollo → People → Export → colle ici.<br>Colonnes : <code>First Name, Last Name, Email, Company, Title, Phone, LinkedIn URL, City</code></p>
+          <textarea class="csv-textarea" id="csv-apollo" placeholder="Colle ici ton export CSV Apollo.io..."></textarea>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button class="btn btn-apollo" onclick="previewImport('apollo')">👁 Prévisualiser</button>
+            <button class="btn btn-primary" onclick="importCSV('apollo')">✅ Importer dans le CRM</button>
+          </div>
+        </div>
+        <div id="import-custom" class="import-panel">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:10px">CSV libre — 1ère ligne = en-têtes. Colonnes reconnues automatiquement : <code>nom/name, email, tel/phone, société/company, poste/title, linkedin, notes, offre</code></p>
+          <textarea class="csv-textarea" id="csv-custom" placeholder="Colle ici ton CSV (n'importe quel format)..."></textarea>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button class="btn btn-outline" onclick="previewImport('custom')">👁 Prévisualiser</button>
+            <button class="btn btn-primary" onclick="importCSV('custom')">✅ Importer dans le CRM</button>
+          </div>
+        </div>
+        <div id="import-preview" style="margin-top:16px;display:none">
+          <div style="font-weight:700;font-size:13px;margin-bottom:8px">Aperçu (5 premières lignes) :</div>
+          <div id="import-preview-content" style="overflow-x:auto"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="panel-settings" class="panel">
+      <div class="settings-section">
+        <div class="settings-title">🔒 Changer le PIN</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input type="password" class="form-input" id="new-pin" placeholder="Nouveau PIN (4 chiffres)" maxlength="4" style="width:200px">
+          <input type="password" class="form-input" id="confirm-pin" placeholder="Confirmer" maxlength="4" style="width:200px">
+          <button class="btn btn-primary" onclick="changePin()">Changer le PIN</button>
+        </div>
+        <div id="pin-change-msg" style="margin-top:8px;font-size:13px"></div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-title">📤 Export global</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-outline" onclick="exportDataJSON()">💾 Tout exporter (JSON)</button>
+          <button class="btn btn-outline" onclick="exportLinkedIn()">💼 LinkedIn CSV</button>
+          <button class="btn btn-outline" onclick="exportLusha()">💜 Lusha CSV</button>
+          <button class="btn btn-outline" onclick="exportApollo()">🔵 Apollo CSV</button>
+          <button class="btn btn-outline" onclick="exportHubspot()">🟠 HubSpot CSV</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-title">ℹ️ KIPSAFE</div>
+        <div style="font-size:13px;line-height:2;color:var(--muted)">
+          Société : <strong style="color:var(--text)">KIPSAFE</strong><br>
+          Offres : <strong style="color:var(--text)">Debal Cyber · Infogérance · PEM Promisec</strong><br>
+          Contact : <strong style="color:var(--text)">contact@kipsafe.fr</strong>
+        </div>
+      </div>
+      <div class="settings-section" style="border-color:#fca5a5">
+        <div class="settings-title" style="color:var(--red)">⚠️ Zone dangereuse</div>
+        <button class="btn btn-danger" onclick="resetData()">🗑️ Réinitialiser toutes les données</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-title"><span id="modal-title-text"></span><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ═══ SUPABASE CONFIG ════════════════════════════════════════════
+const SUPABASE_URL='https://graujqkrxxceskgnqfin.supabase.co';
+const SUPABASE_KEY='sb_publishable_AH2fKuizUTsCsmWzRWfiKA_6BMnmjVQ';
+const DEFAULT_PIN_HASH='883ffe0c';
+let sbClient=null;
+
+// ═══ DATA ═══════════════════════════════════════════════════════
+const PLAN_30J=[
+  {date:'2026-06-01',day:'Lun 01/06',axe:'Supports',action:'Finaliser plaquette Debal Cyber v2 (accroche + CTA)'},
+  {date:'2026-06-02',day:'Mar 02/06',axe:'Marketing',action:'Optimiser profil LinkedIn perso + page entreprise KIPSAFE'},
+  {date:'2026-06-03',day:'Mer 03/06',axe:'Commercial',action:'Constituer liste 50 prospects PME (Pappers/LinkedIn)'},
+  {date:'2026-06-04',day:'Jeu 04/06',axe:'Web',action:'Réécrire les titres H1/H2 et méta-descriptions de la page d\'accueil'},
+  {date:'2026-06-05',day:'Ven 05/06',axe:'Supports',action:'Finaliser plaquette Infogérance v2'},
+  {date:'2026-06-08',day:'Lun 08/06',axe:'Commercial',action:'Envoyer 10 premiers messages LinkedIn à prospects ciblés'},
+  {date:'2026-06-09',day:'Mar 09/06',axe:'Marketing',action:'Publier post LinkedIn : "Top 5 risques cyber PME 2026"'},
+  {date:'2026-06-10',day:'Mer 10/06',axe:'Supports',action:'Finaliser plaquette PEM Promisec v2'},
+  {date:'2026-06-11',day:'Jeu 11/06',axe:'Web',action:'Ajouter page Témoignages + badges certifications'},
+  {date:'2026-06-12',day:'Ven 12/06',axe:'Commercial',action:'Relances téléphoniques J+3 (prospects contactés le 08/06)'},
+  {date:'2026-06-15',day:'Lun 15/06',axe:'Marchés',action:'Créer alertes BOAMP / Maximilien : mots-clés cyber + infogérance'},
+  {date:'2026-06-16',day:'Mar 16/06',axe:'Marketing',action:'Publier post LinkedIn : offre Debal Cyber + CTA audit gratuit'},
+  {date:'2026-06-17',day:'Mer 17/06',axe:'Commercial',action:'Objectif : 3 RDV qualifiés confirmés — relances actives'},
+  {date:'2026-06-18',day:'Jeu 18/06',axe:'Web',action:'Publier article blog : "NIS2 : ce qui change pour les PME"'},
+  {date:'2026-06-19',day:'Ven 19/06',axe:'Marketing',action:'Lancer sondage LinkedIn + contacter 5 cabinets comptables'},
+  {date:'2026-06-22',day:'Lun 22/06',axe:'Web',action:'Installer formulaire lead magnet (téléchargement plaquette)'},
+  {date:'2026-06-23',day:'Mar 23/06',axe:'Marketing',action:'Publier post LinkedIn : témoignage client (anonymisé)'},
+  {date:'2026-06-24',day:'Mer 24/06',axe:'Commercial',action:'Déposer 1 dossier appel d\'offres identifié (BOAMP)'},
+  {date:'2026-06-25',day:'Jeu 25/06',axe:'Marchés',action:'Contacter UGAP pour référencement prestataire IT/cyber'},
+  {date:'2026-06-26',day:'Ven 26/06',axe:'Commercial',action:'Point hebdo : pipeline RDV, relances, avancement contrats'},
+  {date:'2026-06-29',day:'Lun 29/06',axe:'Marketing',action:'Envoyer Newsletter Cyber Flash n°1 (liste emails collectés)'},
+  {date:'2026-06-30',day:'Mar 30/06',axe:'Bilan',action:'Revue 30 jours : RDV réalisés, deals en cours, ajustements'}
+];
+const SCHEDULE_TODAY=[
+  {time:'09:36',end:'10:00',dur:'24min',axe:'Admin',icon:'🚀',action:'Lancement — Revue plan d\'action 30J + ouverture CRM'},
+  {time:'10:00',end:'11:30',dur:'90min',axe:'Supports',icon:'📄',action:'Plaquette Debal Cyber v2 (révision accroche, CTA, visuels)'},
+  {time:'11:30',end:'12:00',dur:'30min',axe:'Marketing',icon:'💼',action:'LinkedIn profil perso : photo, titre, résumé, bannière'},
+  {time:'12:00',end:'13:00',dur:'60min',axe:'Pause',icon:'🍽️',action:'PAUSE DÉJEUNER'},
+  {time:'13:00',end:'14:00',dur:'60min',axe:'Marketing',icon:'🏢',action:'Page Entreprise KIPSAFE LinkedIn : visuels, description, 1er post'},
+  {time:'14:00',end:'15:30',dur:'90min',axe:'Commercial',icon:'🎯',action:'Constituer liste 50 prospects PME (Pappers.fr + LinkedIn)'},
+  {time:'15:30',end:'16:00',dur:'30min',axe:'Web',icon:'🌐',action:'Site web — Réécriture H1 + méta-descriptions homepage'},
+  {time:'16:00',end:'17:00',dur:'60min',axe:'Commercial',icon:'📨',action:'Envoyer 5 premiers messages LinkedIn (prospects identifiés)'},
+  {time:'17:00',end:'17:45',dur:'45min',axe:'Admin',icon:'📊',action:'Mise à jour CRM + bilan J1 + relances à planifier'},
+  {time:'17:45',end:'18:00',dur:'15min',axe:'Admin',icon:'✅',action:'Clôture journée + préparation J2'}
+];
+const SCHEDULE_SOIR=[
+  {time:'17:30',end:'17:45',dur:'15min',icon:'🔄',action:'Transition / bilan rapide journée'},
+  {time:'17:45',end:'18:30',dur:'45min',icon:'📧',action:'Relances prospects + réponses LinkedIn/email'},
+  {time:'18:30',end:'19:30',dur:'60min',icon:'🛠️',action:'Travail support (plaquette / site / contenu)'},
+  {time:'19:30',end:'20:00',dur:'30min',icon:'✍️',action:'Rédaction post LinkedIn du lendemain'},
+  {time:'20:00',end:'21:00',dur:'60min',icon:'🎯',action:'Prospection (messages personnalisés, liste prospects)'},
+  {time:'21:00',end:'21:30',dur:'30min',icon:'📊',action:'MAJ CRM + planification J+1'}
+];
+const STATUTS=['Nouveau','Contacté','RDV','Proposition','Signé','Perdu'];
+const OFFRES=['Debal Cyber','Infogérance','PEM Promisec','Multi'];
+const SOURCES=['Manuel','LinkedIn','Lusha','Apollo','Pappers','Référence','Autre'];
+
+// ═══ STORAGE ════════════════════════════════════════════════
+function load(k,d){try{const v=localStorage.getItem('kipsafe_'+k);return v?JSON.parse(v):d;}catch{return d;}}
+function save(k,v){localStorage.setItem('kipsafe_'+k,JSON.stringify(v));if(sbClient){sbClient.from('kipsafe_data').upsert({key:k,value:v,updated_at:new Date().toISOString()}).then(({error})=>{if(error)console.warn('Supabase save:',error.message);});}}
+let prospects=load('prospects',[]);
+let marches=load('marches',[]);
+let planDone=load('plan_done',[]);
+let quickTasks=load('quick_tasks',[
+  {id:1,text:'Finaliser plaquette Debal Cyber',done:false},
+  {id:2,text:'Optimiser profil LinkedIn',done:false},
+  {id:3,text:'Constituer liste 50 prospects',done:false},
+  {id:4,text:'Envoyer 5 messages LinkedIn',done:false},
+  {id:5,text:'Mettre à jour le site web H1',done:false}
+]);
+let nextId=load('next_id',100);
+
+// ═══ PIN ════════════════════════════════════════════════════
+let pinBuffer='',pinMode='check',pinSetup1='';
+function simpleHash(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return(h>>>0).toString(16);}
+function initPin(){localStorage.setItem('kipsafe_pin',DEFAULT_PIN_HASH);pinMode='check';document.getElementById('pin-title').textContent='Entrez votre code PIN (8 chiffres)';document.getElementById('pin-hint').textContent='PIN : 61349178';}
+function pinPress(d){if(pinBuffer.length>=8)return;pinBuffer+=d;updateDots();if(pinBuffer.length===8)setTimeout(processPIN,150);}
+function pinDel(){pinBuffer=pinBuffer.slice(0,-1);updateDots();}
+function updateDots(){document.querySelectorAll('.pin-dot').forEach((d,i)=>d.classList.toggle('filled',i<pinBuffer.length));}
+function processPIN(){const err=document.getElementById('pin-error');const stored=localStorage.getItem('kipsafe_pin');if(simpleHash(pinBuffer)===stored){pinBuffer='';unlockApp();}else{err.textContent='PIN incorrect.';pinBuffer='';updateDots();setTimeout(()=>{err.textContent='';},2000);}}
+function unlockApp(){document.getElementById('pin-screen').style.display='none';const app=document.getElementById('app');app.style.display='flex';initApp();}
+function lockApp(){document.getElementById('app').style.display='none';document.getElementById('pin-screen').style.display='flex';pinBuffer='';pinMode='check';document.getElementById('pin-title').textContent='Entrez votre code PIN';document.getElementById('pin-error').textContent='';updateDots();}
+
+// ═══ APP ════════════════════════════════════════════════════
+let currentView='kanban';
+function initApp(){updateHeaderDate();setInterval(updateHeaderDate,60000);renderDashboard();renderProspects();renderPlanning();renderOffres();renderMarches();initSupabase();}
+
+// ═══ SUPABASE SYNC ══════════════════════════════════════════════
+async function initSupabase(){
+  if(!window.supabase){setSyncPill('offline');return;}
+  try{
+    sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+    setSyncPill('loading');
+    const {data,error}=await sbClient.from('kipsafe_data').select('*');
+    if(error){console.warn('Supabase load:',error.message);setSyncPill('offline');return;}
+    if(data&&data.length>0){
+      data.forEach(row=>{if(row.value!==null&&row.value!==undefined)localStorage.setItem('kipsafe_'+row.key,JSON.stringify(row.value));});
+      prospects=load('prospects',[]);
+      marches=load('marches',[]);
+      planDone=load('plan_done',[]);
+      quickTasks=load('quick_tasks',[{id:1,text:'Finaliser plaquette Debal Cyber',done:false},{id:2,text:'Optimiser profil LinkedIn',done:false},{id:3,text:'Constituer liste 50 prospects',done:false},{id:4,text:'Envoyer 5 messages LinkedIn',done:false},{id:5,text:'Mettre à jour le site web H1',done:false}]);
+      nextId=load('next_id',100);
+      renderDashboard();renderProspects();renderPlanning();renderMarches();
+    }
+    setSyncPill('online');
+    sbClient.channel('kipsafe-crm')
+      .on('postgres_changes',{event:'*',schema:'public',table:'kipsafe_data'},payload=>{
+        if(!payload.new) return;
+        const {key,value}=payload.new;
+        if(value!==null&&value!==undefined) localStorage.setItem('kipsafe_'+key,JSON.stringify(value));
+        switch(key){
+          case 'prospects':prospects=load('prospects',[]);renderProspects();renderDashboard();break;
+          case 'marches':marches=load('marches',[]);renderMarches();break;
+          case 'plan_done':planDone=load('plan_done',[]);renderPlanning();renderDashboard();break;
+          case 'quick_tasks':quickTasks=load('quick_tasks',[]);renderQuickTasks();break;
+        }
+        toast('🔄 Sync reçue depuis un autre appareil');
+      })
+      .subscribe(s=>{if(s==='SUBSCRIBED')setSyncPill('live');});
+  }catch(e){console.error('Supabase error:',e);setSyncPill('offline');}
+}
+
+function setSyncPill(s){
+  const el=document.getElementById('sync-pill');
+  if(!el) return;
+  const m={loading:{t:'⏳ Sync...',bg:'#fef9c3',c:'#92400e'},online:{t:'🟢 Cloud',bg:'#dcfce7',c:'#15803d'},live:{t:'🔵 Live',bg:'#dbeafe',c:'#1d4ed8'},offline:{t:'🔴 Hors ligne',bg:'#fef2f2',c:'#b91c1c'}};
+  const cfg=m[s]||m.offline;
+  el.textContent=cfg.t;el.style.background=cfg.bg;el.style.color=cfg.c;
+}
+function updateHeaderDate(){const now=new Date();const days=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];const months=['jan','fév','mars','avr','mai','juin','juil','août','sep','oct','nov','déc'];document.getElementById('header-date').textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear()+' — '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+function showTab(tab){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+tab).classList.add('active');document.querySelectorAll('.tab-btn').forEach(b=>{if(b.getAttribute('onclick').includes("'"+tab+"'"))b.classList.add('active');});if(tab==='dashboard')renderDashboard();}
+
+// ═══ DASHBOARD ══════════════════════════════════════════════
+function renderDashboard(){renderSoirBanner();renderKPIs();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
+function renderSoirBanner(){const now=new Date();const dow=now.getDay();const h=now.getHours(),m=now.getMinutes();const isToday01=now.toISOString().slice(0,10)==='2026-06-01';let html='';if(isToday01&&h<18){html='<div class="soir-banner"><div><div class="soir-title">📅 Session KIPSAFE — Lundi 01 juin 2026</div><div class="soir-sub">Planning actif jusqu\'à 18h00 · Session soir 17h30–21h30</div></div><span class="soir-badge">J1 du Plan 30J</span></div>';}else if(dow>=1&&dow<=4&&h>=17&&(h<21||(h===21&&m<30))){html='<div class="soir-banner"><div><div class="soir-title">🌙 Session soir KIPSAFE — 17h30 → 21h30</div><div class="soir-sub">Relances · Support · LinkedIn · Prospection · MAJ CRM</div></div><span class="soir-badge">EN COURS</span></div>';}document.getElementById('soir-banner').innerHTML=html;}
+function renderKPIs(){const total=prospects.length,rdv=prospects.filter(p=>p.statut==='RDV'||p.statut==='Proposition').length,signes=prospects.filter(p=>p.statut==='Signé').length,done=planDone.length;document.getElementById('kpis').innerHTML=`<div class="card"><span class="kpi-icon">👥</span><div class="card-title">Prospects</div><div class="kpi-value">${total}</div><div class="kpi-sub">dans le pipeline</div></div><div class="card"><span class="kpi-icon">📞</span><div class="card-title">RDV/Propos.</div><div class="kpi-value">${rdv}</div><div class="kpi-sub">en cours</div></div><div class="card"><span class="kpi-icon">✅</span><div class="card-title">Signés</div><div class="kpi-value" style="color:var(--green)">${signes}</div><div class="kpi-sub">objectif : 1 fin juin</div></div><div class="card"><span class="kpi-icon">📅</span><div class="card-title">Plan 30J</div><div class="kpi-value">${done}/22</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill" style="width:${Math.round(done/22*100)}%"></div></div></div>`;}
+function renderScheduleToday(){const now=new Date();const h=now.getHours(),m=now.getMinutes();const isToday=now.toISOString().slice(0,10)==='2026-06-01';const sched=isToday?SCHEDULE_TODAY:SCHEDULE_SOIR;const label=isToday?'Lundi 01/06 — J1':'Soir Lun–Jeu';document.getElementById('today-label').textContent=label;let rows='';sched.forEach(s=>{const[sh,sm]=s.time.split(':').map(Number);const[eh,em]=s.end.split(':').map(Number);const past=h>eh||(h===eh&&m>=em);const isNow=h>=sh&&m>=sm&&(h<eh||(h===eh&&m<em));let cls=past?'done':'';if(isNow)cls='now';if(s.axe==='Pause')cls='break';const axeClass=s.axe?`axe-badge axe-${s.axe.replace(/\s/g,'')}`:'';rows+=`<div class="schedule-row ${cls}"><div class="s-time">${s.time}–${s.end}</div><div class="s-dur">${s.dur}</div><div class="s-action">${s.icon||''} ${s.action}</div>${s.axe?`<div class="s-axe"><span class="${axeClass}">${s.axe}</span></div>`:''}</div>`;});document.getElementById('schedule-today').innerHTML=`<div class="schedule-header"><span>Programme</span><span style="font-size:11px;opacity:.7">${label}</span></div>${rows}`;}
+function renderPipelineSummary(){const counts={};STATUTS.forEach(s=>counts[s]=0);prospects.forEach(p=>{if(counts[p.statut]!==undefined)counts[p.statut]++;});const colors={Nouveau:'#0369a1',Contacté:'#1d4ed8',RDV:'#059669',Proposition:'#d97706',Signé:'#228B22',Perdu:'#C00000'};let html='<div style="display:flex;flex-direction:column;gap:6px">';STATUTS.forEach(s=>{const pct=prospects.length?Math.round(counts[s]/prospects.length*100):0;html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:78px;color:${colors[s]};font-weight:700">${s}</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:${colors[s]}"></div></div><span style="width:20px;text-align:right;color:var(--muted)">${counts[s]}</span></div>`;});html+='</div>';document.getElementById('pipeline-summary').innerHTML=html;}
+function renderPlanTodayAction(){const today=new Date().toISOString().slice(0,10);const item=PLAN_30J.find(p=>p.date===today);if(!item){document.getElementById('plan-today-action').innerHTML='<div class="empty"><div class="empty-icon">🗓️</div><div class="empty-text">Pas d\'action planifiée aujourd\'hui</div></div>';return;}const done=planDone.includes(item.date);document.getElementById('plan-today-action').innerHTML=`<div style="background:var(--light);border-radius:10px;padding:14px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="axe-badge axe-${item.axe}">${item.axe}</span><button class="btn btn-sm ${done?'btn-success':'btn-outline'}" onclick="togglePlanDone('${item.date}')">${done?'✅ Fait':'Marquer fait'}</button></div><div style="font-size:13px;font-weight:600">${item.action}</div></div>`;}
+function renderQuickTasks(){let html='';quickTasks.forEach(t=>{html+=`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)"><input type="checkbox" ${t.done?'checked':''} onchange="toggleQuickTask(${t.id})" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer"><span style="font-size:13px;${t.done?'text-decoration:line-through;color:var(--muted)':''}">${t.text}</span></div>`;});html+=`<div style="margin-top:8px;display:flex;gap:8px"><input type="text" id="new-task-input" class="form-input" placeholder="Nouvelle tâche..." style="flex:1" onkeydown="if(event.key==='Enter')addQuickTask()"><button class="btn btn-accent btn-sm" onclick="addQuickTask()">+</button></div>`;document.getElementById('quick-tasks').innerHTML=html;}
+function toggleQuickTask(id){quickTasks=quickTasks.map(t=>t.id===id?{...t,done:!t.done}:t);save('quick_tasks',quickTasks);renderQuickTasks();}
+function addQuickTask(){const inp=document.getElementById('new-task-input');const text=inp.value.trim();if(!text)return;quickTasks.push({id:Date.now(),text,done:false});save('quick_tasks',quickTasks);inp.value='';renderQuickTasks();}
+function togglePlanDone(date){if(planDone.includes(date))planDone=planDone.filter(d=>d!==date);else planDone.push(date);save('plan_done',planDone);renderDashboard();renderPlanning();}
+
+// ═══ PROSPECTS ══════════════════════════════════════════════
+function setView(v){currentView=v;document.getElementById('view-kanban-btn').classList.toggle('active',v==='kanban');document.getElementById('view-list-btn').classList.toggle('active',v==='list');renderProspects();}
+function getFiltered(){const q=(document.getElementById('search-prospect')?.value||'').toLowerCase();const fo=document.getElementById('filter-offre')?.value||'';const fs=document.getElementById('filter-source')?.value||'';return prospects.filter(p=>{const match=!q||(p.nom+' '+(p.societe||'')+' '+(p.poste||'')).toLowerCase().includes(q);const mo=!fo||p.offre===fo;const ms=!fs||p.source===fs;return match&&mo&&ms;});}
+function renderProspects(){if(currentView==='kanban')renderKanban(getFiltered());else renderList(getFiltered());}
+
+function searchLinks(p){
+  const name=encodeURIComponent(p.nom||'');
+  const co=encodeURIComponent(p.societe||'');
+  let links='';
+  if(p.linkedin)links+=`<a href="${p.linkedin}" target="_blank" class="btn btn-linkedin btn-xs" onclick="event.stopPropagation()">in</a>`;
+  else links+=`<a href="https://www.linkedin.com/search/results/people/?keywords=${name}+${co}" target="_blank" class="btn btn-linkedin btn-xs" onclick="event.stopPropagation()">🔍 LI</a>`;
+  links+=`<a href="https://www.lusha.com/people-search/?firstName=${name}&company=${co}" target="_blank" class="btn btn-lusha btn-xs" onclick="event.stopPropagation()">💜</a>`;
+  links+=`<a href="https://app.apollo.io/#/people?q_keywords=${name}&q_organization_name=${co}" target="_blank" class="btn btn-apollo btn-xs" onclick="event.stopPropagation()">🔵</a>`;
+  if(p.societe)links+=`<a href="https://www.pappers.fr/recherche?q=${co}" target="_blank" class="btn btn-pappers btn-xs" onclick="event.stopPropagation()">🔴</a>`;
+  return links;
+}
+
+function renderKanban(fp){
+  let html='<div class="kanban-board">';
+  STATUTS.forEach(st=>{
+    const cards=fp.filter(p=>p.statut===st);
+    html+=`<div class="kanban-col"><div class="kanban-col-title"><span>${st}</span><span class="col-count">${cards.length}</span></div>`;
+    if(!cards.length)html+=`<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px">Aucun</div>`;
+    cards.forEach(p=>{
+      const oClass=p.offre==='Debal Cyber'?'offre-debal':p.offre==='Infogérance'?'offre-info':p.offre==='PEM Promisec'?'offre-pem':'offre-multi';
+      const srcColor=p.source==='LinkedIn'?'#0A66C2':p.source==='Lusha'?'#8B5CF6':p.source==='Apollo'?'#2563EB':p.source==='Pappers'?'#E11D48':'#6b7280';
+      html+=`<div class="kanban-card" onclick="viewProspect(${p.id})">
+        <div class="kc-name">${esc(p.nom)}</div>
+        ${p.poste?`<div class="kc-poste">${esc(p.poste)}</div>`:''}
+        <div class="kc-company">🏢 ${esc(p.societe||'—')}</div>
+        <span class="kc-offre ${oClass}">${esc(p.offre)}</span>
+        ${p.source?`<span class="source-badge" style="color:${srcColor};border-color:${srcColor}30">${p.source}</span>`:''}
+        <div class="kc-meta"><span>📅 ${p.date||'—'}</span><span>${p.valeur?p.valeur+'€':''}</span></div>
+        <div class="kc-links">${searchLinks(p)}</div>
+        <div style="margin-top:6px;display:flex;gap:4px">
+          <button class="btn btn-outline btn-xs" onclick="event.stopPropagation();editProspect(${p.id})">✏️</button>
+          <select class="form-select" style="font-size:10px;padding:2px 4px;height:24px;flex:1" onchange="changeStatut(${p.id},this.value)" onclick="event.stopPropagation()">
+            ${STATUTS.map(s=>`<option ${s===p.statut?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  html+='</div>';
+  document.getElementById('prospects-container').innerHTML=html;
+}
+
+function renderList(fp){
+  if(!fp.length){document.getElementById('prospects-container').innerHTML='<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Aucun prospect</div></div>';return;}
+  let html=`<div class="card" style="overflow-x:auto"><table class="prospects-table"><thead><tr><th>Nom / Poste</th><th>Société</th><th>Offre</th><th>Contact</th><th>Source</th><th>Statut</th><th>Valeur</th><th>Liens</th><th></th></tr></thead><tbody>`;
+  fp.forEach(p=>{
+    const stCls='st-'+p.statut.toLowerCase().replace(/[éèê]/g,'e').replace(/\s/g,'');
+    html+=`<tr>
+      <td><strong>${esc(p.nom)}</strong>${p.poste?`<br><span style="font-size:10px;color:var(--secondary)">${esc(p.poste)}</span>`:''}</td>
+      <td>${esc(p.societe||'—')}</td>
+      <td><span class="axe-badge" style="background:#dbeafe;color:#1d4ed8">${esc(p.offre)}</span></td>
+      <td style="font-size:11px">${p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:''}<br>${esc(p.tel||'')}</td>
+      <td><span class="status-badge" style="background:var(--light)">${p.source||'—'}</span></td>
+      <td><span class="status-badge ${stCls}">${p.statut}</span></td>
+      <td>${p.valeur?p.valeur+'€':'—'}</td>
+      <td><div style="display:flex;gap:3px">${searchLinks(p)}</div></td>
+      <td><div style="display:flex;gap:4px"><button class="btn btn-sm btn-outline" onclick="editProspect(${p.id})">✏️</button><button class="btn btn-sm btn-danger" onclick="deleteProspect(${p.id})">🗑️</button></div></td>
+    </tr>`;
+  });
+  html+='</tbody></table></div>';
+  document.getElementById('prospects-container').innerHTML=html;
+}
+
+function changeStatut(id,s){prospects=prospects.map(p=>p.id===id?{...p,statut:s}:p);save('prospects',prospects);renderProspects();renderDashboard();}
+function viewProspect(id){const p=prospects.find(x=>x.id===id);if(!p)return;openModal('Fiche prospect',`<div class="grid-2" style="gap:10px;margin-bottom:12px"><div><div class="form-label">Nom</div><strong>${esc(p.nom)}</strong></div><div><div class="form-label">Poste</div>${esc(p.poste||'—')}</div><div><div class="form-label">Société</div>${esc(p.societe||'—')}</div><div><div class="form-label">Email</div>${p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:'—'}</div><div><div class="form-label">Téléphone</div>${esc(p.tel||'—')}</div><div><div class="form-label">Offre</div>${esc(p.offre)}</div><div><div class="form-label">Statut</div><span class="status-badge">${p.statut}</span></div><div><div class="form-label">Source</div>${esc(p.source||'Manuel')}</div><div><div class="form-label">Valeur</div>${p.valeur?p.valeur+'€':'—'}</div><div><div class="form-label">1er contact</div>${p.date||'—'}</div></div><div class="form-label">LinkedIn</div><div style="margin-bottom:10px">${p.linkedin?`<a href="${p.linkedin}" target="_blank">${p.linkedin}</a>`:'—'}</div><div class="form-label">Notes</div><div style="background:var(--light);border-radius:8px;padding:12px;font-size:13px;min-height:50px">${esc(p.notes||'Aucune note')}</div><div style="margin-top:12px;display:flex;gap:6px">${searchLinks(p)}</div>`,[{label:'Modifier',cls:'btn-primary',fn:`editProspect(${p.id});closeModal()`},{label:'Supprimer',cls:'btn-danger',fn:`deleteProspect(${p.id});closeModal()`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);}
+function openAddProspect(){openProspectModal(null);}
+function editProspect(id){openProspectModal(prospects.find(p=>p.id===id));}
+function openProspectModal(p){
+  const isEdit=!!p;
+  openModal(isEdit?'Modifier le prospect':'Nouveau prospect',`
+    <div class="grid-2"><div class="form-group"><label class="form-label">Nom complet *</label><input id="f-nom" class="form-input" value="${p?esc(p.nom):''}"></div><div class="form-group"><label class="form-label">Poste / Fonction</label><input id="f-poste" class="form-input" value="${p?esc(p.poste||''):''}"></div></div>
+    <div class="grid-2"><div class="form-group"><label class="form-label">Société</label><input id="f-societe" class="form-input" value="${p?esc(p.societe||''):''}"></div><div class="form-group"><label class="form-label">Source lead</label><select id="f-source" class="form-select">${SOURCES.map(s=>`<option ${p&&p.source===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
+    <div class="grid-2"><div class="form-group"><label class="form-label">Email</label><input id="f-email" class="form-input" type="email" value="${p?esc(p.email||''):''}"></div><div class="form-group"><label class="form-label">Téléphone</label><input id="f-tel" class="form-input" value="${p?esc(p.tel||''):''}"></div></div>
+    <div class="form-group"><label class="form-label">URL LinkedIn</label><input id="f-linkedin" class="form-input" placeholder="https://linkedin.com/in/..." value="${p?esc(p.linkedin||''):''}"></div>
+    <div class="grid-2"><div class="form-group"><label class="form-label">Offre *</label><select id="f-offre" class="form-select">${OFFRES.map(o=>`<option ${p&&p.offre===o?'selected':''}>${o}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Statut</label><select id="f-statut" class="form-select">${STATUTS.map(s=>`<option ${p&&p.statut===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
+    <div class="grid-2"><div class="form-group"><label class="form-label">Valeur estimée (€)</label><input id="f-valeur" class="form-input" type="number" value="${p?p.valeur||'':''}"></div><div class="form-group"><label class="form-label">Date 1er contact</label><input id="f-date" class="form-input" type="date" value="${p?p.date||'':''}"></div></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea id="f-notes" class="form-textarea">${p?esc(p.notes||''):''}</textarea></div>`,
+    [{label:isEdit?'Enregistrer':'Ajouter',cls:'btn-primary',fn:`saveProspect(${isEdit?p.id:'null'})`},{label:'Annuler',cls:'btn-outline',fn:'closeModal()'}]);
+}
+function saveProspect(id){const nom=document.getElementById('f-nom').value.trim();if(!nom){alert('Nom requis');return;}const data={nom,poste:document.getElementById('f-poste').value.trim(),societe:document.getElementById('f-societe').value.trim(),email:document.getElementById('f-email').value.trim(),tel:document.getElementById('f-tel').value.trim(),linkedin:document.getElementById('f-linkedin').value.trim(),source:document.getElementById('f-source').value,offre:document.getElementById('f-offre').value,statut:document.getElementById('f-statut').value,valeur:document.getElementById('f-valeur').value,date:document.getElementById('f-date').value,notes:document.getElementById('f-notes').value.trim()};if(id){prospects=prospects.map(p=>p.id===id?{...p,...data}:p);}else{data.id=nextId++;save('next_id',nextId);prospects.push(data);}save('prospects',prospects);closeModal();renderProspects();renderDashboard();}
+function deleteProspect(id){if(!confirm('Supprimer ce prospect ?'))return;prospects=prospects.filter(p=>p.id!==id);save('prospects',prospects);renderProspects();renderDashboard();}
+
+// ═══ PLANNING ═══════════════════════════════════════════════
+function renderPlanning(){const done=planDone.length,today=new Date().toISOString().slice(0,10);document.getElementById('plan-progress').style.width=Math.round(done/22*100)+'%';document.getElementById('plan-done-label').textContent=done+' / 22 complétés';const ti=PLAN_30J.find(p=>p.date===today);document.getElementById('plan-axe-now').textContent=ti?ti.axe:'—';const wd=new Date(today),ws=new Date('2026-06-01'),wn=Math.floor((wd-ws)/(7*24*3600*1000))+1;document.getElementById('plan-week').textContent='S'+Math.max(1,Math.min(4,wn));let rows='';PLAN_30J.forEach(item=>{const isDone=planDone.includes(item.date),isToday=item.date===today,cls=isToday?'today':isDone?'done':'';rows+=`<tr class="${cls}"><td class="done-check" onclick="togglePlanDone('${item.date}')">${isDone?'✅':'⬜'}</td><td><strong>${item.day}</strong></td><td><span class="axe-badge axe-${item.axe}">${item.axe}</span></td><td>${esc(item.action)}</td><td style="font-size:11px;color:var(--muted)">${isToday?'📍 Aujourd\'hui':isDone?'Complété':''}</td></tr>`;});document.getElementById('plan-tbody').innerHTML=rows;}
+
+// ═══ OFFRES ═════════════════════════════════════════════════
+function renderOffres(){const od=[{cls:'debal',name:'🔵 Debal Cyber',sub:'Audit & Protection Cybersécurité',color:'var(--accent)',stats:[{v:prospects.filter(p=>p.offre==='Debal Cyber').length,l:'Prospects'},{v:'48h',l:'Délai audit'},{v:'1 500€',l:'Prix d\'appel'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'CTA "Audit gratuit" en ligne'},{ok:false,t:'2 témoignages clients'},{ok:true,t:'Grille tarifaire définie'},{ok:false,t:'Landing page dédiée'}]},{cls:'info',name:'🟢 Infogérance',sub:'Pilotage SI Externalisé',color:'var(--green)',stats:[{v:prospects.filter(p=>p.offre==='Infogérance').length,l:'Prospects'},{v:'30€',l:'User/mois'},{v:'12 mois',l:'Engagement'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'Comparatif DSI vs Infogérance'},{ok:false,t:'Grille tarifaire publiée'},{ok:false,t:'Formulaire contact direct'},{ok:false,t:'SLA document finalisé'}]},{cls:'pem',name:'🟠 PEM Promisec',sub:'Gestion Accès & Identités',color:'var(--orange)',stats:[{v:prospects.filter(p=>p.offre==='PEM Promisec').length,l:'Prospects'},{v:'10j',l:'Déploiement'},{v:'NIS2',l:'Conformité'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'Logo Promisec intégré'},{ok:false,t:'Section FAQ réglementaire'},{ok:false,t:'Badges certifications'},{ok:false,t:'Démo vidéo disponible'}]}];let html='';od.forEach(o=>{const done=o.items.filter(i=>i.ok).length,pct=Math.round(done/o.items.length*100);html+=`<div class="offre-card ${o.cls}"><div class="offre-name" style="color:${o.color}">${o.name}</div><div class="offre-promise">${o.sub}</div><div class="offre-stat">${o.stats.map(s=>`<div class="ostat"><div class="ostat-val">${s.v}</div><div class="ostat-lbl">${s.l}</div></div>`).join('')}</div><div style="margin-bottom:10px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:700">COMPLÉTION ${pct}%</div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${o.color}"></div></div></div><ul class="checklist">${o.items.map(i=>`<li><span style="color:${i.ok?'var(--green)':'var(--orange)'}">${i.ok?'✅':'⏳'}</span>${esc(i.t)}</li>`).join('')}</ul></div>`;});document.getElementById('offres-grid').innerHTML=html;}
+
+// ═══ MARCHÉS ════════════════════════════════════════════════
+function renderMarches(){const tbody=document.getElementById('marche-tbody');if(!marches.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">🏛️</div><div class="empty-text">Aucun AO suivi</div></div></td></tr>`;return;}tbody.innerHTML=marches.map(m=>{const limite=m.limite?new Date(m.limite):null,jours=limite?Math.round((limite-new Date())/(24*3600*1000)):null,urgClass=jours===null?'':jours<7?'urgence-haute':jours<14?'urgence-med':'urgence-ok',urgText=jours===null?'—':jours<0?'Expiré':jours+'j';return`<tr><td><strong>${esc(m.ref||'—')}</strong></td><td>${esc(m.acheteur||'—')}</td><td><span class="axe-badge axe-Supports">${esc(m.offre||'—')}</span></td><td>${m.montant?m.montant+'€':'—'}</td><td class="${urgClass}">${m.limite||'—'} <span style="font-size:10px">(${urgText})</span></td><td><span class="status-badge">${m.statut||'Nouveau'}</span></td><td><button class="btn btn-xs btn-danger" onclick="deleteMarche(${m.id})">🗑️</button></td></tr>`;}).join('');}
+function openAddMarche(){openModal("Ajouter un appel d'offres",`<div class="form-group"><label class="form-label">Référence AO</label><input id="m-ref" class="form-input" placeholder="ex: BOAMP-2026-001"></div><div class="form-group"><label class="form-label">Acheteur public</label><input id="m-acheteur" class="form-input"></div><div class="grid-2"><div class="form-group"><label class="form-label">Offre KIPSAFE</label><select id="m-offre" class="form-select">${OFFRES.map(o=>`<option>${o}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Montant estimé (€)</label><input id="m-montant" class="form-input" type="number"></div></div><div class="grid-2"><div class="form-group"><label class="form-label">Date limite</label><input id="m-limite" class="form-input" type="date"></div><div class="form-group"><label class="form-label">Statut</label><select id="m-statut" class="form-select"><option>Nouveau</option><option>En cours</option><option>Déposé</option><option>Gagné</option><option>Perdu</option></select></div></div>`,[{label:'Ajouter',cls:'btn-primary',fn:'saveMarche()'},{label:'Annuler',cls:'btn-outline',fn:'closeModal()'}]);}
+function saveMarche(){const m={id:nextId++,ref:document.getElementById('m-ref').value.trim(),acheteur:document.getElementById('m-acheteur').value.trim(),offre:document.getElementById('m-offre').value,montant:document.getElementById('m-montant').value,limite:document.getElementById('m-limite').value,statut:document.getElementById('m-statut').value};save('next_id',nextId);marches.push(m);save('marches',marches);closeModal();renderMarches();}
+function deleteMarche(id){if(!confirm('Supprimer cet AO ?'))return;marches=marches.filter(m=>m.id!==id);save('marches',marches);renderMarches();}
+
+// ═══ INTEGRATIONS — EXPORT ══════════════════════════════════
+function dlCSV(rows,filename){const csv=rows.map(r=>r.map(v=>'"'+(v||'').toString().replace(/"/g,'""')+'"').join(',')).join('\n');const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();toast('✅ Export '+filename+' téléchargé');}
+function splitName(nom){const parts=(nom||'').trim().split(' ');return[parts[0]||'',parts.slice(1).join(' ')];}
+function exportLinkedIn(){const h=['First Name','Last Name','Email Address','Phone','Company Name','Title','LinkedIn Member URL','Country','City'];const rows=prospects.filter(p=>p.statut!=='Perdu').map(p=>{const[fn,ln]=splitName(p.nom);return[fn,ln,p.email||'',p.tel||'',p.societe||'',p.poste||'',p.linkedin||'','France',''];});dlCSV([h,...rows],'kipsafe_linkedin_salesnavigator.csv');}
+function exportLusha(){const h=['First Name','Last Name','Job Title','Company Name','Email','Phone Number','LinkedIn URL','Company Website','Industry','Country'];const rows=prospects.map(p=>{const[fn,ln]=splitName(p.nom);return[fn,ln,p.poste||'',p.societe||'',p.email||'',p.tel||'',p.linkedin||'','','Cybersécurité / IT','France'];});dlCSV([h,...rows],'kipsafe_lusha_import.csv');}
+function exportApollo(){const h=['First Name','Last Name','Email','Company','Title','Phone','LinkedIn URL','City','State','Country','Industry','Employees'];const rows=prospects.map(p=>{const[fn,ln]=splitName(p.nom);return[fn,ln,p.email||'',p.societe||'',p.poste||'',p.tel||'',p.linkedin||'','','','France','IT Security',''];});dlCSV([h,...rows],'kipsafe_apollo_import.csv');}
+function exportHubspot(){const h=['First Name','Last Name','Email','Phone Number','Company','Job Title','LinkedIn Bio URL','Website URL','City','Country','Industry'];const rows=prospects.map(p=>{const[fn,ln]=splitName(p.nom);return[fn,ln,p.email||'',p.tel||'',p.societe||'',p.poste||'',p.linkedin||'','','','France','Cybersecurity'];});dlCSV([h,...rows],'kipsafe_hubspot_import.csv');}
+function exportClay(){const h=['Name','Email','Company','Title','Phone','LinkedIn','Source','Offer','Status','Value (EUR)','Notes'];const rows=prospects.map(p=>[p.nom||'',p.email||'',p.societe||'',p.poste||'',p.tel||'',p.linkedin||'',p.source||'',p.offre||'',p.statut||'',p.valeur||'',p.notes||'']);dlCSV([h,...rows],'kipsafe_clay_import.csv');}
+function exportPappers(){const h=['Société','SIREN','Secteur activité','Pays','Offre KIPSAFE','Contact','Email'];const rows=[...new Map(prospects.filter(p=>p.societe).map(p=>[p.societe,p])).values()].map(p=>[p.societe||'','','IT / Cybersécurité','France',p.offre||'',p.nom||'',p.email||'']);dlCSV([h,...rows],'kipsafe_pappers_societes.csv');}
+function exportDataJSON(){const data={prospects,marches,planDone,quickTasks,exportDate:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='kipsafe_crm_backup.json';a.click();toast('✅ Backup JSON exporté');}
+
+// ═══ INTEGRATIONS — IMPORT ══════════════════════════════════
+function setImportTab(tab){document.querySelectorAll('.import-tab').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.import-panel').forEach(p=>p.classList.remove('active'));event.target.classList.add('active');document.getElementById('import-'+tab).classList.add('active');document.getElementById('import-preview').style.display='none';}
+
+function parseCSVText(txt){const lines=txt.trim().split('\n').filter(l=>l.trim());if(lines.length<2)return[];const parseRow=row=>{const cells=[];let cur='',inQ=false;for(let i=0;i<row.length;i++){const c=row[i];if(c==='"'){if(inQ&&row[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}else if(c===','&&!inQ){cells.push(cur.trim());cur='';}else cur+=c;}cells.push(cur.trim());return cells;};const headers=parseRow(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));const rows=lines.slice(1).map(l=>parseRow(l));return{headers,rows};}
+
+const COL_MAP={
+  linkedin:{fn:'first name',ln:'last name',email:'email address',tel:'phone',societe:'company name',poste:'title',linkedin:'linkedin member url'},
+  lusha:{fn:'first name',ln:'last name',email:'email',tel:'phone number',societe:'company name',poste:'job title',linkedin:'linkedin url'},
+  apollo:{fn:'first name',ln:'last name',email:'email',tel:'phone',societe:'company',poste:'title',linkedin:'linkedin url'},
+  custom:{fn:['first name','prenom','prénom'],ln:['last name','nom','surname'],nom:['nom','name','full name','nom complet'],email:['email','mail','e-mail'],tel:['phone','tel','telephone','téléphone'],societe:['company','société','societe','entreprise','firm'],poste:['title','poste','fonction','job title'],linkedin:['linkedin','linkedin url','linkedin member url'],source:['source'],offre:['offre','offer'],notes:['notes','note','commentaire']}
+};
+
+function findCol(headers,candidates){const c=Array.isArray(candidates)?candidates:[candidates];for(const cand of c){const idx=headers.findIndex(h=>h.includes(cand.toLowerCase().replace(/[^a-z0-9]/g,'')));if(idx>=0)return idx;}return-1;}
+
+function previewImport(source){
+  const csv=document.getElementById('csv-'+source).value;
+  if(!csv.trim()){toast('⚠️ Colle d\'abord ton CSV');return;}
+  const parsed=parseCSVText(csv);
+  if(!parsed||!parsed.rows.length){toast('⚠️ CSV non reconnu');return;}
+  const preview=parsed.rows.slice(0,5);
+  const div=document.getElementById('import-preview');div.style.display='block';
+  let html=`<table class="preview-table"><thead><tr>${parsed.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>`;
+  preview.forEach(r=>{html+=`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`;});
+  html+='</tbody></table>';
+  document.getElementById('import-preview-content').innerHTML=html;
+}
+
+function importCSV(source){
+  const csv=document.getElementById('csv-'+source).value;
+  if(!csv.trim()){toast('⚠️ Aucun CSV à importer');return;}
+  const parsed=parseCSVText(csv);
+  if(!parsed||!parsed.rows.length){toast('⚠️ CSV vide ou non reconnu');return;}
+  const H=parsed.headers;
+  let added=0,skipped=0;
+  parsed.rows.forEach(row=>{
+    let nom='',prenom='',email='',tel='',societe='',poste='',linkedin='',notesV='',sourceV=source==='custom'?'Manuel':source==='linkedin'?'LinkedIn':source==='lusha'?'Lusha':'Apollo';
+    if(source==='custom'){
+      const nomIdx=findCol(H,COL_MAP.custom.nom);
+      const fnIdx=findCol(H,COL_MAP.custom.fn);const lnIdx=findCol(H,COL_MAP.custom.ln);
+      if(nomIdx>=0)nom=(row[nomIdx]||'').trim();
+      else nom=[(row[fnIdx]||''),(row[lnIdx]||'')].filter(Boolean).join(' ').trim();
+      email=(row[findCol(H,COL_MAP.custom.email)]||'').trim();
+      tel=(row[findCol(H,COL_MAP.custom.tel)]||'').trim();
+      societe=(row[findCol(H,COL_MAP.custom.societe)]||'').trim();
+      poste=(row[findCol(H,COL_MAP.custom.poste)]||'').trim();
+      linkedin=(row[findCol(H,COL_MAP.custom.linkedin)]||'').trim();
+      notesV=(row[findCol(H,COL_MAP.custom.notes)]||'').trim();
+    } else {
+      const map=COL_MAP[source];
+      const fnIdx=H.findIndex(h=>h.includes(map.fn.replace(/[^a-z0-9]/g,'')));
+      const lnIdx=H.findIndex(h=>h.includes(map.ln.replace(/[^a-z0-9]/g,'')));
+      nom=[(row[fnIdx]||''),(row[lnIdx]||'')].filter(Boolean).join(' ').trim();
+      email=(row[H.findIndex(h=>h.includes(map.email.replace(/[^a-z0-9]/g,'')))]||'').trim();
+      tel=(row[H.findIndex(h=>h.includes(map.tel.replace(/[^a-z0-9]/g,'')))]||'').trim();
+      societe=(row[H.findIndex(h=>h.includes(map.societe.replace(/[^a-z0-9]/g,'')))]||'').trim();
+      poste=(row[H.findIndex(h=>h.includes(map.poste.replace(/[^a-z0-9]/g,'')))]||'').trim();
+      linkedin=(row[H.findIndex(h=>h.includes(map.linkedin.replace(/[^a-z0-9]/g,'')))]||'').trim();
+    }
+    if(!nom){skipped++;return;}
+    const exists=prospects.find(p=>p.nom.toLowerCase()===nom.toLowerCase()&&(p.societe||'').toLowerCase()===(societe||'').toLowerCase());
+    if(exists){// enrich existing
+      if(email&&!exists.email)exists.email=email;
+      if(tel&&!exists.tel)exists.tel=tel;
+      if(linkedin&&!exists.linkedin)exists.linkedin=linkedin;
+      if(poste&&!exists.poste)exists.poste=poste;
+      skipped++;return;
+    }
+    prospects.push({id:nextId++,nom,poste,societe,email,tel,linkedin,source:sourceV,offre:'Debal Cyber',statut:'Nouveau',valeur:'',date:new Date().toISOString().slice(0,10),notes:notesV});
+    added++;
+  });
+  save('next_id',nextId);save('prospects',prospects);
+  document.getElementById('csv-'+source).value='';
+  document.getElementById('import-preview').style.display='none';
+  renderProspects();renderDashboard();
+  toast(`✅ ${added} prospects importés${skipped?' ('+skipped+' ignorés/enrichis)':''}`);}
+
+// ═══ SETTINGS ═══════════════════════════════════════════════
+function changePin(){const np=document.getElementById('new-pin').value,cp=document.getElementById('confirm-pin').value,msg=document.getElementById('pin-change-msg');if(!/^\d{4}$/.test(np)){msg.style.color='var(--red)';msg.textContent='PIN = 4 chiffres exactement.';return;}if(np!==cp){msg.style.color='var(--red)';msg.textContent='PINs différents.';return;}localStorage.setItem('kipsafe_pin',simpleHash(np));document.getElementById('new-pin').value='';document.getElementById('confirm-pin').value='';msg.style.color='var(--green)';msg.textContent='✅ PIN mis à jour !';setTimeout(()=>msg.textContent='',3000);}
+function resetData(){if(!confirm('⚠️ Effacer TOUTES les données ? Irréversible.'))return;['prospects','marches','plan_done','quick_tasks','next_id'].forEach(k=>localStorage.removeItem('kipsafe_'+k));prospects=[];marches=[];planDone=[];quickTasks=[];nextId=100;initApp();alert('Réinitialisé.');}
+
+// ═══ MODAL ══════════════════════════════════════════════════
+function openModal(title,body,buttons){document.getElementById('modal-title-text').textContent=title;document.getElementById('modal-body').innerHTML=body;document.getElementById('modal-actions').innerHTML=buttons.map(b=>`<button class="btn ${b.cls}" onclick="${b.fn}">${b.label}</button>`).join('');document.getElementById('modal').style.display='flex';}
+function closeModal(){document.getElementById('modal').style.display='none';}
+
+// ═══ TOAST ══════════════════════════════════════════════════
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+
+// ═══ UTILS ══════════════════════════════════════════════════
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ═══ START ══════════════════════════════════════════════════
+initPin();
+</script>
+</body>
+</html>
