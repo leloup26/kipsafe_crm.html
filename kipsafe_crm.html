@@ -316,6 +316,8 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     <button class="tab-btn active" onclick="showTab('dashboard')">🏠 Dashboard</button>
     <button class="tab-btn" onclick="showTab('prospects')">👥 Prospects</button>
     <button class="tab-btn" onclick="showTab('planning')">📅 Plan 30J</button>
+    <button class="tab-btn" onclick="showTab('calendrier')">📆 Calendrier</button>
+    <button class="tab-btn" onclick="showTab('objectifs')">🎯 Objectifs</button>
     <button class="tab-btn" onclick="showTab('offres')">💼 Offres</button>
     <button class="tab-btn" onclick="showTab('marches')">🏛️ Marchés</button>
     <button class="tab-btn" onclick="showTab('integrations')">🔗 Intégrations</button>
@@ -409,6 +411,61 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
       <div class="card">
         <table class="plan-table"><thead><tr><th style="width:28px">P</th><th>Date</th><th>Axe</th><th>Action</th><th style="width:110px">Statut</th></tr></thead><tbody id="plan-tbody"></tbody></table>
       </div>
+    </div>
+
+    <!-- CALENDRIER -->
+    <div id="panel-calendrier" class="panel">
+      <div class="grid-3" style="margin-bottom:16px" id="cal-summary-cards"></div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="card" style="flex:2;min-width:280px">
+          <div class="section-title">⚠️ En retard</div>
+          <div id="cal-overdue-list"></div>
+        </div>
+        <div class="card" style="flex:2;min-width:280px">
+          <div class="section-title">📍 Aujourd'hui</div>
+          <div id="cal-today-list"></div>
+        </div>
+        <div class="card" style="flex:2;min-width:280px">
+          <div class="section-title">✅ Tâches faites</div>
+          <div id="cal-done-list"></div>
+        </div>
+      </div>
+      <div class="cal-wrap">
+        <div class="cal-header">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span class="cal-title">📆 Calendrier complet</span>
+            <div class="cal-toggle">
+              <button id="cal2-btn-7" class="active" onclick="setCal2View(7)">7 jours</button>
+              <button id="cal2-btn-30" onclick="setCal2View(30)">1 mois</button>
+            </div>
+          </div>
+          <div class="cal-nav">
+            <button onclick="cal2NavPrev()">‹</button>
+            <span id="cal2-nav-label"></span>
+            <button onclick="cal2NavNext()">›</button>
+            <button onclick="cal2NavToday()" style="font-size:11px;padding:3px 8px">Aujourd'hui</button>
+          </div>
+        </div>
+        <div class="cal-legend" style="margin-bottom:10px">
+          <span><span class="cal-legend-dot" style="background:#00AEEF"></span>Aujourd'hui</span>
+          <span><span class="cal-legend-dot" style="background:#86efac"></span>Fait</span>
+          <span><span class="cal-legend-dot" style="background:#C00000"></span>En retard</span>
+          <span><span class="cal-legend-dot" style="background:#e2e8f0"></span>À faire</span>
+        </div>
+        <div class="cal-days-header" id="cal2-days-header"></div>
+        <div class="cal-grid" id="cal2-grid"></div>
+      </div>
+    </div>
+
+    <!-- OBJECTIFS -->
+    <div id="panel-objectifs" class="panel">
+      <div class="import-tabs" id="obj-tabs">
+        <button class="import-tab active" onclick="setObjTab('annee')">📅 Année 2026</button>
+        <button class="import-tab" onclick="setObjTab('mois')">📆 Juin 2026</button>
+        <button class="import-tab" onclick="setObjTab('semaine')">📋 Par semaine</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="obj-filters"></div>
+      <div id="obj-content"></div>
     </div>
 
     <!-- OFFRES -->
@@ -931,7 +988,8 @@ function setSyncPill(s){
   el.textContent=cfg.t;el.style.background=cfg.bg;el.style.color=cfg.c;
 }
 function updateHeaderDate(){const now=new Date();const days=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];const months=['jan','fév','mars','avr','mai','juin','juil','août','sep','oct','nov','déc'];document.getElementById('header-date').textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear()+' — '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
-function showTab(tab){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+tab).classList.add('active');document.querySelectorAll('.tab-btn').forEach(b=>{if(b.getAttribute('onclick').includes("'"+tab+"'"))b.classList.add('active');});if(tab==='dashboard')renderDashboard();}
+function showTab(tab){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+tab).classList.add('active');document.querySelectorAll('.tab-btn').forEach(b=>{if(b.getAttribute('onclick').includes("'"+tab+"'"))b.classList.add('active');});if(tab==='dashboard')renderDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='objectifs')renderObjectifs();}
+let objStatus=load('obj_status',{});
 
 // ═══ DASHBOARD ══════════════════════════════════════════════
 function renderDashboard(){renderSoirBanner();renderKPIs();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
@@ -1297,6 +1355,245 @@ function renderCalendar(){
     grid.innerHTML=html;
   }
 }
+
+// ═══ ONGLET CALENDRIER ══════════════════════════════════════
+function renderCalendrierTab(){
+  const today=new Date().toISOString().slice(0,10);
+  const allItems=PLAN_30J.map((item,i)=>({item,i,status:getItemStatus(item,i),ov:planOverrides['p'+i]||{}}));
+  const todayItems=allItems.filter(({item})=>item.date===today);
+  const overdueItems=allItems.filter(({item,status})=>item.date<today&&status!=='Fait'&&status!=='Reporté');
+  const doneItems=allItems.filter(({status})=>status==='Fait');
+
+  // Cartes résumé
+  document.getElementById('cal-summary-cards').innerHTML=`
+    <div class="card" style="border-top:3px solid var(--accent)">
+      <div class="card-title">📍 Aujourd'hui</div>
+      <div class="kpi-value" style="color:var(--accent)">${todayItems.length}</div>
+      <div class="kpi-sub">tâche(s) planifiée(s)</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--green)">
+      <div class="card-title">✅ Faites</div>
+      <div class="kpi-value" style="color:var(--green)">${doneItems.length}</div>
+      <div class="kpi-sub">sur ${PLAN_30J.length} tâches</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--red)">
+      <div class="card-title">⚠️ En retard</div>
+      <div class="kpi-value" style="color:var(--red)">${overdueItems.length}</div>
+      <div class="kpi-sub">${overdueItems.length>0?'À traiter en priorité':'Aucun retard 🎉'}</div>
+    </div>`;
+
+  // Liste aujourd'hui
+  const todayHtml=todayItems.length?todayItems.map(({item,i,ov})=>`
+    <div onclick="showTab('planning');setTimeout(()=>openPlanModal(${i}),300)" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer">
+      <span style="font-size:16px">${PRIO_ICON[ov.priority||'Moyen']}</span>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ov.action||item.action)}</div><div style="font-size:10px;color:var(--muted)">${item.axe}</div></div>
+      <span class="stat-badge ${STAT_CLS[getItemStatus(item,i)]||'stat-todo'}">${getItemStatus(item,i)}</span>
+    </div>`).join(''):'<div style="color:var(--muted);font-size:13px;padding:10px 0">Aucune tâche aujourd\'hui</div>';
+  document.getElementById('cal-today-list').innerHTML=todayHtml;
+
+  // Liste en retard
+  const overdueHtml=overdueItems.length?overdueItems.map(({item,i,ov})=>`
+    <div onclick="showTab('planning');setTimeout(()=>openPlanModal(${i}),300)" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #fca5a5;cursor:pointer;background:#fef2f2;border-radius:6px;margin-bottom:4px;padding:8px">
+      <span style="font-size:16px">${PRIO_ICON[ov.priority||'Moyen']}</span>
+      <div style="flex:1"><div style="font-size:12px;font-weight:600;color:#7f1d1d">${esc(ov.action||item.action)}</div><div style="font-size:10px;color:#b91c1c">${item.day||item.date}</div></div>
+      <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();openPlanModal(${i})">Modifier</button>
+    </div>`).join(''):'<div style="color:var(--green);font-size:13px;padding:10px 0">✅ Aucun retard !</div>';
+  document.getElementById('cal-overdue-list').innerHTML=overdueHtml;
+
+  // Liste faites (dernières 10)
+  const doneHtml=doneItems.length?doneItems.slice(-10).reverse().map(({item,i,ov})=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--green);font-size:14px">✅</span>
+      <div style="flex:1;text-decoration:line-through;color:var(--muted);font-size:12px">${esc(ov.action||item.action)}</div>
+      <div style="font-size:10px;color:var(--muted)">${item.day||item.date}</div>
+    </div>`).join(''):'<div style="color:var(--muted);font-size:13px;padding:10px 0">Aucune tâche faite pour l\'instant</div>';
+  document.getElementById('cal-done-list').innerHTML=doneHtml;
+
+  renderCalendar2();
+}
+
+let cal2View=7, cal2Offset=0;
+function setCal2View(n){cal2View=n;cal2Offset=0;document.getElementById('cal2-btn-7').classList.toggle('active',n===7);document.getElementById('cal2-btn-30').classList.toggle('active',n===30);renderCalendar2();}
+function cal2NavPrev(){cal2Offset--;renderCalendar2();}
+function cal2NavNext(){cal2Offset++;renderCalendar2();}
+function cal2NavToday(){cal2Offset=0;renderCalendar2();}
+
+function renderCalendar2(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const todayStr=today.toISOString().slice(0,10);
+  const grid=document.getElementById('cal2-grid');
+  const header=document.getElementById('cal2-days-header');
+  const label=document.getElementById('cal2-nav-label');
+  if(!grid) return;
+  header.innerHTML=CAL_DAYS.map(d=>`<div class="cal-day-name">${d}</div>`).join('');
+  if(cal2View===7){
+    const start=new Date(today); const dow=(today.getDay()+6)%7; start.setDate(start.getDate()-dow+cal2Offset*7);
+    const end=new Date(start); end.setDate(end.getDate()+6);
+    label.textContent=start.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' – '+end.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+    grid.className='cal-grid view7';
+    let html='';
+    for(let d=0;d<7;d++){
+      const date=new Date(start); date.setDate(date.getDate()+d);
+      const ds=date.toISOString().slice(0,10);
+      const items=getPlanItemsForDate(ds);
+      const statuses=items.map(({item,i})=>getItemStatus(item,i));
+      const hasOverdue=ds<todayStr&&statuses.some(s=>s!=='Fait'&&s!=='Reporté');
+      const allDone=items.length>0&&statuses.every(s=>s==='Fait');
+      const isToday=ds===todayStr;
+      const isWeekend=date.getDay()===0||date.getDay()===6;
+      let cls='cal-cell'+(isToday?' cal-today':hasOverdue?' cal-overdue':allDone?' cal-done-all':isWeekend?' cal-weekend':'');
+      const taskHtml=items.slice(0,5).map(({item,i})=>{
+        const st=getItemStatus(item,i); const ov=planOverrides['p'+i]||{};
+        return `<div class="cal-dot ${st==='Fait'?'done-task':''}">${PRIO_ICON[ov.priority||'Moyen']} ${esc((ov.action||item.action).slice(0,28))}</div>`;
+      }).join('')+(items.length>5?`<div class="cal-more">+${items.length-5} autres</div>`:items.length===0?'<div style="font-size:10px;color:var(--muted)">Libre</div>':'');
+      html+=`<div class="${cls}"><div class="cal-num">${date.getDate()}</div><div class="cal-tasks">${taskHtml}</div></div>`;
+    }
+    grid.innerHTML=html;
+  } else {
+    const ref=new Date(today.getFullYear(),today.getMonth()+cal2Offset,1);
+    label.textContent=CAL_MONTHS[ref.getMonth()]+' '+ref.getFullYear();
+    grid.className='cal-grid';
+    const firstDay=new Date(ref); const fdow=(firstDay.getDay()+6)%7; firstDay.setDate(firstDay.getDate()-fdow);
+    let html='';
+    for(let w=0;w<6;w++) for(let d=0;d<7;d++){
+      const date=new Date(firstDay); date.setDate(firstDay.getDate()+w*7+d);
+      const ds=date.toISOString().slice(0,10);
+      const isCurrent=date.getMonth()===ref.getMonth();
+      const isToday=ds===todayStr; const isWeekend=date.getDay()===0||date.getDay()===6;
+      const items=getPlanItemsForDate(ds);
+      const statuses=items.map(({item,i})=>getItemStatus(item,i));
+      const hasOverdue=ds<todayStr&&statuses.some(s=>s!=='Fait'&&s!=='Reporté');
+      const allDone=items.length>0&&statuses.every(s=>s==='Fait');
+      let cls='cal-cell'+(!isCurrent?' cal-other':isToday?' cal-today':hasOverdue?' cal-overdue':allDone?' cal-done-all':isWeekend?' cal-weekend':'');
+      const taskHtml=items.slice(0,2).map(({item,i})=>{const st=getItemStatus(item,i);const ov=planOverrides['p'+i]||{};return `<div class="cal-dot ${st==='Fait'?'done-task':''}">${PRIO_ICON[ov.priority||'Moyen']} ${esc((ov.action||item.action).slice(0,18))}</div>`;}).join('')+(items.length>2?`<div class="cal-more">+${items.length-2}</div>`:'');
+      html+=`<div class="${cls}"><div class="cal-num">${date.getDate()}</div><div class="cal-tasks">${taskHtml}</div></div>`;
+    }
+    grid.innerHTML=html;
+  }
+}
+
+// ═══ ONGLET OBJECTIFS ═══════════════════════════════════════
+const OBJECTIFS_DATA={
+  annee:[
+    {id:'a1',axe:'Commercial',title:'Signer 10 contrats clients PME/ETI',target:10,unit:'contrats',linked:'signes'},
+    {id:'a2',axe:'Commercial',title:'Atteindre 50 000 € de CA',target:50000,unit:'€'},
+    {id:'a3',axe:'Marchés',title:'Déposer 5 appels d\'offres publics',target:5,unit:'AO'},
+    {id:'a4',axe:'Marchés',title:'Référencer KIPSAFE sur UGAP',target:1,unit:'√'},
+    {id:'a5',axe:'Marketing',title:'Atteindre 500 connexions LinkedIn',target:500,unit:'connexions'},
+    {id:'a6',axe:'Commercial',title:'Réseau 10 apporteurs d\'affaires',target:10,unit:'partenaires'}
+  ],
+  mois:[
+    {id:'m1',axe:'Commercial',title:'1 contrat signé (pilote)',target:1,unit:'contrat',deadline:'30/06'},
+    {id:'m2',axe:'Commercial',title:'5 RDV qualifiés minimum',target:5,unit:'RDV',deadline:'17/06'},
+    {id:'m3',axe:'Supports',title:'3 plaquettes finalisées',target:3,unit:'plaquettes',deadline:'10/06'},
+    {id:'m4',axe:'Web',title:'Site web optimisé (H1 + Analytics)',target:1,unit:'√',deadline:'04/06'},
+    {id:'m5',axe:'Commercial',title:'50+ prospects dans le CRM',target:50,unit:'prospects',deadline:'03/06'},
+    {id:'m6',axe:'Marchés',title:'2 AO déposés (BOAMP/Maximilien)',target:2,unit:'AO',deadline:'24/06'},
+    {id:'m7',axe:'Marketing',title:'12 posts LinkedIn publiés',target:12,unit:'posts',deadline:'30/06'},
+    {id:'m8',axe:'Marketing',title:'Google My Business créé',target:1,unit:'√',deadline:'09/06'}
+  ],
+  semaines:[
+    {num:'S1',dates:'01–05 juin',theme:'Fondations',color:'var(--accent)',items:['Plaquettes Debal Cyber + Infogérance v2','Profil LinkedIn + page KIPSAFE créés','50 prospects PME identifiés','Calendly + template email prospection','Google Analytics installé','15 premiers messages LinkedIn envoyés']},
+    {num:'S2',dates:'08–12 juin',theme:'Prospection active',color:'var(--secondary)',items:['Plaquette PEM Promisec v2','10 relances téléphoniques J+3','2 RDV qualifiés confirmés','Use case PME rédigé','Google My Business créé','Alertes BOAMP/Maximilien configurées']},
+    {num:'S3',dates:'15–19 juin',theme:'Closing 1er client',color:'var(--orange)',items:['1 contrat signé ← OBJECTIF CLÉ','Landing page audit gratuit live','3 RDV qualifiés cette semaine','Kit RDV complet assemblé','Article blog NIS2 publié','5 cabinets comptables contactés']},
+    {num:'S4',dates:'22–26 juin',theme:'Consolidation',color:'var(--green)',items:['2 contrats supplémentaires signés','Dossier AO BOAMP déposé','Contact UGAP référencement','FAQ cybersécurité PME publiée','Google Ads test 100€ lancé','Newsletter Cyber Flash n°1 envoyée']}
+  ]
+};
+let currentObjTab='annee';
+const OBJ_AXES=['Tous','Commercial','Marketing','Web','Supports','Marchés'];
+
+function setObjTab(tab){
+  currentObjTab=tab;
+  document.querySelectorAll('#obj-tabs .import-tab').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick').includes("'"+tab+"'")));
+  renderObjectifs();
+}
+
+function renderObjectifs(){
+  const tab=currentObjTab;
+  const filterEl=document.getElementById('obj-filters');
+  const content=document.getElementById('obj-content');
+  if(!filterEl||!content) return;
+
+  // Filtres axes (sauf semaines)
+  if(tab!=='semaine'){
+    const activeAxe=window._objAxeFilter||'Tous';
+    filterEl.innerHTML=OBJ_AXES.map(a=>`<button class="btn btn-sm ${a===activeAxe?'btn-primary':'btn-outline'}" onclick="window._objAxeFilter='${a}';renderObjectifs()">${a}</button>`).join('');
+  } else filterEl.innerHTML='';
+
+  if(tab==='annee'||tab==='mois'){
+    const items=OBJECTIFS_DATA[tab];
+    const axeFilter=window._objAxeFilter||'Tous';
+    const filtered=axeFilter==='Tous'?items:items.filter(o=>o.axe===axeFilter);
+    const prospectsCount=prospects.length;
+    const signesCount=prospects.filter(p=>p.statut==='Signé').length;
+    const rdvCount=prospects.filter(p=>p.statut==='RDV'||p.statut==='Proposition').length;
+    content.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">`+
+      filtered.map(o=>{
+        const st=objStatus[o.id]||{progress:0,status:'En cours'};
+        let progress=st.progress;
+        if(o.linked==='signes') progress=signesCount;
+        else if(o.id==='m5') progress=Math.min(prospectsCount,o.target);
+        else if(o.id==='m2') progress=rdvCount;
+        const pct=Math.min(100,Math.round(progress/o.target*100));
+        const statusColor=st.status==='Atteint'?'var(--green)':st.status==='Non atteint'?'var(--red)':'var(--orange)';
+        return `<div class="card" style="border-left:4px solid ${statusColor}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <span class="axe-badge axe-${o.axe.replace(/\s/g,'')}">${o.axe}</span>
+            ${o.deadline?`<span style="font-size:10px;color:var(--muted)">📅 ${o.deadline}</span>`:''}
+          </div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:10px;color:var(--primary)">${o.title}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:${statusColor}"></div></div>
+            <span style="font-size:12px;font-weight:700;color:${statusColor}">${pct}%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px">
+            <span style="color:var(--muted)">${progress} / ${o.target} ${o.unit}</span>
+            <select class="form-select" style="font-size:10px;padding:2px 6px;height:24px;width:110px" onchange="updateObjStatus('${o.id}',this.value)">
+              <option ${st.status==='En cours'?'selected':''}>En cours</option>
+              <option ${st.status==='Atteint'?'selected':''}>Atteint</option>
+              <option ${st.status==='Non atteint'?'selected':''}>Non atteint</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
+            <span style="font-size:11px;color:var(--muted)">Avancement :</span>
+            <input type="number" min="0" max="${o.target}" value="${progress}" style="width:60px;font-size:12px;padding:2px 6px;border:1px solid var(--border);border-radius:4px" onchange="updateObjProgress('${o.id}',this.value,${o.target})">
+            <span style="font-size:11px;color:var(--muted)">/ ${o.target} ${o.unit}</span>
+          </div>
+        </div>`;
+      }).join('')+'</div>';
+
+  } else {
+    // Semaines
+    content.innerHTML=OBJECTIFS_DATA.semaines.map(s=>{
+      const sItems=s.items.map((item,idx)=>{
+        const key=`${s.num}_${idx}`;
+        const done=objStatus[key]?.done||false;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+          <input type="checkbox" ${done?'checked':''} onchange="toggleSemObj('${key}',this.checked)" style="width:15px;height:15px;accent-color:${s.color};cursor:pointer">
+          <span style="font-size:13px;${done?'text-decoration:line-through;color:var(--muted)':''}">${item}</span>
+        </div>`;
+      }).join('');
+      const doneCount=s.items.filter((_,idx)=>objStatus[`${s.num}_${idx}`]?.done).length;
+      const pct=Math.round(doneCount/s.items.length*100);
+      return `<div class="card" style="border-top:4px solid ${s.color};margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <span style="font-size:18px;font-weight:900;color:${s.color}">${s.num}</span>
+            <span style="font-size:13px;font-weight:700;color:var(--primary);margin-left:8px">${s.theme}</span>
+            <span style="font-size:11px;color:var(--muted);margin-left:8px">${s.dates}</span>
+          </div>
+          <span style="font-size:14px;font-weight:800;color:${s.color}">${pct}%</span>
+        </div>
+        <div class="progress-bar" style="margin-bottom:12px"><div class="progress-fill" style="width:${pct}%;background:${s.color}"></div></div>
+        ${sItems}
+      </div>`;
+    }).join('');
+  }
+}
+
+function updateObjStatus(id,status){objStatus[id]=objStatus[id]||{};objStatus[id].status=status;save('obj_status',objStatus);renderObjectifs();}
+function updateObjProgress(id,val,max){objStatus[id]=objStatus[id]||{};objStatus[id].progress=Math.min(Number(val),max);if(Number(val)>=max)objStatus[id].status='Atteint';save('obj_status',objStatus);renderObjectifs();}
+function toggleSemObj(key,done){objStatus[key]=objStatus[key]||{};objStatus[key].done=done;save('obj_status',objStatus);renderObjectifs();}
 
 // ═══ OFFRES ═════════════════════════════════════════════════
 function renderOffres(){const od=[{cls:'debal',name:'🔵 Debal Cyber',sub:'Audit & Protection Cybersécurité',color:'var(--accent)',stats:[{v:prospects.filter(p=>p.offre==='Debal Cyber').length,l:'Prospects'},{v:'48h',l:'Délai audit'},{v:'1 500€',l:'Prix d\'appel'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'CTA "Audit gratuit" en ligne'},{ok:false,t:'2 témoignages clients'},{ok:true,t:'Grille tarifaire définie'},{ok:false,t:'Landing page dédiée'}]},{cls:'info',name:'🟢 Infogérance',sub:'Pilotage SI Externalisé',color:'var(--green)',stats:[{v:prospects.filter(p=>p.offre==='Infogérance').length,l:'Prospects'},{v:'30€',l:'User/mois'},{v:'12 mois',l:'Engagement'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'Comparatif DSI vs Infogérance'},{ok:false,t:'Grille tarifaire publiée'},{ok:false,t:'Formulaire contact direct'},{ok:false,t:'SLA document finalisé'}]},{cls:'pem',name:'🟠 PEM Promisec',sub:'Gestion Accès & Identités',color:'var(--orange)',stats:[{v:prospects.filter(p=>p.offre==='PEM Promisec').length,l:'Prospects'},{v:'10j',l:'Déploiement'},{v:'NIS2',l:'Conformité'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'Logo Promisec intégré'},{ok:false,t:'Section FAQ réglementaire'},{ok:false,t:'Badges certifications'},{ok:false,t:'Démo vidéo disponible'}]}];let html='';od.forEach(o=>{const done=o.items.filter(i=>i.ok).length,pct=Math.round(done/o.items.length*100);html+=`<div class="offre-card ${o.cls}"><div class="offre-name" style="color:${o.color}">${o.name}</div><div class="offre-promise">${o.sub}</div><div class="offre-stat">${o.stats.map(s=>`<div class="ostat"><div class="ostat-val">${s.v}</div><div class="ostat-lbl">${s.l}</div></div>`).join('')}</div><div style="margin-bottom:10px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:700">COMPLÉTION ${pct}%</div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${o.color}"></div></div></div><ul class="checklist">${o.items.map(i=>`<li><span style="color:${i.ok?'var(--green)':'var(--orange)'}">${i.ok?'✅':'⏳'}</span>${esc(i.t)}</li>`).join('')}</ul></div>`;});document.getElementById('offres-grid').innerHTML=html;}
