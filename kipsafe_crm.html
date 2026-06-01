@@ -351,6 +351,13 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     <div id="panel-prospects" class="panel">
       <div class="toolbar">
         <input type="text" class="search-box" id="search-prospect" placeholder="🔍 Rechercher nom, société, poste..." oninput="renderProspects()">
+        <select class="form-select" style="width:150px" id="filter-cat" onchange="renderProspects()">
+          <option value="">Toutes catégories</option>
+          <option value="Prospect">👤 Prospect</option>
+          <option value="Partenaire">🤝 Partenaire</option>
+          <option value="Collaborateur">👥 Collaborateur</option>
+          <option value="Interne">🏢 Interne</option>
+        </select>
         <select class="form-select" style="width:150px" id="filter-offre" onchange="renderProspects()">
           <option value="">Toutes offres</option>
           <option value="Debal Cyber">Debal Cyber</option>
@@ -435,11 +442,15 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
             <button onclick="cal2NavToday()" style="font-size:11px;padding:3px 8px">Aujourd'hui</button>
           </div>
         </div>
-        <div class="cal-legend" style="margin-bottom:10px">
+        <div class="cal-legend" style="margin-bottom:6px">
           <span><span class="cal-legend-dot" style="background:#00AEEF"></span>Aujourd'hui</span>
           <span><span class="cal-legend-dot" style="background:#86efac"></span>Fait</span>
           <span><span class="cal-legend-dot" style="background:#C00000"></span>En retard</span>
           <span><span class="cal-legend-dot" style="background:#e2e8f0"></span>À faire</span>
+        </div>
+        <div class="cal-legend" style="margin-bottom:10px;border-top:1px dashed var(--border);padding-top:6px">
+          <span style="font-weight:700;color:var(--muted)">RDV :</span>
+          <span>👤 Prospect</span><span>🤝 Partenaire</span><span>👥 Collaborateur</span><span>🏢 Interne</span>
         </div>
         <div class="cal-days-header" id="cal2-days-header"></div>
         <div class="cal-grid" id="cal2-grid"></div>
@@ -711,6 +722,9 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 <div id="toast" class="toast"></div>
 
 <script>
+// ═══ DATE LOCALE (fix timezone) ═════════════════════════════════
+function localDate(d){const dt=d||new Date();return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');}
+
 // ═══ SUPABASE CONFIG ════════════════════════════════════════════
 const SUPABASE_URL='https://graujqkrxxceskgnqfin.supabase.co';
 const SUPABASE_KEY='sb_publishable_AH2fKuizUTsCsmWzRWfiKA_6BMnmjVQ';
@@ -783,12 +797,18 @@ const SCHEDULE_TODAY=[
   {time:'17:45',end:'18:00',dur:'15min',axe:'Admin',icon:'✅',action:'Clôture journée + préparation J2'}
 ];
 const SCHEDULE_SOIR=[
-  {time:'17:30',end:'17:45',dur:'15min',icon:'🔄',action:'Transition / bilan rapide journée'},
-  {time:'17:45',end:'18:30',dur:'45min',icon:'📧',action:'Relances prospects + réponses LinkedIn/email'},
-  {time:'18:30',end:'19:30',dur:'60min',icon:'🛠️',action:'Travail support (plaquette / site / contenu)'},
-  {time:'19:30',end:'20:00',dur:'30min',icon:'✍️',action:'Rédaction post LinkedIn du lendemain'},
-  {time:'20:00',end:'21:00',dur:'60min',icon:'🎯',action:'Prospection (messages personnalisés, liste prospects)'},
-  {time:'21:00',end:'21:30',dur:'30min',icon:'📊',action:'MAJ CRM + planification J+1'}
+  {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'🔄',action:'Transition / bilan rapide journée'},
+  {time:'17:45',end:'18:30',dur:'45min',axe:'Commercial',icon:'📧',action:'Relances prospects + réponses LinkedIn/email'},
+  {time:'18:30',end:'19:30',dur:'60min',axe:'Supports',icon:'🛠️',action:'Travail support (plaquette / site / contenu)'},
+  {time:'19:30',end:'20:00',dur:'30min',axe:'Marketing',icon:'✍️',action:'Rédaction post LinkedIn du lendemain'},
+  {time:'20:00',end:'21:00',dur:'60min',axe:'Commercial',icon:'🎯',action:'Prospection (messages personnalisés, liste prospects)'},
+  {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM + planification J+1'}
+];
+const SCHEDULE_DIMANCHE=[
+  {time:'10:00',end:'10:15',dur:'15min',axe:'Admin',icon:'☀️',action:'Bilan semaine + liste priorités du jour'},
+  {time:'10:15',end:'11:15',dur:'60min',axe:'Formation',icon:'📚',action:'Formation Promisec (1h) — approfondissement autonome'},
+  {time:'11:15',end:'12:00',dur:'45min',axe:'Commercial',icon:'🎯',action:'Relances légères / prospection non urgente'},
+  {time:'12:00',end:'13:00',dur:'60min',axe:'Admin',icon:'📊',action:'MAJ CRM + planification semaine suivante'}
 ];
 
 // ═══ PLANNING SOIR PAR DATE (Lun–Jeu 17h30–21h30) ═══════════════
@@ -917,6 +937,28 @@ const SCHEDULES_PAR_DATE={
     {time:'19:30',end:'20:30',dur:'60min',axe:'Admin',icon:'📋',action:'Préparer plan juillet : nouvelles cibles, budget pub 300€/mois, 3e vague prospection 100 contacts'},
     {time:'20:30',end:'21:30',dur:'60min',axe:'Bilan',icon:'🏆',action:'REVUE 30 JOURS : CA signé, pipeline actif, RDV réalisés, taux conversion, top 3 learnings, objectifs juillet'}
   ],
+  '2026-06-07':[
+    {time:'10:00',end:'11:30',dur:'90min',axe:'Formation',icon:'📞',action:'RDV Moche — Formation Promisec partie technique (90min)'},
+    {time:'11:30',end:'12:15',dur:'45min',axe:'Formation',icon:'📚',action:'Prise de notes + tests autonomes sur Promisec'},
+    {time:'12:15',end:'13:00',dur:'45min',axe:'Admin',icon:'📊',action:'Bilan formation + MAJ CRM + planification S2'}
+  ],
+  '2026-06-14':[
+    {time:'10:00',end:'10:15',dur:'15min',axe:'Admin',icon:'☀️',action:'Bilan semaine 2 + priorités du jour'},
+    {time:'10:15',end:'11:15',dur:'60min',axe:'Formation',icon:'📚',action:'Formation Promisec (1h) — révision et approfondissement'},
+    {time:'11:15',end:'12:00',dur:'45min',axe:'Commercial',icon:'🎯',action:'Relances prospects semaine 2 — non urgentes'},
+    {time:'12:00',end:'13:00',dur:'60min',axe:'Admin',icon:'📊',action:'MAJ CRM + planification semaine 3'}
+  ],
+  '2026-06-21':[
+    {time:'10:00',end:'10:15',dur:'15min',axe:'Admin',icon:'☀️',action:'Bilan semaine 3'},
+    {time:'10:15',end:'11:00',dur:'45min',axe:'Marchés',icon:'🏛️',action:'Veille BOAMP/Maximilien + AOs à traiter cette semaine'},
+    {time:'11:00',end:'12:00',dur:'60min',axe:'Commercial',icon:'📞',action:'Relances prospects + suivi propositions en attente'},
+    {time:'12:00',end:'13:00',dur:'60min',axe:'Admin',icon:'📊',action:'MAJ CRM + planification semaine 4'}
+  ],
+  '2026-06-28':[
+    {time:'10:00',end:'10:15',dur:'15min',axe:'Admin',icon:'☀️',action:'Bilan semaine 4'},
+    {time:'10:15',end:'11:30',dur:'75min',axe:'Bilan',icon:'🏆',action:'Revue 30 jours : CA signé, pipeline, RDV, apprentissages'},
+    {time:'11:30',end:'13:00',dur:'90min',axe:'Admin',icon:'📋',action:'Préparer plan juillet : nouvelles cibles, objectifs, budget'}
+  ],
   '2026-06-29':[
     {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check réponses finales + pipeline restant'},
     {time:'17:45',end:'18:30',dur:'45min',axe:'Marketing',icon:'📩',action:'Envoyer Newsletter Cyber Flash n°1 si pas fait + suivre taux d\'ouverture'},
@@ -936,6 +978,13 @@ const SCHEDULES_PAR_DATE={
 const STATUTS=['Nouveau','Contacté','RDV','Proposition','Signé','Perdu'];
 const OFFRES=['Debal Cyber','Infogérance','PEM Promisec','Multi'];
 const SOURCES=['Manuel','LinkedIn','Lusha','Apollo','Pappers','Référence','Autre'];
+const CATEGORIES=['Prospect','Partenaire','Collaborateur','Interne'];
+const CAT_CONFIG={
+  Prospect:   {icon:'👤',color:'var(--orange)',bg:'#fff7ed',border:'#fed7aa'},
+  Partenaire: {icon:'🤝',color:'var(--purple)',bg:'#f5f3ff',border:'#c4b5fd'},
+  Collaborateur:{icon:'👥',color:'var(--secondary)',bg:'#eff6ff',border:'#bfdbfe'},
+  Interne:    {icon:'🏢',color:'var(--muted)',bg:'#f8fafc',border:'#e2e8f0'}
+};
 
 // ═══ STORAGE ════════════════════════════════════════════════
 function load(k,d){try{const v=localStorage.getItem('kipsafe_'+k);return v?JSON.parse(v):d;}catch{return d;}}
@@ -961,13 +1010,21 @@ let scheduleRecurringDone=load('schedule_recurring_done',{});
 // ═══ PIN ════════════════════════════════════════════════════
 let pinBuffer='',pinMode='check',pinSetup1='';
 function simpleHash(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return(h>>>0).toString(16);}
-function initPin(){localStorage.setItem('kipsafe_pin',DEFAULT_PIN_HASH);pinMode='check';document.getElementById('pin-title').textContent='Entrez votre code PIN (8 chiffres)';document.getElementById('pin-hint').textContent='PIN : 61349178';}
+function initPin(){
+  localStorage.setItem('kipsafe_pin',DEFAULT_PIN_HASH);
+  // Vérifier si session toujours active (refresh page)
+  const sess=parseInt(sessionStorage.getItem('kipsafe_session')||'0');
+  if(sess&&Date.now()-sess<AUTO_LOCK_MS){unlockApp();return;}
+  pinMode='check';
+  document.getElementById('pin-title').textContent='Entrez votre code PIN (8 chiffres)';
+  document.getElementById('pin-hint').textContent=''; // Sécurité : ne pas afficher le PIN
+}
 function pinPress(d){if(pinBuffer.length>=8)return;pinBuffer+=d;updateDots();if(pinBuffer.length===8)setTimeout(processPIN,150);}
 function pinDel(){pinBuffer=pinBuffer.slice(0,-1);updateDots();}
 function updateDots(){document.querySelectorAll('.pin-dot').forEach((d,i)=>d.classList.toggle('filled',i<pinBuffer.length));}
 function processPIN(){const err=document.getElementById('pin-error');const stored=localStorage.getItem('kipsafe_pin');if(simpleHash(pinBuffer)===stored){pinBuffer='';unlockApp();}else{err.textContent='PIN incorrect.';pinBuffer='';updateDots();setTimeout(()=>{err.textContent='';},2000);}}
-function unlockApp(){document.getElementById('pin-screen').style.display='none';const app=document.getElementById('app');app.style.display='flex';initApp();startAutoLock();}
-function lockApp(){stopAutoLock();document.getElementById('app').style.display='none';document.getElementById('pin-screen').style.display='flex';pinBuffer='';pinMode='check';document.getElementById('pin-title').textContent='Entrez votre code PIN (8 chiffres)';document.getElementById('pin-error').textContent='';updateDots();}
+function unlockApp(){document.getElementById('pin-screen').style.display='none';const app=document.getElementById('app');app.style.display='flex';sessionStorage.setItem('kipsafe_session',Date.now());initApp();startAutoLock();}
+function lockApp(){stopAutoLock();sessionStorage.removeItem('kipsafe_session');document.getElementById('app').style.display='none';document.getElementById('pin-screen').style.display='flex';pinBuffer='';pinMode='check';document.getElementById('pin-title').textContent='Entrez votre code PIN (8 chiffres)';document.getElementById('pin-error').textContent='';updateDots();}
 
 // ═══ AUTO-VERROUILLAGE ══════════════════════════════════════
 const AUTO_LOCK_MS = 4*60*60*1000;      // 4h en ms
@@ -1010,22 +1067,24 @@ function updateLockTimerDisplay(){
 // ═══ APP ════════════════════════════════════════════════════
 let currentView='kanban';
 function seedDefaultEvents(){
-  if(localStorage.getItem('kipsafe_events_seeded')) return;
-  // RDV Moche - Promisec (02/06/2026)
-  if(!scheduleCustom.find(s=>s.id==='rdv_moche')){
-    scheduleCustom.push({id:'rdv_moche',date:'2026-06-02',time:'14:00',end:'15:00',dur:'60min',axe:'Commercial',icon:'📞',action:'RDV Moche — Présentation & démonstration PEM Promisec',done:false,recurring:'none',recurringUntil:''});
-  }
+  if(localStorage.getItem('kipsafe_events_seeded')==='v2') return;
+  // Nettoyer l'ancien RDV Moche du 02/06 (remplacé par le RDV technique dimanche 07/06)
+  scheduleCustom=scheduleCustom.filter(s=>s.id!=='rdv_moche');
   // Formation Promisec quotidienne du 02/06 au 09/06
   if(!scheduleCustom.find(s=>s.id==='formation_promisec')){
     scheduleCustom.push({id:'formation_promisec',date:'2026-06-02',time:'10:00',end:'11:00',dur:'1h',axe:'Formation',icon:'📚',action:'Formation Promisec (1h) — Objectif : être opérationnel sur le logiciel mardi 09/06',done:false,recurring:'daily',recurringUntil:'2026-06-09'});
   }
-  // Moche comme prospect
-  if(!prospects.find(p=>p.nom==='Moche')){
-    prospects.push({id:nextId++,nom:'Moche',poste:'',societe:'',email:'',tel:'',linkedin:'',source:'Manuel',offre:'PEM Promisec',statut:'RDV',valeur:'',date:'2026-06-01',rdv_date:'2026-06-02',rdv_time:'14:00',notes:'RDV présentation PEM Promisec — démonstration logiciel'});
-    save('next_id',nextId);save('prospects',prospects);
+  // Moche = partenaire technique Promisec (RDV technique dimanche 07/06)
+  const moche=prospects.find(p=>p.nom==='Moche');
+  if(!moche){
+    prospects.push({id:nextId++,nom:'Moche',categorie:'Partenaire',poste:'Référent technique Promisec',societe:'Promisec',email:'',tel:'',linkedin:'',source:'Manuel',offre:'PEM Promisec',statut:'RDV',valeur:'',date:'2026-06-01',rdv_date:'2026-06-07',rdv_time:'10:00',notes:'Formation technique PEM Promisec — partenaire référent. RDV technique dimanche 07/06 10h.'});
+    save('next_id',nextId);
+  } else {
+    moche.categorie='Partenaire';moche.societe=moche.societe||'Promisec';moche.poste=moche.poste||'Référent technique Promisec';moche.rdv_date='2026-06-07';moche.rdv_time='10:00';
   }
+  save('prospects',prospects);
   save('schedule_custom',scheduleCustom);
-  localStorage.setItem('kipsafe_events_seeded','1');
+  localStorage.setItem('kipsafe_events_seeded','v2');
 }
 
 function initApp(){updateHeaderDate();setInterval(updateHeaderDate,60000);seedDefaultEvents();renderDashboard();renderProspects();renderPlanning();renderOffres();renderMarches();initSupabase();}
@@ -1080,12 +1139,14 @@ let objStatus=load('obj_status',{});
 
 // ═══ DASHBOARD ══════════════════════════════════════════════
 function renderDashboard(){renderSoirBanner();renderKPIs();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
-function renderSoirBanner(){const now=new Date();const dow=now.getDay();const h=now.getHours(),m=now.getMinutes();const isToday01=now.toISOString().slice(0,10)==='2026-06-01';let html='';if(isToday01&&h<18){html='<div class="soir-banner"><div><div class="soir-title">📅 Session KIPSAFE — Lundi 01 juin 2026</div><div class="soir-sub">Planning actif jusqu\'à 18h00 · Session soir 17h30–21h30</div></div><span class="soir-badge">J1 du Plan 30J</span></div>';}else if(dow>=1&&dow<=4&&h>=17&&(h<21||(h===21&&m<30))){html='<div class="soir-banner"><div><div class="soir-title">🌙 Session soir KIPSAFE — 17h30 → 21h30</div><div class="soir-sub">Relances · Support · LinkedIn · Prospection · MAJ CRM</div></div><span class="soir-badge">EN COURS</span></div>';}document.getElementById('soir-banner').innerHTML=html;}
+function renderSoirBanner(){const now=new Date();const dow=now.getDay();const h=now.getHours(),m=now.getMinutes();const isToday01=localDate(now)==='2026-06-01';let html='';if(isToday01&&h<18){html='<div class="soir-banner"><div><div class="soir-title">📅 Session KIPSAFE — Lundi 01 juin 2026</div><div class="soir-sub">Planning actif jusqu\'à 18h00 · Session soir 17h30–21h30</div></div><span class="soir-badge">J1 du Plan 30J</span></div>';}else if(dow>=1&&dow<=4&&h>=17&&(h<21||(h===21&&m<30))){html='<div class="soir-banner"><div><div class="soir-title">🌙 Session soir KIPSAFE — 17h30 → 21h30</div><div class="soir-sub">Relances · Support · LinkedIn · Prospection · MAJ CRM</div></div><span class="soir-badge">EN COURS</span></div>';}
+else if(dow===0&&h>=10&&h<13){html='<div class="soir-banner"><div><div class="soir-title">☀️ Session dimanche KIPSAFE — 10h → 13h</div><div class="soir-sub">Formation · CRM · Marchés · Planification semaine</div></div><span class="soir-badge">EN COURS</span></div>';}document.getElementById('soir-banner').innerHTML=html;}
 function renderKPIs(){const total=prospects.length,rdv=prospects.filter(p=>p.statut==='RDV'||p.statut==='Proposition').length,signes=prospects.filter(p=>p.statut==='Signé').length,done=planDone.length;document.getElementById('kpis').innerHTML=`<div class="card"><span class="kpi-icon">👥</span><div class="card-title">Prospects</div><div class="kpi-value">${total}</div><div class="kpi-sub">dans le pipeline</div></div><div class="card"><span class="kpi-icon">📞</span><div class="card-title">RDV/Propos.</div><div class="kpi-value">${rdv}</div><div class="kpi-sub">en cours</div></div><div class="card"><span class="kpi-icon">✅</span><div class="card-title">Signés</div><div class="kpi-value" style="color:var(--green)">${signes}</div><div class="kpi-sub">objectif : 1 fin juin</div></div><div class="card"><span class="kpi-icon">📅</span><div class="card-title">Plan 30J</div><div class="kpi-value">${done}/22</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill" style="width:${Math.round(done/22*100)}%"></div></div></div>`;}
 function getBaseSchedule(today,dow){
   if(today==='2026-06-01') return {sched:SCHEDULE_TODAY,label:'Lundi 01/06 — J1'};
   if(SCHEDULES_PAR_DATE[today]) return {sched:SCHEDULES_PAR_DATE[today],label:''};
-  if(dow>=1&&dow<=4) return {sched:SCHEDULE_SOIR,label:'Standard'};
+  if(dow>=1&&dow<=4) return {sched:SCHEDULE_SOIR,label:'Lun–Jeu 17h30–21h30'};
+  if(dow===0) return {sched:SCHEDULE_DIMANCHE,label:'Dimanche 10h–13h'};
   return null;
 }
 
@@ -1111,7 +1172,7 @@ function getFullSchedule(today){
 function renderScheduleToday(){
   const now=new Date();
   const h=now.getHours(),m=now.getMinutes();
-  const today=now.toISOString().slice(0,10);
+  const today=localDate(now);
   const dow=now.getDay();
   const days=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
   const dd=String(now.getDate()).padStart(2,'0'),mm2=String(now.getMonth()+1).padStart(2,'0');
@@ -1289,7 +1350,7 @@ function addScheduleItem(today){
   closeModal();renderScheduleToday();toast('✅ Créneau ajouté'+(recurring!=='none'?' ('+RECUR_LABEL[recurring]+')':''));
 }
 function renderPipelineSummary(){const counts={};STATUTS.forEach(s=>counts[s]=0);prospects.forEach(p=>{if(counts[p.statut]!==undefined)counts[p.statut]++;});const colors={Nouveau:'#0369a1',Contacté:'#1d4ed8',RDV:'#059669',Proposition:'#d97706',Signé:'#228B22',Perdu:'#C00000'};let html='<div style="display:flex;flex-direction:column;gap:6px">';STATUTS.forEach(s=>{const pct=prospects.length?Math.round(counts[s]/prospects.length*100):0;html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:78px;color:${colors[s]};font-weight:700">${s}</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:${colors[s]}"></div></div><span style="width:20px;text-align:right;color:var(--muted)">${counts[s]}</span></div>`;});html+='</div>';document.getElementById('pipeline-summary').innerHTML=html;}
-function renderPlanTodayAction(){const today=new Date().toISOString().slice(0,10);const item=PLAN_30J.find(p=>p.date===today);if(!item){document.getElementById('plan-today-action').innerHTML='<div class="empty"><div class="empty-icon">🗓️</div><div class="empty-text">Pas d\'action planifiée aujourd\'hui</div></div>';return;}const done=planDone.includes(item.date);document.getElementById('plan-today-action').innerHTML=`<div style="background:var(--light);border-radius:10px;padding:14px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="axe-badge axe-${item.axe}">${item.axe}</span><button class="btn btn-sm ${done?'btn-success':'btn-outline'}" onclick="togglePlanDone('${item.date}')">${done?'✅ Fait':'Marquer fait'}</button></div><div style="font-size:13px;font-weight:600">${item.action}</div></div>`;}
+function renderPlanTodayAction(){const today=localDate();const item=PLAN_30J.find(p=>p.date===today);if(!item){document.getElementById('plan-today-action').innerHTML='<div class="empty"><div class="empty-icon">🗓️</div><div class="empty-text">Pas d\'action planifiée aujourd\'hui</div></div>';return;}const done=planDone.includes(item.date);document.getElementById('plan-today-action').innerHTML=`<div style="background:var(--light);border-radius:10px;padding:14px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="axe-badge axe-${item.axe}">${item.axe}</span><button class="btn btn-sm ${done?'btn-success':'btn-outline'}" onclick="togglePlanDone('${item.date}')">${done?'✅ Fait':'Marquer fait'}</button></div><div style="font-size:13px;font-weight:600">${item.action}</div></div>`;}
 function renderQuickTasks(){let html='';quickTasks.forEach(t=>{html+=`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)"><input type="checkbox" ${t.done?'checked':''} onchange="toggleQuickTask(${t.id})" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer"><span style="font-size:13px;${t.done?'text-decoration:line-through;color:var(--muted)':''}">${t.text}</span></div>`;});html+=`<div style="margin-top:8px;display:flex;gap:8px"><input type="text" id="new-task-input" class="form-input" placeholder="Nouvelle tâche..." style="flex:1" onkeydown="if(event.key==='Enter')addQuickTask()"><button class="btn btn-accent btn-sm" onclick="addQuickTask()">+</button></div>`;document.getElementById('quick-tasks').innerHTML=html;}
 function toggleQuickTask(id){quickTasks=quickTasks.map(t=>t.id===id?{...t,done:!t.done}:t);save('quick_tasks',quickTasks);renderQuickTasks();}
 function addQuickTask(){const inp=document.getElementById('new-task-input');const text=inp.value.trim();if(!text)return;quickTasks.push({id:Date.now(),text,done:false});save('quick_tasks',quickTasks);inp.value='';renderQuickTasks();}
@@ -1297,7 +1358,7 @@ function togglePlanDone(date){if(planDone.includes(date))planDone=planDone.filte
 
 // ═══ PROSPECTS ══════════════════════════════════════════════
 function setView(v){currentView=v;document.getElementById('view-kanban-btn').classList.toggle('active',v==='kanban');document.getElementById('view-list-btn').classList.toggle('active',v==='list');renderProspects();}
-function getFiltered(){const q=(document.getElementById('search-prospect')?.value||'').toLowerCase();const fo=document.getElementById('filter-offre')?.value||'';const fs=document.getElementById('filter-source')?.value||'';return prospects.filter(p=>{const match=!q||(p.nom+' '+(p.societe||'')+' '+(p.poste||'')).toLowerCase().includes(q);const mo=!fo||p.offre===fo;const ms=!fs||p.source===fs;return match&&mo&&ms;});}
+function getFiltered(){const q=(document.getElementById('search-prospect')?.value||'').toLowerCase();const fo=document.getElementById('filter-offre')?.value||'';const fs=document.getElementById('filter-source')?.value||'';const fc=document.getElementById('filter-cat')?.value||'';return prospects.filter(p=>{const match=!q||(p.nom+' '+(p.societe||'')+' '+(p.poste||'')).toLowerCase().includes(q);const mo=!fo||p.offre===fo;const ms=!fs||p.source===fs;const mc=!fc||(p.categorie||'Prospect')===fc;return match&&mo&&ms&&mc;});}
 function renderProspects(){if(currentView==='kanban')renderKanban(getFiltered());else renderList(getFiltered());}
 
 function searchLinks(p){
@@ -1321,8 +1382,9 @@ function renderKanban(fp){
     cards.forEach(p=>{
       const oClass=p.offre==='Debal Cyber'?'offre-debal':p.offre==='Infogérance'?'offre-info':p.offre==='PEM Promisec'?'offre-pem':'offre-multi';
       const srcColor=p.source==='LinkedIn'?'#0A66C2':p.source==='Lusha'?'#8B5CF6':p.source==='Apollo'?'#2563EB':p.source==='Pappers'?'#E11D48':'#6b7280';
-      html+=`<div class="kanban-card" onclick="viewProspect(${p.id})">
-        <div class="kc-name">${esc(p.nom)}</div>
+      const cat=p.categorie||'Prospect';const cc=CAT_CONFIG[cat]||CAT_CONFIG.Prospect;
+      html+=`<div class="kanban-card" onclick="viewProspect(${p.id})" style="border-left:3px solid ${cc.color}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px"><div class="kc-name">${esc(p.nom)}</div><span style="font-size:9px;padding:1px 6px;border-radius:99px;background:${cc.bg};color:${cc.color};border:1px solid ${cc.border};font-weight:700;white-space:nowrap">${cc.icon} ${cat}</span></div>
         ${p.poste?`<div class="kc-poste">${esc(p.poste)}</div>`:''}
         <div class="kc-company">🏢 ${esc(p.societe||'—')}</div>
         <span class="kc-offre ${oClass}">${esc(p.offre)}</span>
@@ -1371,6 +1433,7 @@ function editProspect(id){openProspectModal(prospects.find(p=>p.id===id));}
 function openProspectModal(p){
   const isEdit=!!p;
   openModal(isEdit?'Modifier le prospect':'Nouveau prospect',`
+    <div class="form-group"><label class="form-label">Catégorie de contact</label><select id="f-categorie" class="form-select">${CATEGORIES.map(c=>`<option ${(p&&p.categorie===c)||(!p&&c==='Prospect')?'selected':''}>${CAT_CONFIG[c].icon} ${c}</option>`).join('')}</select></div>
     <div class="grid-2"><div class="form-group"><label class="form-label">Nom complet *</label><input id="f-nom" class="form-input" value="${p?esc(p.nom):''}"></div><div class="form-group"><label class="form-label">Poste / Fonction</label><input id="f-poste" class="form-input" value="${p?esc(p.poste||''):''}"></div></div>
     <div class="grid-2"><div class="form-group"><label class="form-label">Société</label><input id="f-societe" class="form-input" value="${p?esc(p.societe||''):''}"></div><div class="form-group"><label class="form-label">Source lead</label><select id="f-source" class="form-select">${SOURCES.map(s=>`<option ${p&&p.source===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
     <div class="grid-2"><div class="form-group"><label class="form-label">Email</label><input id="f-email" class="form-input" type="email" value="${p?esc(p.email||''):''}"></div><div class="form-group"><label class="form-label">Téléphone</label><input id="f-tel" class="form-input" value="${p?esc(p.tel||''):''}"></div></div>
@@ -1381,7 +1444,7 @@ function openProspectModal(p){
     <div class="form-group"><label class="form-label">Notes</label><textarea id="f-notes" class="form-textarea">${p?esc(p.notes||''):''}</textarea></div>`,
     [{label:isEdit?'Enregistrer':'Ajouter',cls:'btn-primary',fn:`saveProspect(${isEdit?p.id:'null'})`},{label:'Annuler',cls:'btn-outline',fn:'closeModal()'}]);
 }
-function saveProspect(id){const nom=document.getElementById('f-nom').value.trim();if(!nom){alert('Nom requis');return;}const data={nom,poste:document.getElementById('f-poste').value.trim(),societe:document.getElementById('f-societe').value.trim(),email:document.getElementById('f-email').value.trim(),tel:document.getElementById('f-tel').value.trim(),linkedin:document.getElementById('f-linkedin').value.trim(),source:document.getElementById('f-source').value,offre:document.getElementById('f-offre').value,statut:document.getElementById('f-statut').value,valeur:document.getElementById('f-valeur').value,date:document.getElementById('f-date').value,rdv_date:document.getElementById('f-rdv-date').value,rdv_time:document.getElementById('f-rdv-time').value,notes:document.getElementById('f-notes').value.trim()};if(id){prospects=prospects.map(p=>p.id===id?{...p,...data}:p);}else{data.id=nextId++;save('next_id',nextId);prospects.push(data);}save('prospects',prospects);closeModal();renderProspects();renderDashboard();}
+function saveProspect(id){const nom=document.getElementById('f-nom').value.trim();if(!nom){alert('Nom requis');return;}const catRaw=document.getElementById('f-categorie').value;const categorie=catRaw.replace(/^[^\w]+\s*/,'').trim();const data={nom,categorie,poste:document.getElementById('f-poste').value.trim(),societe:document.getElementById('f-societe').value.trim(),email:document.getElementById('f-email').value.trim(),tel:document.getElementById('f-tel').value.trim(),linkedin:document.getElementById('f-linkedin').value.trim(),source:document.getElementById('f-source').value,offre:document.getElementById('f-offre').value,statut:document.getElementById('f-statut').value,valeur:document.getElementById('f-valeur').value,date:document.getElementById('f-date').value,rdv_date:document.getElementById('f-rdv-date').value,rdv_time:document.getElementById('f-rdv-time').value,notes:document.getElementById('f-notes').value.trim()};if(id){prospects=prospects.map(p=>p.id===id?{...p,...data}:p);}else{data.id=nextId++;save('next_id',nextId);prospects.push(data);}save('prospects',prospects);closeModal();renderProspects();renderDashboard();}
 function deleteProspect(id){if(!confirm('Supprimer ce prospect ?'))return;prospects=prospects.filter(p=>p.id!==id);save('prospects',prospects);renderProspects();renderDashboard();}
 
 // ═══ PLANNING v3 ════════════════════════════════════════════
@@ -1390,7 +1453,7 @@ const STAT_CLS={'À faire':'stat-todo','En cours':'stat-inprogress','Fait':'stat
 const STAT_ICON={'À faire':'⬜','En cours':'🔄','Fait':'✅','Reporté':'⏩'};
 
 function renderPlanning(){
-  const today=new Date().toISOString().slice(0,10);
+  const today=localDate();
   const total=PLAN_30J.length;
   const done=PLAN_30J.filter((item,i)=>{
     const ov=planOverrides['p'+i]||{};
@@ -1537,7 +1600,7 @@ function getAllEventsForDate(dateStr){
     if(item.date!==dateStr) return;
     const ov=planOverrides['p'+i]||{};
     const status=getItemStatus(item,i);
-    events.push({type:'task',label:(ov.action||item.action),axe:(ov.axe||item.axe),status,priority:ov.priority||'Moyen',color:status==='Fait'?'var(--green)':item.date<new Date().toISOString().slice(0,10)&&status!=='Fait'?'var(--red)':'var(--accent)',icon:'📋',done:status==='Fait',planIdx:i});
+    events.push({type:'task',label:(ov.action||item.action),axe:(ov.axe||item.axe),status,priority:ov.priority||'Moyen',color:status==='Fait'?'var(--green)':item.date<localDate()&&status!=='Fait'?'var(--red)':'var(--accent)',icon:'📋',done:status==='Fait',planIdx:i});
   });
   // 2. Tâches personnalisées du schedule
   scheduleCustom.forEach(s=>{
@@ -1548,14 +1611,16 @@ function getAllEventsForDate(dateStr){
     const recurTag=isRec?` (${RECUR_LABEL[s.recurring]||'🔁'})` :'';
     events.push({type:'schedule',label:s.action+recurTag,axe:s.axe,status:isDone?'Fait':'À faire',color:isDone?'var(--green)':'var(--secondary)',icon:s.icon||'⏰',done:isDone,time:s.time,itemId:s.id,isRecurring:isRec});
   });
-  // 3. RDV prospects (par date RDV ou date si statut RDV/Proposition)
+  // 3. RDV contacts (par date RDV) — coloré selon la catégorie
   prospects.forEach(p=>{
-    const d=p.rdv_date||p.date;
+    const d=p.rdv_date||(['RDV','Proposition','Signé'].includes(p.statut)?p.date:null);
     if(d!==dateStr) return;
-    if(!['RDV','Proposition','Signé'].includes(p.statut)) return;
-    const icons={'RDV':'📞','Proposition':'📄','Signé':'✅'};
-    const colors={'RDV':'var(--orange)','Proposition':'#d97706','Signé':'var(--green)'};
-    events.push({type:'rdv',label:`${p.statut} — ${p.nom}${p.societe?' ('+p.societe+')':''}`,axe:p.offre,status:p.statut,color:colors[p.statut]||'var(--orange)',icon:icons[p.statut]||'📞',done:p.statut==='Signé',time:p.rdv_time||'',prospectId:p.id});
+    // Avec date RDV explicite : on affiche quel que soit le statut. Sinon, seulement RDV/Proposition/Signé
+    if(!p.rdv_date&&!['RDV','Proposition','Signé'].includes(p.statut)) return;
+    const cat=p.categorie||'Prospect';
+    const cc=CAT_CONFIG[cat]||CAT_CONFIG.Prospect;
+    const label=`${cc.icon} ${cat} — ${p.nom}${p.societe?' ('+p.societe+')':''}`;
+    events.push({type:'rdv',category:cat,label,axe:p.offre,status:p.statut,color:cc.color,icon:cc.icon,done:p.statut==='Signé',time:p.rdv_time||'',prospectId:p.id});
   });
   // 4. Deadlines objectifs
   if(objectives) objectives.forEach(o=>{
@@ -1574,7 +1639,7 @@ function getAllEventsForDate(dateStr){
 function renderCalendar(){
   const today=new Date();
   today.setHours(0,0,0,0);
-  const todayStr=today.toISOString().slice(0,10);
+  const todayStr=localDate(today);
   const grid=document.getElementById('cal-grid');
   const header=document.getElementById('cal-days-header');
   const label=document.getElementById('cal-nav-label');
@@ -1596,7 +1661,7 @@ function renderCalendar(){
     let html='';
     for(let d=0;d<7;d++){
       const date=new Date(start); date.setDate(date.getDate()+d);
-      const ds=date.toISOString().slice(0,10);
+      const ds=localDate(date);
       const isToday=ds===todayStr;
       const isWeekend=date.getDay()===0||date.getDay()===6;
       const items=getPlanItemsForDate(ds);
@@ -1638,7 +1703,7 @@ function renderCalendar(){
     for(let w=0;w<6;w++){
       for(let d=0;d<7;d++){
         const date=new Date(firstDay); date.setDate(firstDay.getDate()+w*7+d);
-        const ds=date.toISOString().slice(0,10);
+        const ds=localDate(date);
         const isCurrentMonth=date.getMonth()===ref.getMonth();
         const isToday=ds===todayStr;
         const isWeekend=date.getDay()===0||date.getDay()===6;
@@ -1671,7 +1736,7 @@ function renderCalendar(){
 
 // ═══ ONGLET CALENDRIER ══════════════════════════════════════
 function renderCalendrierTab(){
-  const today=new Date().toISOString().slice(0,10);
+  const today=localDate();
   const todayEvents=getAllEventsForDate(today);
   const rdvAll=prospects.filter(p=>['RDV','Proposition'].includes(p.statut));
   const overdueAll=PLAN_30J.map((item,i)=>({item,i,status:getItemStatus(item,i)})).filter(({item,status})=>item.date<today&&status!=='Fait'&&status!=='Reporté');
@@ -1742,7 +1807,7 @@ function calCellHtml(ds,todayStr,isCurrent,maxItems){
 
 function renderCalendar2(){
   const today=new Date(); today.setHours(0,0,0,0);
-  const todayStr=today.toISOString().slice(0,10);
+  const todayStr=localDate(today);
   const grid=document.getElementById('cal2-grid');
   const header=document.getElementById('cal2-days-header');
   const label=document.getElementById('cal2-nav-label');
@@ -1754,7 +1819,7 @@ function renderCalendar2(){
     label.textContent=start.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' – '+end.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
     grid.className='cal-grid view7';
     let html='';
-    for(let d=0;d<7;d++){const date=new Date(start);date.setDate(date.getDate()+d);html+=calCellHtml(date.toISOString().slice(0,10),todayStr,true,5);}
+    for(let d=0;d<7;d++){const date=new Date(start);date.setDate(date.getDate()+d);html+=calCellHtml(localDate(date),todayStr,true,5);}
     grid.innerHTML=html;
   } else {
     const ref=new Date(today.getFullYear(),today.getMonth()+cal2Offset,1);
@@ -1762,7 +1827,7 @@ function renderCalendar2(){
     grid.className='cal-grid';
     const firstDay=new Date(ref); const fdow=(firstDay.getDay()+6)%7; firstDay.setDate(firstDay.getDate()-fdow);
     let html='';
-    for(let w=0;w<6;w++) for(let d=0;d<7;d++){const date=new Date(firstDay);date.setDate(firstDay.getDate()+w*7+d);const isCurrent=date.getMonth()===ref.getMonth();html+=calCellHtml(date.toISOString().slice(0,10),todayStr,isCurrent,2);}
+    for(let w=0;w<6;w++) for(let d=0;d<7;d++){const date=new Date(firstDay);date.setDate(firstDay.getDate()+w*7+d);const isCurrent=date.getMonth()===ref.getMonth();html+=calCellHtml(localDate(date),todayStr,isCurrent,2);}
     grid.innerHTML=html;
   }
 }
@@ -1905,7 +1970,7 @@ if(!objectives){objectives=DEFAULT_OBJECTIVES_DATA.map(o=>({...o}));save('object
 function renderPlanning(){renderObjectifDashboard();}
 
 function renderObjectifDashboard(){
-  const today=new Date().toISOString().slice(0,10);
+  const today=localDate();
   const axeF=document.getElementById('obj-f-axe')?.value||'';
   const stF=document.getElementById('obj-f-status')?.value||'';
   const prioF=document.getElementById('obj-f-prio')?.value||'';
@@ -2027,7 +2092,7 @@ function deleteObjectif(id){
 function viewObjectifDetail(id){
   const o=objectives.find(x=>x.id===id);
   if(!o) return;
-  const today=new Date().toISOString().slice(0,10);
+  const today=localDate();
   const parent=o.parentId?objectives.find(p=>p.id===o.parentId):null;
   const children=objectives.filter(c=>c.parentId===id);
   const tasks=(o.planItems||[]).map((pi)=>({item:PLAN_30J[pi],pi})).filter(x=>x.item);
@@ -2527,7 +2592,7 @@ function importCSV(source){
       if(poste&&!exists.poste)exists.poste=poste;
       skipped++;return;
     }
-    prospects.push({id:nextId++,nom,poste,societe,email,tel,linkedin,source:sourceV,offre:'Debal Cyber',statut:'Nouveau',valeur:'',date:new Date().toISOString().slice(0,10),notes:notesV});
+    prospects.push({id:nextId++,nom,poste,societe,email,tel,linkedin,source:sourceV,offre:'Debal Cyber',statut:'Nouveau',valeur:'',date:localDate(),notes:notesV});
     added++;
   });
   save('next_id',nextId);save('prospects',prospects);
