@@ -1595,6 +1595,23 @@ const RECUR_LABEL={daily:'🔁 Quotidien',weekly:'🔁 Hebdo',monthly:'🔁 Mens
 // ═══ Tous les événements d'une date (tâches + RDV + objectifs + créneaux) ═══
 function getAllEventsForDate(dateStr){
   const events=[];
+  // 0. Programme horaire du jour (créneaux Lun-Jeu / Dimanche / dates spéciales)
+  const dowDate=new Date(dateStr+'T12:00:00').getDay();
+  const baseSched=getBaseSchedule(dateStr,dowDate);
+  if(baseSched){
+    baseSched.sched.forEach((s,i)=>{
+      const key=dateStr+'_'+i;
+      if(scheduleHidden.includes(key)) return;
+      const ov=scheduleOverrides[key]||{};
+      const axe=ov.axe||s.axe||'';
+      if(axe==='Pause') return; // on n'affiche pas la pause déjeuner
+      const action=ov.action||s.action;
+      const time=ov.time||s.time;
+      const isDone=ov.done||false;
+      const icon=ov.icon!==undefined?ov.icon:(s.icon||'⏰');
+      events.push({type:'programme',label:action,axe,status:isDone?'Fait':'À faire',color:isDone?'var(--green)':'var(--primary)',icon,done:isDone,time,key});
+    });
+  }
   // 1. Tâches Plan 30J
   PLAN_30J.forEach((item,i)=>{
     if(item.date!==dateStr) return;
@@ -1627,10 +1644,12 @@ function getAllEventsForDate(dateStr){
     if(o.deadline!==dateStr) return;
     events.push({type:'objectif',label:`🎯 Deadline : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Atteint'?'var(--green)':o.status==='En cours'?'var(--purple)':'var(--muted)',icon:'🎯',done:o.status==='Atteint',objectifId:o.id});
   });
-  // Trier par heure si disponible, sinon par type
+  // Trier : événements avec heure en premier (par heure croissante), puis sans heure par type
   events.sort((a,b)=>{
     if(a.time&&b.time) return a.time<b.time?-1:1;
-    const order={rdv:0,schedule:1,task:2,objectif:3};
+    if(a.time&&!b.time) return -1;
+    if(!a.time&&b.time) return 1;
+    const order={rdv:0,programme:1,schedule:2,task:3,objectif:4};
     return (order[a.type]||9)-(order[b.type]||9);
   });
   return events;
@@ -1800,7 +1819,7 @@ function calCellHtml(ds,todayStr,isCurrent,maxItems){
   const isWeekend=new Date(ds+'T12:00:00').getDay()===0||new Date(ds+'T12:00:00').getDay()===6;
   let cls='cal-cell'+(!isCurrent?' cal-other':isToday?' cal-today':hasOverdue?' cal-overdue':allDone&&events.length?' cal-done-all':isWeekend?' cal-weekend':'');
   if(hasRdv&&!isToday&&!hasOverdue) cls+=' '+'';
-  const evHtml=events.slice(0,maxItems).map(ev=>`<div class="cal-dot ${ev.done?'done-task':''}" style="color:${ev.color}">${ev.icon} ${esc(ev.label.slice(0,maxItems===2?20:26))}</div>`).join('')+(events.length>maxItems?`<div class="cal-more">+${events.length-maxItems} autres</div>`:(events.length===0&&isCurrent?'<div style="font-size:9px;color:var(--muted)">Libre</div>':''));
+  const evHtml=events.slice(0,maxItems).map(ev=>{const t=ev.time?`<b style="color:var(--secondary)">${ev.time}</b> `:'';return `<div class="cal-dot ${ev.done?'done-task':''}" style="color:${ev.color}">${t}${ev.icon} ${esc(ev.label.slice(0,maxItems===2?18:30))}</div>`;}).join('')+(events.length>maxItems?`<div class="cal-more">+${events.length-maxItems} autres</div>`:(events.length===0&&isCurrent?'<div style="font-size:9px;color:var(--muted)">Libre</div>':''));
   const day=new Date(ds+'T12:00:00').getDate();
   return `<div class="${cls}" style="${hasRdv&&isCurrent?'outline:2px solid var(--orange);outline-offset:-2px':''}"><div class="cal-num">${day}${hasRdv&&isCurrent?'<span style="font-size:9px;color:var(--orange);margin-left:3px">📞</span>':''}</div><div class="cal-tasks">${evHtml}</div></div>`;
 }
@@ -1819,7 +1838,7 @@ function renderCalendar2(){
     label.textContent=start.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' – '+end.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
     grid.className='cal-grid view7';
     let html='';
-    for(let d=0;d<7;d++){const date=new Date(start);date.setDate(date.getDate()+d);html+=calCellHtml(localDate(date),todayStr,true,5);}
+    for(let d=0;d<7;d++){const date=new Date(start);date.setDate(date.getDate()+d);html+=calCellHtml(localDate(date),todayStr,true,9);}
     grid.innerHTML=html;
   } else {
     const ref=new Date(today.getFullYear(),today.getMonth()+cal2Offset,1);
