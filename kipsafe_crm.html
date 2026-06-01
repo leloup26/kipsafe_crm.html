@@ -315,9 +315,8 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
   <nav>
     <button class="tab-btn active" onclick="showTab('dashboard')">🏠 Dashboard</button>
     <button class="tab-btn" onclick="showTab('prospects')">👥 Prospects</button>
-    <button class="tab-btn" onclick="showTab('planning')">📅 Plan 30J</button>
+    <button class="tab-btn" onclick="showTab('planning')">🎯 Objectif</button>
     <button class="tab-btn" onclick="showTab('calendrier')">📆 Calendrier</button>
-    <button class="tab-btn" onclick="showTab('objectifs')">🎯 Objectifs</button>
     <button class="tab-btn" onclick="showTab('pitch')">📢 Pitch</button>
     <button class="tab-btn" onclick="showTab('offres')">💼 Offres</button>
     <button class="tab-btn" onclick="showTab('marches')">🏛️ Marchés</button>
@@ -372,46 +371,31 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
       <div id="prospects-container"></div>
     </div>
 
-    <!-- PLANNING 30J -->
+    <!-- OBJECTIF (ex Plan 30J) -->
     <div id="panel-planning" class="panel">
-      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-        <div class="card" style="flex:1;min-width:140px"><div class="card-title">Complétées</div><div class="kpi-value" id="plan-done-count">0</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill" id="plan-progress" style="width:0%"></div></div><div class="kpi-sub" id="plan-done-label">0 / 0 tâches</div></div>
-        <div class="card" style="flex:1;min-width:140px"><div class="card-title">Axe du moment</div><div class="kpi-value" style="font-size:20px" id="plan-axe-now">—</div></div>
-        <div class="card" style="flex:1;min-width:140px"><div class="card-title">Semaine en cours</div><div class="kpi-value" id="plan-week">S1</div></div>
+      <!-- KPIs -->
+      <div class="grid-4" id="obj-kpis" style="margin-bottom:16px"></div>
+      <!-- Toolbar -->
+      <div class="toolbar" style="margin-bottom:14px">
+        <select id="obj-f-axe" class="form-select" style="width:145px" onchange="renderObjectifDashboard()">
+          <option value="">Tous les axes</option>
+          <option>Commercial</option><option>Marketing</option><option>Web</option>
+          <option>Supports</option><option>Marchés</option><option>Admin</option>
+        </select>
+        <select id="obj-f-status" class="form-select" style="width:145px" onchange="renderObjectifDashboard()">
+          <option value="">Tous statuts</option>
+          <option>À faire</option><option>En cours</option><option>Atteint</option>
+          <option>Reporté</option><option>Abandonné</option>
+        </select>
+        <select id="obj-f-prio" class="form-select" style="width:135px" onchange="renderObjectifDashboard()">
+          <option value="">Toutes priorités</option>
+          <option>Important</option><option>Moyen</option><option>Bas</option>
+        </select>
+        <div style="flex:1"></div>
+        <button class="btn btn-primary" onclick="openObjectifModal(null)">+ Nouvel objectif</button>
       </div>
-      <div id="overdue-banner-plan"></div>
-
-      <!-- CALENDRIER -->
-      <div class="cal-wrap">
-        <div class="cal-header">
-          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-            <span class="cal-title">📅 Calendrier</span>
-            <div class="cal-toggle">
-              <button id="cal-btn-7" class="active" onclick="setCalView(7)">7 jours</button>
-              <button id="cal-btn-30" onclick="setCalView(30)">1 mois</button>
-            </div>
-          </div>
-          <div class="cal-nav">
-            <button onclick="calNavPrev()">‹</button>
-            <span id="cal-nav-label"></span>
-            <button onclick="calNavNext()">›</button>
-            <button onclick="calNavToday()" style="font-size:11px;padding:3px 8px">Aujourd'hui</button>
-          </div>
-        </div>
-        <div class="cal-legend" style="margin-bottom:10px">
-          <span><span class="cal-legend-dot" style="background:#00AEEF"></span>Aujourd'hui</span>
-          <span><span class="cal-legend-dot" style="background:#86efac"></span>Fait</span>
-          <span><span class="cal-legend-dot" style="background:#C00000"></span>En retard</span>
-          <span><span class="cal-legend-dot" style="background:#e2e8f0"></span>À faire</span>
-        </div>
-        <div class="cal-days-header" id="cal-days-header"></div>
-        <div class="cal-grid" id="cal-grid"></div>
-      </div>
-
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">💡 Cliquez sur une ligne pour modifier · Priorité · Statut · Notes</div>
-      <div class="card">
-        <table class="plan-table"><thead><tr><th style="width:28px">P</th><th>Date</th><th>Axe</th><th>Action</th><th style="width:110px">Statut</th></tr></thead><tbody id="plan-tbody"></tbody></table>
-      </div>
+      <!-- Liste objectifs -->
+      <div id="obj-dashboard-list"></div>
     </div>
 
     <!-- CALENDRIER -->
@@ -940,6 +924,7 @@ let quickTasks=load('quick_tasks',[
 ]);
 let nextId=load('next_id',100);
 let planOverrides=load('plan_overrides',{});
+let objectives=load('objectives',null);
 
 // ═══ PIN ════════════════════════════════════════════════════
 let pinBuffer='',pinMode='check',pinSetup1='';
@@ -972,7 +957,8 @@ async function initSupabase(){
       quickTasks=load('quick_tasks',[{id:1,text:'Finaliser plaquette Debal Cyber',done:false},{id:2,text:'Optimiser profil LinkedIn',done:false},{id:3,text:'Constituer liste 50 prospects',done:false},{id:4,text:'Envoyer 5 messages LinkedIn',done:false},{id:5,text:'Mettre à jour le site web H1',done:false}]);
       nextId=load('next_id',100);
       planOverrides=load('plan_overrides',{});
-      renderDashboard();renderProspects();renderPlanning();renderMarches();
+      const newObj=load('objectives',null); if(newObj) objectives=newObj;
+      renderDashboard();renderProspects();renderObjectifDashboard();renderMarches();
     }
     setSyncPill('online');
     sbClient.channel('kipsafe-crm')
@@ -1000,7 +986,7 @@ function setSyncPill(s){
   el.textContent=cfg.t;el.style.background=cfg.bg;el.style.color=cfg.c;
 }
 function updateHeaderDate(){const now=new Date();const days=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];const months=['jan','fév','mars','avr','mai','juin','juil','août','sep','oct','nov','déc'];document.getElementById('header-date').textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear()+' — '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
-function showTab(tab){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+tab).classList.add('active');document.querySelectorAll('.tab-btn').forEach(b=>{if(b.getAttribute('onclick').includes("'"+tab+"'"))b.classList.add('active');});if(tab==='dashboard')renderDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='objectifs')renderObjectifs();if(tab==='pitch')renderPitch();}
+function showTab(tab){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+tab).classList.add('active');document.querySelectorAll('.tab-btn').forEach(b=>{if(b.getAttribute('onclick').includes("'"+tab+"'"))b.classList.add('active');});if(tab==='dashboard')renderDashboard();if(tab==='planning')renderObjectifDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='pitch')renderPitch();}
 let objStatus=load('obj_status',{});
 
 // ═══ DASHBOARD ══════════════════════════════════════════════
@@ -1607,6 +1593,171 @@ function updateObjStatus(id,status){objStatus[id]=objStatus[id]||{};objStatus[id
 function updateObjProgress(id,val,max){objStatus[id]=objStatus[id]||{};objStatus[id].progress=Math.min(Number(val),max);if(Number(val)>=max)objStatus[id].status='Atteint';save('obj_status',objStatus);renderObjectifs();}
 function toggleSemObj(key,done){objStatus[key]=objStatus[key]||{};objStatus[key].done=done;save('obj_status',objStatus);renderObjectifs();}
 
+// ═══ GESTION OBJECTIFS ══════════════════════════════════════
+const DEFAULT_OBJECTIVES_DATA=[
+  {id:'obj1',title:'Signer 1er contrat client PME',axe:'Commercial',priority:'Important',status:'En cours',deadline:'2026-06-30',parentId:null,planItems:[6,8,11,13,15,17,19],notes:'Objectif principal juin 2026'},
+  {id:'obj2',title:'Constituer pipeline 50 prospects',axe:'Commercial',priority:'Important',status:'En cours',deadline:'2026-06-03',parentId:'obj1',planItems:[2],notes:'Via Pappers + LinkedIn'},
+  {id:'obj3',title:'5 RDV qualifiés confirmés',axe:'Commercial',priority:'Important',status:'En cours',deadline:'2026-06-17',parentId:'obj1',planItems:[9,11,15,16],notes:'Objectif intermédiaire avant closing'},
+  {id:'obj4',title:'3 plaquettes finalisées',axe:'Supports',priority:'Important',status:'En cours',deadline:'2026-06-10',parentId:null,planItems:[0,4,9],notes:'Debal Cyber + Infogérance + PEM Promisec v2'},
+  {id:'obj5',title:'Site kipsafe.fr optimisé SEO',axe:'Web',priority:'Moyen',status:'En cours',deadline:'2026-06-22',parentId:null,planItems:[3,10,17,21],notes:'H1/H2 + Analytics + blog NIS2'},
+  {id:'obj6',title:'Stratégie LinkedIn active',axe:'Marketing',priority:'Moyen',status:'En cours',deadline:'2026-06-30',parentId:null,planItems:[1,7,11,15,22],notes:'Profil + posts réguliers'},
+  {id:'obj7',title:'2 appels d\'offres BOAMP déposés',axe:'Marchés',priority:'Moyen',status:'En cours',deadline:'2026-06-25',parentId:null,planItems:[14,20,23],notes:'BOAMP + Maximilien IDF'}
+];
+if(!objectives){objectives=DEFAULT_OBJECTIVES_DATA.map(o=>({...o}));save('objectives',objectives);}
+
+function renderPlanning(){renderObjectifDashboard();}
+
+function renderObjectifDashboard(){
+  const today=new Date().toISOString().slice(0,10);
+  const axeF=document.getElementById('obj-f-axe')?.value||'';
+  const stF=document.getElementById('obj-f-status')?.value||'';
+  const prioF=document.getElementById('obj-f-prio')?.value||'';
+  const total=objectives.length;
+  const atteints=objectives.filter(o=>o.status==='Atteint').length;
+  const enCours=objectives.filter(o=>o.status==='En cours'||o.status==='À faire').length;
+  const retard=objectives.filter(o=>o.deadline&&o.deadline<today&&o.status!=='Atteint'&&o.status!=='Abandonné').length;
+  const rdvCount=prospects.filter(p=>p.statut==='RDV'||p.statut==='Proposition').length;
+  const kpis=document.getElementById('obj-kpis');
+  if(kpis) kpis.innerHTML=`
+    <div class="card" style="border-top:3px solid var(--primary)"><span class="kpi-icon">🎯</span><div class="card-title">Objectifs</div><div class="kpi-value">${total}</div><div class="kpi-sub">${atteints} atteints</div></div>
+    <div class="card" style="border-top:3px solid var(--accent)"><span class="kpi-icon">🔄</span><div class="card-title">En cours</div><div class="kpi-value" style="color:var(--accent)">${enCours}</div><div class="kpi-sub">actifs</div></div>
+    <div class="card" style="border-top:3px solid var(--red)"><span class="kpi-icon">⚠️</span><div class="card-title">En retard</div><div class="kpi-value" style="color:var(--red)">${retard}</div><div class="kpi-sub">${retard>0?'À traiter':'RAS 🎉'}</div></div>
+    <div class="card" style="border-top:3px solid var(--orange)"><span class="kpi-icon">📞</span><div class="card-title">RDV actifs</div><div class="kpi-value" style="color:var(--orange)">${rdvCount}</div><div class="kpi-sub">pipeline</div></div>`;
+  let filtered=objectives.filter(o=>{
+    if(axeF&&o.axe!==axeF)return false;
+    if(stF&&o.status!==stF)return false;
+    if(prioF&&o.priority!==prioF)return false;
+    return true;
+  });
+  const list=document.getElementById('obj-dashboard-list');
+  if(!list) return;
+  if(!filtered.length){list.innerHTML='<div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">Aucun objectif trouvé. Créez-en un avec "+ Nouvel objectif".</div></div>';return;}
+  const sortOrder={'À faire':1,'En cours':2,'Reporté':3,'Atteint':4,'Abandonné':5};
+  filtered.sort((a,b)=>{
+    const ar=a.deadline&&a.deadline<today&&a.status!=='Atteint'?0:1;
+    const br=b.deadline&&b.deadline<today&&b.status!=='Atteint'?0:1;
+    if(ar!==br)return ar-br;
+    return (sortOrder[a.status]||9)-(sortOrder[b.status]||9);
+  });
+  const SC={'À faire':'#475569','En cours':'var(--accent)','Atteint':'var(--green)','Reporté':'var(--purple)','Abandonné':'var(--muted)'};
+  const SB={'À faire':'#f1f5f9','En cours':'#dbeafe','Atteint':'#dcfce7','Reporté':'#ede9fe','Abandonné':'#f1f5f9'};
+  list.innerHTML=filtered.map(o=>{
+    const isR=o.deadline&&o.deadline<today&&o.status!=='Atteint'&&o.status!=='Abandonné';
+    const tasks=(o.planItems||[]).map((pi,idx)=>({item:PLAN_30J[pi],pi,idx})).filter(x=>x.item);
+    const tasksDone=tasks.filter(({pi})=>{const ov=planOverrides['p'+pi]||{};return(ov.status||(planDone.includes(PLAN_30J[pi]?.date)?'Fait':'À faire'))==='Fait';}).length;
+    const pct=tasks.length?Math.round(tasksDone/tasks.length*100):0;
+    const parent=o.parentId?objectives.find(p=>p.id===o.parentId):null;
+    const children=objectives.filter(c=>c.parentId===o.id);
+    const border=isR?'var(--red)':SC[o.status]||'var(--border)';
+    return `<div class="card" style="border-left:4px solid ${border};margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:18px">${PRIO_ICON[o.priority]||'🟡'}</span>
+          <span style="font-size:15px;font-weight:800;color:var(--primary)">${esc(o.title)}</span>
+          <span class="axe-badge axe-${o.axe.replace(/\s/g,'')}">${o.axe}</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:11px;background:${SB[o.status]||'#f1f5f9'};color:${SC[o.status]||'#475569'};padding:3px 10px;border-radius:99px;font-weight:700">${o.status}</span>
+          ${isR?'<span style="font-size:10px;background:#fef2f2;color:var(--red);padding:2px 8px;border-radius:99px;font-weight:700">EN RETARD</span>':''}
+          ${o.deadline?`<span style="font-size:11px;color:var(--muted)">📅 ${o.deadline}</span>`:''}
+        </div>
+      </div>
+      ${o.notes?`<div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-style:italic">${esc(o.notes)}</div>`:''}
+      ${parent?`<div style="font-size:11px;color:var(--secondary);margin-bottom:6px">↳ Sous-objectif de : <strong>${esc(parent.title)}</strong></div>`:''}
+      ${children.length?`<div style="font-size:11px;color:var(--muted);margin-bottom:6px">📎 ${children.length} sous-objectif(s) : ${children.slice(0,3).map(c=>`<span style="color:var(--secondary);font-weight:600">${esc(c.title)}</span>`).join(', ')}</div>`:''}
+      <div style="display:flex;gap:16px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:160px">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap">${tasksDone}/${tasks.length} tâches</span>
+          <div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:${border}"></div></div>
+          <span style="font-size:12px;font-weight:700;color:${border}">${pct}%</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-outline" onclick="viewObjectifDetail('${o.id}')">👁 Voir détail</button>
+        <button class="btn btn-sm btn-primary" onclick="openObjectifModal('${o.id}')">✏️ Modifier</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteObjectif('${o.id}')">🗑️</button>
+        <button class="btn btn-sm btn-outline" onclick="openObjectifModal(null,'${o.id}')">+ Sous-objectif</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openObjectifModal(id,parentIdPreset){
+  const isEdit=!!id;
+  const o=isEdit?objectives.find(x=>x.id===id):{title:'',axe:'Commercial',priority:'Moyen',status:'En cours',deadline:'',parentId:parentIdPreset||null,planItems:[],notes:''};
+  if(!o) return;
+  const AXES=['Commercial','Marketing','Web','Supports','Marchés','Admin'];
+  const PRIOS=['Important','Moyen','Bas'];
+  const STATS=['À faire','En cours','Atteint','Reporté','Abandonné'];
+  const parentOpts='<option value="">— Aucun parent —</option>'+objectives.filter(x=>x.id!==id).map(x=>`<option value="${x.id}" ${(o.parentId||parentIdPreset)===x.id?'selected':''}>${esc(x.title.slice(0,40))}</option>`).join('');
+  const planItemsHtml=PLAN_30J.slice(0,44).map((item,i)=>`<label style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer"><input type="checkbox" value="${i}" ${(o.planItems||[]).includes(i)?'checked':''} style="accent-color:var(--accent)"><span class="axe-badge axe-${item.axe}" style="font-size:9px;padding:1px 5px">${item.axe}</span>${esc(item.action.slice(0,50))}</label>`).join('');
+  openModal(isEdit?`✏️ Modifier objectif`:'🎯 Nouvel objectif',`
+    <div class="form-group"><label class="form-label">Titre *</label><input id="om-title" class="form-input" value="${esc(o.title)}" placeholder="Ex: Signer 1er contrat PME"></div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Axe</label><select id="om-axe" class="form-select">${AXES.map(a=>`<option ${a===o.axe?'selected':''}>${a}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Priorité</label><select id="om-prio" class="form-select">${PRIOS.map(p=>`<option ${p===o.priority?'selected':''}>${p}</option>`).join('')}</select></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Statut</label><select id="om-status" class="form-select">${STATS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Date limite</label><input id="om-deadline" type="date" class="form-input" value="${o.deadline||''}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Objectif parent (optionnel)</label><select id="om-parent" class="form-select">${parentOpts}</select></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea id="om-notes" class="form-textarea" style="min-height:50px">${esc(o.notes||'')}</textarea></div>
+    <div class="form-group"><label class="form-label">Tâches liées du plan (cochez)</label><div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px">${planItemsHtml}</div></div>
+  `,[
+    {label:'💾 Enregistrer',cls:'btn-primary',fn:`saveObjectif('${isEdit?id:''}')`},
+    {label:'Annuler',cls:'btn-outline',fn:'closeModal()'}
+  ]);
+}
+
+function saveObjectif(id){
+  const title=document.getElementById('om-title').value.trim();
+  if(!title){alert('Titre requis');return;}
+  const planItems=[...document.querySelectorAll('#modal-body input[type=checkbox]:checked')].map(cb=>parseInt(cb.value));
+  const data={id:id||('obj_'+Date.now()),title,axe:document.getElementById('om-axe').value,priority:document.getElementById('om-prio').value,status:document.getElementById('om-status').value,deadline:document.getElementById('om-deadline').value,parentId:document.getElementById('om-parent').value||null,planItems,notes:document.getElementById('om-notes').value.trim()};
+  if(id){objectives=objectives.map(o=>o.id===id?data:o);}else objectives.push(data);
+  save('objectives',objectives);closeModal();renderObjectifDashboard();toast('✅ Objectif enregistré');
+}
+
+function deleteObjectif(id){
+  const o=objectives.find(x=>x.id===id);
+  if(!confirm(`Supprimer "${o?.title}" ?`))return;
+  objectives=objectives.filter(x=>x.id!==id);
+  objectives=objectives.map(o=>o.parentId===id?{...o,parentId:null}:o);
+  save('objectives',objectives);renderObjectifDashboard();toast('🗑️ Objectif supprimé');
+}
+
+function viewObjectifDetail(id){
+  const o=objectives.find(x=>x.id===id);
+  if(!o) return;
+  const today=new Date().toISOString().slice(0,10);
+  const parent=o.parentId?objectives.find(p=>p.id===o.parentId):null;
+  const children=objectives.filter(c=>c.parentId===id);
+  const tasks=(o.planItems||[]).map((pi)=>({item:PLAN_30J[pi],pi})).filter(x=>x.item);
+  const rdvs=prospects.filter(p=>p.statut==='RDV'||p.statut==='Proposition');
+  const isR=o.deadline&&o.deadline<today&&o.status!=='Atteint'&&o.status!=='Abandonné';
+  const tasksHtml=tasks.length?tasks.map(({item,pi})=>{const ov=planOverrides['p'+pi]||{};const st=ov.status||(planDone.includes(item.date)?'Fait':'À faire');return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span>${STAT_ICON[st]||'⬜'}</span><span class="axe-badge axe-${(ov.axe||item.axe).replace(/\s/g,'')}" style="font-size:9px">${ov.axe||item.axe}</span><span style="font-size:12px;flex:1;${st==='Fait'?'text-decoration:line-through;color:var(--muted)':''}">${esc(ov.action||item.action)}</span><span style="font-size:10px;color:var(--muted)">${item.day||item.date}</span></div>`;}).join(''):'<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucune tâche liée</div>';
+  const rdvsHtml=rdvs.length?rdvs.slice(0,5).map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--orange)">📞</span><strong>${esc(p.nom)}</strong> — ${esc(p.societe||'—')}<span style="color:var(--orange);margin-left:auto;font-weight:700">${p.statut}</span></div>`).join(''):'<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun RDV dans le pipeline</div>';
+  openModal(`🎯 ${esc(o.title)}`,`
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="axe-badge axe-${o.axe.replace(/\s/g,'')}">${o.axe}</span>
+      <span style="font-size:11px;font-weight:700">${PRIO_ICON[o.priority]} ${o.priority}</span>
+      <span style="font-size:11px;font-weight:700;color:${o.status==='Atteint'?'var(--green)':o.status==='En cours'?'var(--accent)':'var(--muted)'}">${o.status}</span>
+      ${o.deadline?`<span style="font-size:11px;color:${isR?'var(--red)':'var(--muted)'}">📅 ${o.deadline}${isR?' ⚠️ EN RETARD':''}</span>`:''}
+    </div>
+    ${o.notes?`<div style="background:var(--light);border-radius:8px;padding:10px;font-size:13px;margin-bottom:12px;font-style:italic">${esc(o.notes)}</div>`:''}
+    ${parent?`<div style="font-size:12px;color:var(--secondary);margin-bottom:8px">↳ Sous-objectif de : <strong>${esc(parent.title)}</strong></div>`:''}
+    ${children.length?`<div style="font-size:12px;margin-bottom:10px"><strong>Sous-objectifs (${children.length}) :</strong> ${children.map(c=>`<span style="color:var(--secondary)">${esc(c.title)}</span>`).join(' · ')}</div>`:''}
+    <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:6px">📋 Tâches liées (${tasks.length})</div>
+    <div style="max-height:180px;overflow-y:auto;margin-bottom:14px">${tasksHtml}</div>
+    <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:6px">📞 RDV / Propositions en cours (${rdvs.length})</div>
+    <div style="max-height:110px;overflow-y:auto">${rdvsHtml}</div>
+  `,[
+    {label:'✏️ Modifier',cls:'btn-primary',fn:`closeModal();openObjectifModal('${id}')`},
+    {label:'Fermer',cls:'btn-outline',fn:'closeModal()'}
+  ]);
+}
+
 // ═══ PITCH COMMERCIAL ═══════════════════════════════════════
 const PITCH_DATA={
   debal:{
@@ -1963,7 +2114,7 @@ function importCSV(source){
 
 // ═══ SETTINGS ═══════════════════════════════════════════════
 function changePin(){const np=document.getElementById('new-pin').value,cp=document.getElementById('confirm-pin').value,msg=document.getElementById('pin-change-msg');if(!/^\d{4}$/.test(np)){msg.style.color='var(--red)';msg.textContent='PIN = 4 chiffres exactement.';return;}if(np!==cp){msg.style.color='var(--red)';msg.textContent='PINs différents.';return;}localStorage.setItem('kipsafe_pin',simpleHash(np));document.getElementById('new-pin').value='';document.getElementById('confirm-pin').value='';msg.style.color='var(--green)';msg.textContent='✅ PIN mis à jour !';setTimeout(()=>msg.textContent='',3000);}
-function resetData(){if(!confirm('⚠️ Effacer TOUTES les données ? Irréversible.'))return;['prospects','marches','plan_done','quick_tasks','next_id','plan_overrides'].forEach(k=>{localStorage.removeItem('kipsafe_'+k);if(sbClient)sbClient.from('kipsafe_data').delete().eq('key',k).then(()=>{});});prospects=[];marches=[];planDone=[];quickTasks=[];nextId=100;planOverrides={};initApp();alert('Réinitialisé.');}
+function resetData(){if(!confirm('⚠️ Effacer TOUTES les données ? Irréversible.'))return;['prospects','marches','plan_done','quick_tasks','next_id','plan_overrides','objectives','obj_status'].forEach(k=>{localStorage.removeItem('kipsafe_'+k);if(sbClient)sbClient.from('kipsafe_data').delete().eq('key',k).then(()=>{});});prospects=[];marches=[];planDone=[];quickTasks=[];nextId=100;planOverrides={};objectives=DEFAULT_OBJECTIVES_DATA.map(o=>({...o}));save('objectives',objectives);initApp();alert('Réinitialisé.');}
 
 // ═══ MODAL ══════════════════════════════════════════════════
 function openModal(title,body,buttons){document.getElementById('modal-title-text').textContent=title;document.getElementById('modal-body').innerHTML=body;document.getElementById('modal-actions').innerHTML=buttons.map(b=>`<button class="btn ${b.cls}" onclick="${b.fn}">${b.label}</button>`).join('');document.getElementById('modal').style.display='flex';}
