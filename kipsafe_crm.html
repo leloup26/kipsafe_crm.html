@@ -318,6 +318,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     <button class="tab-btn" onclick="showTab('planning')">📅 Plan 30J</button>
     <button class="tab-btn" onclick="showTab('calendrier')">📆 Calendrier</button>
     <button class="tab-btn" onclick="showTab('objectifs')">🎯 Objectifs</button>
+    <button class="tab-btn" onclick="showTab('pitch')">📢 Pitch</button>
     <button class="tab-btn" onclick="showTab('offres')">💼 Offres</button>
     <button class="tab-btn" onclick="showTab('marches')">🏛️ Marchés</button>
     <button class="tab-btn" onclick="showTab('integrations')">🔗 Intégrations</button>
@@ -466,6 +467,17 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
       </div>
       <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="obj-filters"></div>
       <div id="obj-content"></div>
+    </div>
+
+    <!-- PITCH COMMERCIAL -->
+    <div id="panel-pitch" class="panel">
+      <div class="import-tabs" id="pitch-tabs">
+        <button class="import-tab active" onclick="setPitchTab('debal')">🔵 Debal Cyber</button>
+        <button class="import-tab" onclick="setPitchTab('infog')">🟢 Infogérance</button>
+        <button class="import-tab" onclick="setPitchTab('pem')">🟠 PEM Promisec</button>
+        <button class="import-tab" onclick="setPitchTab('partner')">🤝 Partenariat</button>
+      </div>
+      <div id="pitch-content"></div>
     </div>
 
     <!-- OFFRES -->
@@ -988,7 +1000,7 @@ function setSyncPill(s){
   el.textContent=cfg.t;el.style.background=cfg.bg;el.style.color=cfg.c;
 }
 function updateHeaderDate(){const now=new Date();const days=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];const months=['jan','fév','mars','avr','mai','juin','juil','août','sep','oct','nov','déc'];document.getElementById('header-date').textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear()+' — '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
-function showTab(tab){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+tab).classList.add('active');document.querySelectorAll('.tab-btn').forEach(b=>{if(b.getAttribute('onclick').includes("'"+tab+"'"))b.classList.add('active');});if(tab==='dashboard')renderDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='objectifs')renderObjectifs();}
+function showTab(tab){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+tab).classList.add('active');document.querySelectorAll('.tab-btn').forEach(b=>{if(b.getAttribute('onclick').includes("'"+tab+"'"))b.classList.add('active');});if(tab==='dashboard')renderDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='objectifs')renderObjectifs();if(tab==='pitch')renderPitch();}
 let objStatus=load('obj_status',{});
 
 // ═══ DASHBOARD ══════════════════════════════════════════════
@@ -1594,6 +1606,264 @@ function renderObjectifs(){
 function updateObjStatus(id,status){objStatus[id]=objStatus[id]||{};objStatus[id].status=status;save('obj_status',objStatus);renderObjectifs();}
 function updateObjProgress(id,val,max){objStatus[id]=objStatus[id]||{};objStatus[id].progress=Math.min(Number(val),max);if(Number(val)>=max)objStatus[id].status='Atteint';save('obj_status',objStatus);renderObjectifs();}
 function toggleSemObj(key,done){objStatus[key]=objStatus[key]||{};objStatus[key].done=done;save('obj_status',objStatus);renderObjectifs();}
+
+// ═══ PITCH COMMERCIAL ═══════════════════════════════════════
+const PITCH_DATA={
+  debal:{
+    color:'var(--accent)',emoji:'🔵',
+    title:'Debal Cyber',subtitle:'Audit & Protection Cybersécurité',
+    badge:'À partir de 1 500€ HT',badgeColor:'var(--accent)',
+    accroche:'Saviez-vous que 60% des PME victimes d\'une cyberattaque ferment dans les 6 mois ? En 48h, KIPSAFE vous dit exactement où vous en êtes et comment vous protéger — et pour les 10 premières PME ce mois-ci, l\'audit est offert.',
+    cible:['PME / ETI sans DSI ou RSSI interne','Collectivités, EHPAD, lycées IDF','Cabinets comptables, études notariales','Toute entreprise soumise à NIS2 ou RGPD'],
+    douleurs:['Vous ne savez pas si votre SI est réellement protégé','Pas de DSI interne pour gérer la sécurité','La conformité NIS2 et RGPD vous inquiète','Peur d\'une cyberattaque sans savoir par où commencer','Collaborateurs avec mots de passe faibles ou partagés'],
+    solution:['Audit flash de votre SI complet en 48h','Rapport de vulnérabilités priorisé (🔴🟡🟢)','Plan de remédiation avec actions concrètes','Tableau de bord risques en temps réel','Suivi mensuel optionnel'],
+    tarifs:[{l:'Audit flash',p:'1 500€ HT',d:'Rapport vulnérabilités + plan action'},{l:'Audit complet',p:'Sur devis',d:'Selon taille SI et nombre de postes'},{l:'Protection continue',p:'Voir Infogérance',d:'Monitoring 24/7 inclus'}],
+    objections:[
+      {q:'C\'est trop cher.',r:'L\'audit coûte 1 500€. Une cyberattaque coûte en moyenne 50 000€ à une PME, sans compter les jours d\'arrêt. C\'est un investissement, pas une dépense.'},
+      {q:'On n\'a jamais eu de problème.',r:'60% des PME attaquées disaient exactement ça 6 mois avant. Les cyberattaques ne préviennent pas — et elles ciblent précisément les entreprises qui pensent être trop petites pour être visées.'},
+      {q:'Notre prestataire informatique s\'en occupe.',r:'Votre prestataire gère votre informatique, pas votre sécurité. Ce sont deux métiers totalement différents. Lui répare, nous prévenons.'},
+      {q:'On va y réfléchir.',r:'Je comprends tout à fait. Puis-je vous proposer 20 minutes de visio cette semaine pour vous montrer concrètement un exemple de rapport d\'audit ? Aucun engagement.'}
+    ],
+    email:`Objet : Audit cybersécurité offert pour [Société] — résultat en 48h
+
+Bonjour [Prénom],
+
+60% des PME victimes d'une cyberattaque ferment dans les 6 mois. Savez-vous où en est [Société] sur ce sujet ?
+
+Chez KIPSAFE, nous réalisons des audits flash en 48h : vous recevez un rapport de vulnérabilités priorisé et un plan d'action concret, sans jargon technique.
+
+Pour les premières entreprises contactées ce mois-ci, cet audit est offert.
+
+Auriez-vous 20 minutes cette semaine pour en discuter ?
+→ [LIEN CALENDLY]
+
+Cordialement,
+Samuel Galin — Fondateur KIPSAFE
+📞 [Téléphone] | kipsafe.fr`,
+    linkedin:`Bonjour [Prénom],
+
+Je vois que vous dirigez [Société] — secteur où la cybersécurité devient critique avec NIS2.
+
+KIPSAFE propose un audit flash en 48h pour identifier vos vulnérabilités. Offert pour les premières PME de ce mois.
+
+20 minutes d'échange cette semaine ?`
+  },
+  infog:{
+    color:'var(--green)',emoji:'🟢',
+    title:'Infogérance',subtitle:'Pilotage SI Externalisé 24/7',
+    badge:'30€ / user / mois',badgeColor:'var(--green)',
+    accroche:'Vous avez un prestataire informatique, mais il intervient quand c\'est déjà en panne. KIPSAFE, c\'est votre DSI externalisé : on surveille, on anticipe, on intervient — à partir de 30€/utilisateur/mois. Moins cher qu\'un seul poste interne.',
+    cible:['PME 10 à 200 salariés sans DSI interne','Entreprises dépendantes d\'un prestataire réactif (pas proactif)','Dirigeants qui veulent se concentrer sur leur métier','Organisations avec des pannes informatiques récurrentes'],
+    douleurs:['Pannes à répétition qui paralysent votre activité','Prestataire injoignable ou lent à intervenir','Aucune visibilité sur l\'état réel de votre SI','Pas de sauvegarde fiable ni de plan de reprise','Coût prohibitif d\'un DSI interne (50-80k€/an)'],
+    solution:['Monitoring 24/7 de votre infrastructure','SLA garanti — réponse en moins de 4h','Reporting mensuel complet et lisible','Hotline dédiée KIPSAFE (pas de ticket, un humain)','Revue trimestrielle stratégique'],
+    tarifs:[{l:'Starter (10 users)',p:'300€/mois',d:'Monitoring + hotline + reporting'},{l:'Business (20 users)',p:'600€/mois',d:'Tout inclus + revue trimestrielle'},{l:'Enterprise',p:'Sur devis',d:'SLA renforcé + astreinte nuit/WE'}],
+    objections:[
+      {q:'On a déjà un prestataire.',r:'Combien de temps attendez-vous en moyenne quand vous avez un problème ? Nous garantissons 4h maximum avec SLA contractuel. Si on ne tient pas, vous êtes remboursé.'},
+      {q:'30€/user c\'est cher.',r:'Pour 20 utilisateurs, c\'est 7 200€/an. Un DSI junior en interne, c\'est minimum 50 000€/an charges comprises. Le calcul est vite fait — et nous on ne prend pas de congés.'},
+      {q:'On ne veut pas externaliser.',r:'Vous externalisez déjà votre comptabilité, votre juridique, vos RH... Pourquoi pas votre SI qui est tout aussi stratégique ? L\'externalisation, c\'est de la flexibilité, pas de la perte de contrôle.'},
+      {q:'Et si vous avez un problème ?',r:'Nous avons un SLA contractuel. En cas de non-respect, vous êtes indemnisé. Et contrairement à un employé, on ne tombe pas malade.'}
+    ],
+    email:`Objet : Votre SI géré 24/7 à partir de 300€/mois — sans recruter
+
+Bonjour [Prénom],
+
+Vous avez un prestataire informatique, mais il intervient quand c'est déjà cassé. Et pendant ce temps, votre équipe attend.
+
+KIPSAFE devient votre DSI externalisé : monitoring 24/7, SLA garanti (réponse en 4h), reporting mensuel, hotline dédiée.
+
+Pour [Société] et ses [X] utilisateurs, c'est [X × 30]€/mois — soit 10× moins qu'un DSI interne.
+
+30 minutes pour vous présenter notre fonctionnement ?
+→ [LIEN CALENDLY]
+
+Cordialement,
+Samuel Galin — Fondateur KIPSAFE`,
+    linkedin:`Bonjour [Prénom],
+
+Question directe : combien de temps perdez-vous chaque mois à cause de pannes ou de problèmes informatiques ?
+
+KIPSAFE gère votre SI 24/7 à partir de 30€/user/mois, avec SLA contractuel. Votre prestataire actuel peut-il en dire autant ?
+
+On en parle 20 minutes ?`
+  },
+  pem:{
+    color:'var(--orange)',emoji:'🟠',
+    title:'PEM Promisec',subtitle:'Gestion des Accès & Identités — NIS2',
+    badge:'Déploiement en 10 jours',badgeColor:'var(--orange)',
+    accroche:'Savez-vous qui a accès à quoi dans votre système d\'information en ce moment ? Avec NIS2, vous devez pouvoir le justifier sous peine d\'amendes jusqu\'à 10M€. PEM Promisec, déployé par KIPSAFE en 10 jours, vous donne une visibilité totale sur vos accès et identités.',
+    cible:['Entreprises 50+ collaborateurs secteurs régulés','Banque, finance, assurance (conformité renforcée)','Santé (EHPAD, cliniques — certification HDS)','Industrie, logistique (NIS2 obligatoire)','Toute entreprise soumise à audit de sécurité'],
+    douleurs:['Impossible de savoir qui a accès à quoi','Comptes ex-collaborateurs toujours actifs après départ','Non-conformité NIS2 / RGPD — risque d\'amende','Aucune traçabilité pour les audits de sécurité','Risque d\'intrusion via compte compromis ou privilégié'],
+    solution:['PAM (Privileged Access Management) déployé en 10j','Tableau de bord identités en temps réel','Révocation automatique des accès au départ','Traçabilité complète de chaque connexion','Formation utilisateurs et administrateurs incluse'],
+    tarifs:[{l:'Déploiement',p:'Sur devis',d:'Selon nb utilisateurs et complexité SI'},{l:'Maintenance',p:'Incluse 1 an',d:'Mises à jour + support KIPSAFE'},{l:'Formation',p:'Incluse',d:'Demi-journée pour admins + users'}],
+    objections:[
+      {q:'On n\'a pas vraiment ce besoin.',r:'Depuis NIS2 (octobre 2024), la gestion des accès privilégiés est obligatoire pour les entreprises de taille intermédiaire. Une non-conformité constatée lors d\'un incident = amendes jusqu\'à 10M€ ou 2% du CA mondial.'},
+      {q:'C\'est compliqué à déployer.',r:'10 jours seulement, de l\'installation à la formation. KIPSAFE s\'occupe de tout : installation, paramétrage, formation. Vous n\'avez qu\'à valider.'},
+      {q:'C\'est quoi Promisec exactement ?',r:'C\'est une solution PAM israélienne utilisée par des banques et des hôpitaux dans 15 pays. KIPSAFE est leur partenaire intégrateur exclusif en France — vous avez accès à la meilleure technologie du marché avec un support local.'},
+      {q:'On a déjà un AD / Active Directory.',r:'Parfait. PEM Promisec s\'intègre nativement avec Active Directory et Azure AD. Il ne remplace pas votre AD, il le sécurise et le rend auditable.'}
+    ],
+    email:`Objet : Conformité NIS2 — maîtrisez vos accès SI en 10 jours
+
+Bonjour [Prénom],
+
+Depuis NIS2 (octobre 2024), votre entreprise doit pouvoir justifier qui accède à quoi dans votre système d'information — sous peine d'amendes jusqu'à 10M€.
+
+Savez-vous si [Société] est aujourd'hui en conformité sur ce point ?
+
+KIPSAFE déploie PEM Promisec en 10 jours : visibilité totale sur vos identités et accès, traçabilité complète, révocation automatique. Nous sommes le seul intégrateur officiel Promisec en France.
+
+15 minutes pour faire le point sur votre situation ?
+→ [LIEN CALENDLY]
+
+Samuel Galin — Fondateur KIPSAFE`,
+    linkedin:`Bonjour [Prénom],
+
+Avec NIS2, votre entreprise doit justifier qui accède à quoi dans votre SI. Êtes-vous prêt pour un audit ?
+
+KIPSAFE déploie PEM Promisec en 10 jours : gestion des accès, traçabilité complète, conformité NIS2 garantie. Seul intégrateur officiel en France.
+
+15 minutes pour en discuter ?`
+  },
+  partner:{
+    color:'var(--purple)',emoji:'🤝',
+    title:'Partenariat KIPSAFE',subtitle:'Devenez apporteur d\'affaires ou partenaire intégrateur',
+    badge:'Commission 10%',badgeColor:'var(--purple)',
+    accroche:'Vous êtes cabinet comptable, consultant, intégrateur IT ou simplement en contact avec des PME ? Rejoignez le réseau KIPSAFE et générez des revenus complémentaires en recommandant nos offres à vos clients. Commission 10% sur la première année, aucun effort commercial de votre côté.',
+    cible:['Cabinets d\'expertise comptable (accès direct aux PME)','Consultants IT / intégrateurs indépendants','Avocats et notaires avec clientèle PME','Banquiers et conseillers financiers','Associations professionnelles et réseaux d\'entrepreneurs'],
+    douleurs:['Vos clients PME vous demandent des conseils cyber sans que ce soit votre cœur de métier','Vous cherchez des revenus complémentaires récurrents','Vous voulez apporter plus de valeur à vos clients sans vous former','Vous avez des contacts qualifiés mais pas l\'offre pour les adresser'],
+    solution:['Contrat d\'apporteur d\'affaires simple et rapide','Commission 10% sur la 1ère année de tout contrat signé','Plaquettes et supports co-brandés KIPSAFE fournis','Formation d\'1h pour présenter les offres à vos clients','Suivi commercial 100% géré par KIPSAFE'],
+    tarifs:[{l:'Commission apporteur',p:'10% an 1',d:'Sur tout contrat signé via votre recommandation'},{l:'Formation partenaire',p:'Offerte',d:'1h visio pour maîtriser les 3 offres'},{l:'Supports co-brandés',p:'Inclus',d:'Plaquettes + emails personnalisés à votre logo'}],
+    objections:[
+      {q:'Je ne suis pas expert en cybersécurité.',r:'Vous n\'avez pas besoin de l\'être. Votre rôle = mentionner KIPSAFE à vos clients qui ont un besoin. Nous gérons tout le reste : démo, devis, signature, déploiement. Vous toucherez votre commission sans effort commercial.'},
+      {q:'Et si le client n\'est pas satisfait ?',r:'KIPSAFE a un SLA contractuel. Si nous ne tenons pas nos engagements, nous remboursons. Votre réputation est protégée car vous ne recommandez que des engagements contractuels.'},
+      {q:'Combien puis-je gagner concrètement ?',r:'Si vous recommandez 3 clients Infogérance à 600€/mois : 3 × 600 × 12 × 10% = 2 160€ la première année. Avec 10 clients, c\'est 7 200€ de revenus additionnels.'},
+      {q:'Comment fonctionne le suivi ?',r:'Vous nous présentez votre contact ou vous nous mettez en relation par email. Nous prenons le relais, vous informons à chaque étape, et vous virez la commission dès signature.'}
+    ],
+    email:`Objet : Partenariat KIPSAFE — générez des revenus récurrents avec vos clients PME
+
+Bonjour [Prénom],
+
+En tant que [cabinet comptable / consultant IT / ...], vos clients PME vous posent probablement des questions sur la cybersécurité et la conformité NIS2 — sans que ce soit votre cœur de métier.
+
+KIPSAFE propose un partenariat apporteur d'affaires simple :
+→ Vous recommandez nos offres à vos clients
+→ Nous gérons tout (démo, devis, déploiement)
+→ Vous touchez 10% sur la 1ère année de tout contrat signé
+
+Aucune formation technique requise. Une mise en relation = une commission.
+
+Disponible pour 30 minutes d'échange ?
+→ [LIEN CALENDLY]
+
+Samuel Galin — Fondateur KIPSAFE`,
+    linkedin:`Bonjour [Prénom],
+
+Vos clients PME vous demandent des conseils cyber sans que ce soit votre spécialité ?
+
+KIPSAFE cherche des partenaires apporteurs d'affaires : vous recommandez, on s'occupe du reste, vous touchez 10% sur la 1ère année.
+
+30 minutes pour vous présenter ça ?`
+  }
+};
+
+let currentPitchTab='debal';
+function setPitchTab(tab){
+  currentPitchTab=tab;
+  document.querySelectorAll('#pitch-tabs .import-tab').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick').includes("'"+tab+"'")));
+  renderPitch();
+}
+
+function copyPitchText(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  navigator.clipboard.writeText(el.value||el.textContent).then(()=>toast('✅ Copié dans le presse-papiers'));
+}
+
+function renderPitch(){
+  const p=PITCH_DATA[currentPitchTab];
+  if(!p) return;
+  const c=document.getElementById('pitch-content');
+  if(!c) return;
+
+  const objHtml=p.objections.map((o,i)=>`
+    <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden">
+      <div style="background:var(--light);padding:10px 14px;font-size:13px;font-weight:700;color:var(--red);cursor:pointer;display:flex;justify-content:space-between" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        ❓ "${o.q}" <span style="color:var(--muted)">▼</span>
+      </div>
+      <div style="padding:12px 14px;font-size:13px;color:var(--text);display:none">
+        <strong style="color:var(--green)">✅ Réponse :</strong><br>${o.r}
+      </div>
+    </div>`).join('');
+
+  const cibleHtml=p.cible.map(c=>`<div style="display:flex;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:${p.color}">▶</span>${c}</div>`).join('');
+  const douleurHtml=p.douleurs.map(d=>`<div style="display:flex;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--red)">🔴</span>${d}</div>`).join('');
+  const solutionHtml=p.solution.map(s=>`<div style="display:flex;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--green)">✅</span>${s}</div>`).join('');
+  const tarifHtml=p.tarifs.map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><div><div style="font-size:13px;font-weight:700">${t.l}</div><div style="font-size:11px;color:var(--muted)">${t.d}</div></div><span style="font-size:15px;font-weight:800;color:${p.color}">${t.p}</span></div>`).join('');
+
+  c.innerHTML=`
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,${p.color},${p.color}99);border-radius:14px;padding:20px 24px;margin-bottom:20px;color:#fff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:22px;font-weight:900">${p.emoji} ${p.title}</div>
+        <div style="font-size:14px;opacity:.9;margin-top:4px">${p.subtitle}</div>
+      </div>
+      <div style="background:rgba(255,255,255,.25);padding:8px 16px;border-radius:99px;font-size:15px;font-weight:800">${p.badge}</div>
+    </div>
+
+    <!-- Accroche 30s -->
+    <div class="card" style="border-left:4px solid ${p.color};margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:${p.color};text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🎯 Accroche 30 secondes</div>
+      <div style="font-size:14px;line-height:1.6;color:var(--text);font-style:italic">"${p.accroche}"</div>
+    </div>
+
+    <!-- 3 colonnes : Cible / Douleurs / Solution -->
+    <div class="grid-3" style="margin-bottom:16px">
+      <div class="card">
+        <div class="section-title" style="font-size:12px">🎯 Cibles prioritaires</div>
+        ${cibleHtml}
+      </div>
+      <div class="card">
+        <div class="section-title" style="font-size:12px">🔴 Problèmes clients</div>
+        ${douleurHtml}
+      </div>
+      <div class="card">
+        <div class="section-title" style="font-size:12px">✅ Notre solution</div>
+        ${solutionHtml}
+      </div>
+    </div>
+
+    <!-- Tarifs -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title" style="font-size:12px">💰 Tarification</div>
+      ${tarifHtml}
+    </div>
+
+    <!-- Objections -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title" style="font-size:12px">🛡️ Objections fréquentes — Cliquez pour voir la réponse</div>
+      ${objHtml}
+    </div>
+
+    <!-- Templates -->
+    <div class="grid-2">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="section-title" style="font-size:12px;margin-bottom:0">📩 Template Email</div>
+          <button class="btn btn-sm btn-accent" onclick="copyPitchText('email-${currentPitchTab}')">📋 Copier</button>
+        </div>
+        <textarea id="email-${currentPitchTab}" style="width:100%;height:220px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:11px;font-family:monospace;resize:vertical;line-height:1.6">${p.email}</textarea>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="section-title" style="font-size:12px;margin-bottom:0">💼 Message LinkedIn</div>
+          <button class="btn btn-sm btn-linkedin" onclick="copyPitchText('li-${currentPitchTab}')">📋 Copier</button>
+        </div>
+        <textarea id="li-${currentPitchTab}" style="width:100%;height:220px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:11px;font-family:monospace;resize:vertical;line-height:1.6">${p.linkedin}</textarea>
+        <div style="margin-top:8px;font-size:11px;color:var(--muted)">⚡ ${p.linkedin.length} caractères (LinkedIn max recommandé : 300)</div>
+      </div>
+    </div>`;
+}
+
+function initPitch(){renderPitch();}
 
 // ═══ OFFRES ═════════════════════════════════════════════════
 function renderOffres(){const od=[{cls:'debal',name:'🔵 Debal Cyber',sub:'Audit & Protection Cybersécurité',color:'var(--accent)',stats:[{v:prospects.filter(p=>p.offre==='Debal Cyber').length,l:'Prospects'},{v:'48h',l:'Délai audit'},{v:'1 500€',l:'Prix d\'appel'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'CTA "Audit gratuit" en ligne'},{ok:false,t:'2 témoignages clients'},{ok:true,t:'Grille tarifaire définie'},{ok:false,t:'Landing page dédiée'}]},{cls:'info',name:'🟢 Infogérance',sub:'Pilotage SI Externalisé',color:'var(--green)',stats:[{v:prospects.filter(p=>p.offre==='Infogérance').length,l:'Prospects'},{v:'30€',l:'User/mois'},{v:'12 mois',l:'Engagement'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'Comparatif DSI vs Infogérance'},{ok:false,t:'Grille tarifaire publiée'},{ok:false,t:'Formulaire contact direct'},{ok:false,t:'SLA document finalisé'}]},{cls:'pem',name:'🟠 PEM Promisec',sub:'Gestion Accès & Identités',color:'var(--orange)',stats:[{v:prospects.filter(p=>p.offre==='PEM Promisec').length,l:'Prospects'},{v:'10j',l:'Déploiement'},{v:'NIS2',l:'Conformité'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'Logo Promisec intégré'},{ok:false,t:'Section FAQ réglementaire'},{ok:false,t:'Badges certifications'},{ok:false,t:'Démo vidéo disponible'}]}];let html='';od.forEach(o=>{const done=o.items.filter(i=>i.ok).length,pct=Math.round(done/o.items.length*100);html+=`<div class="offre-card ${o.cls}"><div class="offre-name" style="color:${o.color}">${o.name}</div><div class="offre-promise">${o.sub}</div><div class="offre-stat">${o.stats.map(s=>`<div class="ostat"><div class="ostat-val">${s.v}</div><div class="ostat-lbl">${s.l}</div></div>`).join('')}</div><div style="margin-bottom:10px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:700">COMPLÉTION ${pct}%</div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${o.color}"></div></div></div><ul class="checklist">${o.items.map(i=>`<li><span style="color:${i.ok?'var(--green)':'var(--orange)'}">${i.ok?'✅':'⏳'}</span>${esc(i.t)}</li>`).join('')}</ul></div>`;});document.getElementById('offres-grid').innerHTML=html;}
