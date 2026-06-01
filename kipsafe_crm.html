@@ -183,6 +183,42 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .empty{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-icon{font-size:40px;margin-bottom:12px}.empty-text{font-size:14px}
 .sync-pill{font-size:10px;padding:3px 9px;border-radius:99px;font-weight:700;transition:.3s;cursor:default}
+/* ── Calendrier Planning ── */
+.cal-wrap{background:#fff;border-radius:12px;padding:16px;box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:16px}
+.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.cal-title{font-size:14px;font-weight:700;color:var(--primary)}
+.cal-toggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.cal-toggle button{padding:5px 14px;border:none;background:#fff;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);transition:.15s}
+.cal-toggle button.active{background:var(--primary);color:#fff}
+.cal-nav{display:flex;align-items:center;gap:8px}
+.cal-nav button{border:1px solid var(--border);background:#fff;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:14px}
+.cal-nav button:hover{background:var(--light)}
+.cal-nav span{font-size:13px;font-weight:700;color:var(--secondary);min-width:120px;text-align:center}
+.cal-legend{display:flex;gap:12px;font-size:11px;flex-wrap:wrap}
+.cal-legend span{display:flex;align-items:center;gap:4px}
+.cal-legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+/* Grille 7 colonnes */
+.cal-days-header{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+.cal-day-name{font-size:10px;font-weight:700;color:var(--muted);text-align:center;padding:3px 0;text-transform:uppercase}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+/* Cellule jour */
+.cal-cell{border-radius:8px;padding:6px;border:2px solid var(--border);background:#fff;min-height:68px;cursor:pointer;transition:.15s;position:relative}
+.cal-cell:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(0,174,239,.15)}
+.cal-cell.cal-today{border-color:var(--accent);background:#eff9ff}
+.cal-cell.cal-overdue{border-color:var(--red);background:#fef2f2}
+.cal-cell.cal-done-all{border-color:#86efac;background:#f0fdf4}
+.cal-cell.cal-other{opacity:.35;cursor:default;min-height:40px}
+.cal-cell.cal-weekend{background:#fafafa}
+.cal-num{font-size:13px;font-weight:800;color:var(--primary);margin-bottom:3px;line-height:1}
+.cal-cell.cal-today .cal-num{color:var(--accent)}
+.cal-cell.cal-overdue .cal-num{color:var(--red)}
+.cal-tasks{display:flex;flex-direction:column;gap:2px}
+.cal-dot{font-size:9px;line-height:1.4;display:flex;align-items:flex-start;gap:2px}
+.cal-dot.done-task{opacity:.5;text-decoration:line-through}
+.cal-more{font-size:9px;color:var(--accent);font-weight:700}
+/* Vue 7 jours — cellules plus grandes */
+.cal-grid.view7{grid-template-columns:repeat(7,1fr)}
+.cal-grid.view7 .cal-cell{min-height:100px}
 .plan-row-overdue{background:#fef2f2!important}.plan-row-overdue td{color:#7f1d1d}
 .plan-row-inprogress{background:#eff9ff!important}
 .plan-table tbody tr{cursor:pointer;transition:.1s}.plan-table tbody tr:hover td{background:#f8fbff!important}
@@ -341,9 +377,35 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
         <div class="card" style="flex:1;min-width:140px"><div class="card-title">Semaine en cours</div><div class="kpi-value" id="plan-week">S1</div></div>
       </div>
       <div id="overdue-banner-plan"></div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
-        <div style="font-size:12px;color:var(--muted)">💡 Cliquez sur une ligne pour modifier · Priorité · Statut · Notes</div>
+
+      <!-- CALENDRIER -->
+      <div class="cal-wrap">
+        <div class="cal-header">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span class="cal-title">📅 Calendrier</span>
+            <div class="cal-toggle">
+              <button id="cal-btn-7" class="active" onclick="setCalView(7)">7 jours</button>
+              <button id="cal-btn-30" onclick="setCalView(30)">1 mois</button>
+            </div>
+          </div>
+          <div class="cal-nav">
+            <button onclick="calNavPrev()">‹</button>
+            <span id="cal-nav-label"></span>
+            <button onclick="calNavNext()">›</button>
+            <button onclick="calNavToday()" style="font-size:11px;padding:3px 8px">Aujourd'hui</button>
+          </div>
+        </div>
+        <div class="cal-legend" style="margin-bottom:10px">
+          <span><span class="cal-legend-dot" style="background:#00AEEF"></span>Aujourd'hui</span>
+          <span><span class="cal-legend-dot" style="background:#86efac"></span>Fait</span>
+          <span><span class="cal-legend-dot" style="background:#C00000"></span>En retard</span>
+          <span><span class="cal-legend-dot" style="background:#e2e8f0"></span>À faire</span>
+        </div>
+        <div class="cal-days-header" id="cal-days-header"></div>
+        <div class="cal-grid" id="cal-grid"></div>
       </div>
+
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">💡 Cliquez sur une ligne pour modifier · Priorité · Statut · Notes</div>
       <div class="card">
         <table class="plan-table"><thead><tr><th style="width:28px">P</th><th>Date</th><th>Axe</th><th>Action</th><th style="width:110px">Statut</th></tr></thead><tbody id="plan-tbody"></tbody></table>
       </div>
@@ -1055,6 +1117,7 @@ function renderPlanning(){
     </tr>`;
   });
   document.getElementById('plan-tbody').innerHTML=rows;
+  renderCalendar();
 }
 
 function openPlanModal(i){
@@ -1111,6 +1174,128 @@ function resetPlanItem(i){
   delete planOverrides['p'+i];
   save('plan_overrides',planOverrides);
   closeModal();renderPlanning();toast('↩️ Tâche réinitialisée');
+}
+
+// ═══ CALENDRIER ═════════════════════════════════════════════
+let calView=7, calOffset=0;
+const CAL_DAYS=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+const CAL_MONTHS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+function setCalView(n){
+  calView=n; calOffset=0;
+  document.getElementById('cal-btn-7').classList.toggle('active',n===7);
+  document.getElementById('cal-btn-30').classList.toggle('active',n===30);
+  renderCalendar();
+}
+function calNavPrev(){calOffset--;renderCalendar();}
+function calNavNext(){calOffset++;renderCalendar();}
+function calNavToday(){calOffset=0;renderCalendar();}
+
+function getPlanItemsForDate(dateStr){
+  return PLAN_30J.map((item,i)=>({item,i})).filter(({item})=>item.date===dateStr);
+}
+
+function getItemStatus(item,i){
+  const ov=planOverrides['p'+i]||{};
+  return ov.status||(planDone.includes(item.date)?'Fait':'À faire');
+}
+
+function renderCalendar(){
+  const today=new Date();
+  today.setHours(0,0,0,0);
+  const todayStr=today.toISOString().slice(0,10);
+  const grid=document.getElementById('cal-grid');
+  const header=document.getElementById('cal-days-header');
+  const label=document.getElementById('cal-nav-label');
+  if(!grid) return;
+
+  // En-têtes jours
+  header.innerHTML=CAL_DAYS.map(d=>`<div class="cal-day-name">${d}</div>`).join('');
+
+  if(calView===7){
+    // Vue 7 jours : semaine courante + offset
+    const start=new Date(today);
+    const dow=(today.getDay()+6)%7; // 0=lun
+    start.setDate(start.getDate()-dow+calOffset*7);
+    const end=new Date(start); end.setDate(end.getDate()+6);
+    const startStr=start.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+    const endStr=end.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+    label.textContent=startStr+' – '+endStr;
+    grid.className='cal-grid view7';
+    let html='';
+    for(let d=0;d<7;d++){
+      const date=new Date(start); date.setDate(date.getDate()+d);
+      const ds=date.toISOString().slice(0,10);
+      const isToday=ds===todayStr;
+      const isWeekend=date.getDay()===0||date.getDay()===6;
+      const items=getPlanItemsForDate(ds);
+      const statuses=items.map(({item,i})=>getItemStatus(item,i));
+      const hasOverdue=ds<todayStr&&statuses.some(s=>s!=='Fait'&&s!=='Reporté');
+      const allDone=items.length>0&&statuses.every(s=>s==='Fait');
+      let cls='cal-cell';
+      if(isToday)cls+=' cal-today';
+      else if(hasOverdue)cls+=' cal-overdue';
+      else if(allDone)cls+=' cal-done-all';
+      else if(isWeekend)cls+=' cal-weekend';
+      const taskHtml=items.slice(0,4).map(({item,i})=>{
+        const st=getItemStatus(item,i);
+        const ov=planOverrides['p'+i]||{};
+        const prio=ov.priority||'Moyen';
+        const picon=PRIO_ICON[prio];
+        const action=(ov.action||item.action).slice(0,30);
+        return `<div class="cal-dot ${st==='Fait'?'done-task':''}">${picon} ${esc(action)}</div>`;
+      }).join('');
+      const more=items.length>4?`<div class="cal-more">+${items.length-4} autres</div>`:'';
+      const empty=items.length===0?`<div style="font-size:10px;color:var(--muted)">Aucune tâche</div>`:'';
+      html+=`<div class="${cls}" onclick="if(${items.length}>0)showTab('planning')">
+        <div class="cal-num">${date.getDate()}</div>
+        <div class="cal-tasks">${taskHtml}${more}${empty}</div>
+      </div>`;
+    }
+    grid.innerHTML=html;
+
+  } else {
+    // Vue 1 mois
+    const ref=new Date(today.getFullYear(),today.getMonth()+calOffset,1);
+    label.textContent=CAL_MONTHS[ref.getMonth()]+' '+ref.getFullYear();
+    grid.className='cal-grid';
+    // Premier lundi avant le 1er du mois
+    const firstDay=new Date(ref);
+    const fdow=(firstDay.getDay()+6)%7;
+    firstDay.setDate(firstDay.getDate()-fdow);
+    let html='';
+    for(let w=0;w<6;w++){
+      for(let d=0;d<7;d++){
+        const date=new Date(firstDay); date.setDate(firstDay.getDate()+w*7+d);
+        const ds=date.toISOString().slice(0,10);
+        const isCurrentMonth=date.getMonth()===ref.getMonth();
+        const isToday=ds===todayStr;
+        const isWeekend=date.getDay()===0||date.getDay()===6;
+        const items=getPlanItemsForDate(ds);
+        const statuses=items.map(({item,i})=>getItemStatus(item,i));
+        const hasOverdue=ds<todayStr&&statuses.some(s=>s!=='Fait'&&s!=='Reporté');
+        const allDone=items.length>0&&statuses.every(s=>s==='Fait');
+        let cls='cal-cell';
+        if(!isCurrentMonth)cls+=' cal-other';
+        else if(isToday)cls+=' cal-today';
+        else if(hasOverdue)cls+=' cal-overdue';
+        else if(allDone)cls+=' cal-done-all';
+        else if(isWeekend)cls+=' cal-weekend';
+        const taskHtml=items.slice(0,2).map(({item,i})=>{
+          const st=getItemStatus(item,i);
+          const ov=planOverrides['p'+i]||{};
+          const prio=ov.priority||'Moyen';
+          return `<div class="cal-dot ${st==='Fait'?'done-task':''}">${PRIO_ICON[prio]} ${esc((ov.action||item.action).slice(0,20))}</div>`;
+        }).join('');
+        const more=items.length>2?`<div class="cal-more">+${items.length-2}</div>`:'';
+        html+=`<div class="${cls}">
+          <div class="cal-num">${date.getDate()}</div>
+          <div class="cal-tasks">${taskHtml}${more}</div>
+        </div>`;
+      }
+    }
+    grid.innerHTML=html;
+  }
 }
 
 // ═══ OFFRES ═════════════════════════════════════════════════
