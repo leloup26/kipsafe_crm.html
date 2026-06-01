@@ -1270,10 +1270,11 @@ function openProspectModal(p){
     <div class="form-group"><label class="form-label">URL LinkedIn</label><input id="f-linkedin" class="form-input" placeholder="https://linkedin.com/in/..." value="${p?esc(p.linkedin||''):''}"></div>
     <div class="grid-2"><div class="form-group"><label class="form-label">Offre *</label><select id="f-offre" class="form-select">${OFFRES.map(o=>`<option ${p&&p.offre===o?'selected':''}>${o}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Statut</label><select id="f-statut" class="form-select">${STATUTS.map(s=>`<option ${p&&p.statut===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
     <div class="grid-2"><div class="form-group"><label class="form-label">Valeur estimée (€)</label><input id="f-valeur" class="form-input" type="number" value="${p?p.valeur||'':''}"></div><div class="form-group"><label class="form-label">Date 1er contact</label><input id="f-date" class="form-input" type="date" value="${p?p.date||'':''}"></div></div>
+    <div class="grid-2"><div class="form-group"><label class="form-label">📅 Date RDV</label><input id="f-rdv-date" class="form-input" type="date" value="${p?p.rdv_date||'':''}"></div><div class="form-group"><label class="form-label">⏰ Heure RDV</label><input id="f-rdv-time" class="form-input" type="time" value="${p?p.rdv_time||'':''}"></div></div>
     <div class="form-group"><label class="form-label">Notes</label><textarea id="f-notes" class="form-textarea">${p?esc(p.notes||''):''}</textarea></div>`,
     [{label:isEdit?'Enregistrer':'Ajouter',cls:'btn-primary',fn:`saveProspect(${isEdit?p.id:'null'})`},{label:'Annuler',cls:'btn-outline',fn:'closeModal()'}]);
 }
-function saveProspect(id){const nom=document.getElementById('f-nom').value.trim();if(!nom){alert('Nom requis');return;}const data={nom,poste:document.getElementById('f-poste').value.trim(),societe:document.getElementById('f-societe').value.trim(),email:document.getElementById('f-email').value.trim(),tel:document.getElementById('f-tel').value.trim(),linkedin:document.getElementById('f-linkedin').value.trim(),source:document.getElementById('f-source').value,offre:document.getElementById('f-offre').value,statut:document.getElementById('f-statut').value,valeur:document.getElementById('f-valeur').value,date:document.getElementById('f-date').value,notes:document.getElementById('f-notes').value.trim()};if(id){prospects=prospects.map(p=>p.id===id?{...p,...data}:p);}else{data.id=nextId++;save('next_id',nextId);prospects.push(data);}save('prospects',prospects);closeModal();renderProspects();renderDashboard();}
+function saveProspect(id){const nom=document.getElementById('f-nom').value.trim();if(!nom){alert('Nom requis');return;}const data={nom,poste:document.getElementById('f-poste').value.trim(),societe:document.getElementById('f-societe').value.trim(),email:document.getElementById('f-email').value.trim(),tel:document.getElementById('f-tel').value.trim(),linkedin:document.getElementById('f-linkedin').value.trim(),source:document.getElementById('f-source').value,offre:document.getElementById('f-offre').value,statut:document.getElementById('f-statut').value,valeur:document.getElementById('f-valeur').value,date:document.getElementById('f-date').value,rdv_date:document.getElementById('f-rdv-date').value,rdv_time:document.getElementById('f-rdv-time').value,notes:document.getElementById('f-notes').value.trim()};if(id){prospects=prospects.map(p=>p.id===id?{...p,...data}:p);}else{data.id=nextId++;save('next_id',nextId);prospects.push(data);}save('prospects',prospects);closeModal();renderProspects();renderDashboard();}
 function deleteProspect(id){if(!confirm('Supprimer ce prospect ?'))return;prospects=prospects.filter(p=>p.id!==id);save('prospects',prospects);renderProspects();renderDashboard();}
 
 // ═══ PLANNING v3 ════════════════════════════════════════════
@@ -1407,6 +1408,43 @@ function getItemStatus(item,i){
   return ov.status||(planDone.includes(item.date)?'Fait':'À faire');
 }
 
+// ═══ Tous les événements d'une date (tâches + RDV + objectifs + créneaux) ═══
+function getAllEventsForDate(dateStr){
+  const events=[];
+  // 1. Tâches Plan 30J
+  PLAN_30J.forEach((item,i)=>{
+    if(item.date!==dateStr) return;
+    const ov=planOverrides['p'+i]||{};
+    const status=getItemStatus(item,i);
+    events.push({type:'task',label:(ov.action||item.action),axe:(ov.axe||item.axe),status,priority:ov.priority||'Moyen',color:status==='Fait'?'var(--green)':item.date<new Date().toISOString().slice(0,10)&&status!=='Fait'?'var(--red)':'var(--accent)',icon:'📋',done:status==='Fait',planIdx:i});
+  });
+  // 2. Tâches personnalisées du schedule
+  scheduleCustom.filter(s=>s.date===dateStr).forEach(s=>{
+    events.push({type:'schedule',label:s.action,axe:s.axe,status:s.done?'Fait':'À faire',color:s.done?'var(--green)':'var(--secondary)',icon:s.icon||'⏰',done:s.done||false,time:s.time});
+  });
+  // 3. RDV prospects (par date RDV ou date si statut RDV/Proposition)
+  prospects.forEach(p=>{
+    const d=p.rdv_date||p.date;
+    if(d!==dateStr) return;
+    if(!['RDV','Proposition','Signé'].includes(p.statut)) return;
+    const icons={'RDV':'📞','Proposition':'📄','Signé':'✅'};
+    const colors={'RDV':'var(--orange)','Proposition':'#d97706','Signé':'var(--green)'};
+    events.push({type:'rdv',label:`${p.statut} — ${p.nom}${p.societe?' ('+p.societe+')':''}`,axe:p.offre,status:p.statut,color:colors[p.statut]||'var(--orange)',icon:icons[p.statut]||'📞',done:p.statut==='Signé',time:p.rdv_time||'',prospectId:p.id});
+  });
+  // 4. Deadlines objectifs
+  if(objectives) objectives.forEach(o=>{
+    if(o.deadline!==dateStr) return;
+    events.push({type:'objectif',label:`🎯 Deadline : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Atteint'?'var(--green)':o.status==='En cours'?'var(--purple)':'var(--muted)',icon:'🎯',done:o.status==='Atteint',objectifId:o.id});
+  });
+  // Trier par heure si disponible, sinon par type
+  events.sort((a,b)=>{
+    if(a.time&&b.time) return a.time<b.time?-1:1;
+    const order={rdv:0,schedule:1,task:2,objectif:3};
+    return (order[a.type]||9)-(order[b.type]||9);
+  });
+  return events;
+}
+
 function renderCalendar(){
   const today=new Date();
   today.setHours(0,0,0,0);
@@ -1508,56 +1546,51 @@ function renderCalendar(){
 // ═══ ONGLET CALENDRIER ══════════════════════════════════════
 function renderCalendrierTab(){
   const today=new Date().toISOString().slice(0,10);
-  const allItems=PLAN_30J.map((item,i)=>({item,i,status:getItemStatus(item,i),ov:planOverrides['p'+i]||{}}));
-  const todayItems=allItems.filter(({item})=>item.date===today);
-  const overdueItems=allItems.filter(({item,status})=>item.date<today&&status!=='Fait'&&status!=='Reporté');
-  const doneItems=allItems.filter(({status})=>status==='Fait');
+  const todayEvents=getAllEventsForDate(today);
+  const rdvAll=prospects.filter(p=>['RDV','Proposition'].includes(p.statut));
+  const overdueAll=PLAN_30J.map((item,i)=>({item,i,status:getItemStatus(item,i)})).filter(({item,status})=>item.date<today&&status!=='Fait'&&status!=='Reporté');
+  const doneAll=PLAN_30J.map((item,i)=>({item,i})).filter(({item,i})=>getItemStatus(item,i)==='Fait');
+  const overdueObj=objectives?objectives.filter(o=>o.deadline&&o.deadline<today&&o.status!=='Atteint'&&o.status!=='Abandonné'):[];
 
-  // Cartes résumé
   document.getElementById('cal-summary-cards').innerHTML=`
     <div class="card" style="border-top:3px solid var(--accent)">
       <div class="card-title">📍 Aujourd'hui</div>
-      <div class="kpi-value" style="color:var(--accent)">${todayItems.length}</div>
-      <div class="kpi-sub">tâche(s) planifiée(s)</div>
+      <div class="kpi-value" style="color:var(--accent)">${todayEvents.length}</div>
+      <div class="kpi-sub">${todayEvents.filter(e=>e.type==='rdv').length} RDV · ${todayEvents.filter(e=>e.type==='task').length} tâches</div>
     </div>
     <div class="card" style="border-top:3px solid var(--green)">
       <div class="card-title">✅ Faites</div>
-      <div class="kpi-value" style="color:var(--green)">${doneItems.length}</div>
-      <div class="kpi-sub">sur ${PLAN_30J.length} tâches</div>
+      <div class="kpi-value" style="color:var(--green)">${doneAll.length}</div>
+      <div class="kpi-sub">sur ${PLAN_30J.length} tâches plan</div>
     </div>
     <div class="card" style="border-top:3px solid var(--red)">
       <div class="card-title">⚠️ En retard</div>
-      <div class="kpi-value" style="color:var(--red)">${overdueItems.length}</div>
-      <div class="kpi-sub">${overdueItems.length>0?'À traiter en priorité':'Aucun retard 🎉'}</div>
+      <div class="kpi-value" style="color:var(--red)">${overdueAll.length+overdueObj.length}</div>
+      <div class="kpi-sub">${overdueAll.length} tâches · ${overdueObj.length} objectifs</div>
     </div>`;
 
-  // Liste aujourd'hui
-  const todayHtml=todayItems.length?todayItems.map(({item,i,ov})=>`
-    <div onclick="showTab('planning');setTimeout(()=>openPlanModal(${i}),300)" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer">
-      <span style="font-size:16px">${PRIO_ICON[ov.priority||'Moyen']}</span>
-      <div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ov.action||item.action)}</div><div style="font-size:10px;color:var(--muted)">${item.axe}</div></div>
-      <span class="stat-badge ${STAT_CLS[getItemStatus(item,i)]||'stat-todo'}">${getItemStatus(item,i)}</span>
-    </div>`).join(''):'<div style="color:var(--muted);font-size:13px;padding:10px 0">Aucune tâche aujourd\'hui</div>';
+  // Liste AUJOURD'HUI (toutes catégories)
+  const typeLabel={task:'📋 Tâche',rdv:'📞 RDV',schedule:'⏰ Créneau',objectif:'🎯 Deadline'};
+  const todayHtml=todayEvents.length?todayEvents.map(ev=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:20px">${ev.icon}</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;${ev.done?'text-decoration:line-through;color:var(--muted)':''}">${esc(ev.label)}</div>
+        <div style="font-size:10px;color:var(--muted)">${typeLabel[ev.type]||ev.type}${ev.time?' · '+ev.time:''}${ev.axe?' · '+ev.axe:''}</div>
+      </div>
+      <span style="font-size:11px;font-weight:700;color:${ev.color}">${ev.status}</span>
+    </div>`).join(''):'<div style="color:var(--muted);font-size:13px;padding:10px 0">Rien de prévu aujourd\'hui</div>';
   document.getElementById('cal-today-list').innerHTML=todayHtml;
 
-  // Liste en retard
-  const overdueHtml=overdueItems.length?overdueItems.map(({item,i,ov})=>`
-    <div onclick="showTab('planning');setTimeout(()=>openPlanModal(${i}),300)" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #fca5a5;cursor:pointer;background:#fef2f2;border-radius:6px;margin-bottom:4px;padding:8px">
-      <span style="font-size:16px">${PRIO_ICON[ov.priority||'Moyen']}</span>
-      <div style="flex:1"><div style="font-size:12px;font-weight:600;color:#7f1d1d">${esc(ov.action||item.action)}</div><div style="font-size:10px;color:#b91c1c">${item.day||item.date}</div></div>
-      <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();openPlanModal(${i})">Modifier</button>
-    </div>`).join(''):'<div style="color:var(--green);font-size:13px;padding:10px 0">✅ Aucun retard !</div>';
-  document.getElementById('cal-overdue-list').innerHTML=overdueHtml;
+  // Liste EN RETARD (tâches + objectifs)
+  let overdueHtml='';
+  overdueAll.forEach(({item,i})=>{const ov=planOverrides['p'+i]||{};overdueHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:7px;border-radius:6px;background:#fef2f2;margin-bottom:4px;cursor:pointer" onclick="openPlanModal(${i})"><span>📋</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:#7f1d1d">${esc(ov.action||item.action)}</div><div style="font-size:10px;color:#b91c1c">${item.day||item.date}</div></div><button class="btn btn-xs btn-danger" onclick="event.stopPropagation();openPlanModal(${i})">Modifier</button></div>`;});
+  overdueObj.forEach(o=>{overdueHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:7px;border-radius:6px;background:#fef2f2;margin-bottom:4px;cursor:pointer" onclick="viewObjectifDetail('${o.id}')"><span>🎯</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:#7f1d1d">${esc(o.title)}</div><div style="font-size:10px;color:#b91c1c">Deadline : ${o.deadline}</div></div><button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openObjectifModal('${o.id}')">Modifier</button></div>`;});
+  document.getElementById('cal-overdue-list').innerHTML=overdueHtml||'<div style="color:var(--green);font-size:13px;padding:10px 0">✅ Aucun retard !</div>';
 
-  // Liste faites (dernières 10)
-  const doneHtml=doneItems.length?doneItems.slice(-10).reverse().map(({item,i,ov})=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
-      <span style="color:var(--green);font-size:14px">✅</span>
-      <div style="flex:1;text-decoration:line-through;color:var(--muted);font-size:12px">${esc(ov.action||item.action)}</div>
-      <div style="font-size:10px;color:var(--muted)">${item.day||item.date}</div>
-    </div>`).join(''):'<div style="color:var(--muted);font-size:13px;padding:10px 0">Aucune tâche faite pour l\'instant</div>';
+  // Liste FAITES
+  const doneHtml=doneAll.length?doneAll.slice(-10).reverse().map(({item,i})=>{const ov=planOverrides['p'+i]||{};return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="color:var(--green)">✅</span><div style="flex:1;text-decoration:line-through;color:var(--muted);font-size:12px">${esc(ov.action||item.action)}</div><div style="font-size:10px;color:var(--muted)">${item.day||item.date}</div></div>`;}).join(''):'<div style="color:var(--muted);font-size:13px;padding:10px 0">Aucune tâche faite</div>';
   document.getElementById('cal-done-list').innerHTML=doneHtml;
-
   renderCalendar2();
 }
 
@@ -1566,6 +1599,20 @@ function setCal2View(n){cal2View=n;cal2Offset=0;document.getElementById('cal2-bt
 function cal2NavPrev(){cal2Offset--;renderCalendar2();}
 function cal2NavNext(){cal2Offset++;renderCalendar2();}
 function cal2NavToday(){cal2Offset=0;renderCalendar2();}
+
+function calCellHtml(ds,todayStr,isCurrent,maxItems){
+  const events=getAllEventsForDate(ds);
+  const hasRdv=events.some(e=>e.type==='rdv');
+  const hasOverdue=ds<todayStr&&events.some(e=>e.type==='task'&&!e.done);
+  const allDone=events.length>0&&events.filter(e=>e.type==='task').every(e=>e.done);
+  const isToday=ds===todayStr;
+  const isWeekend=new Date(ds+'T12:00:00').getDay()===0||new Date(ds+'T12:00:00').getDay()===6;
+  let cls='cal-cell'+(!isCurrent?' cal-other':isToday?' cal-today':hasOverdue?' cal-overdue':allDone&&events.length?' cal-done-all':isWeekend?' cal-weekend':'');
+  if(hasRdv&&!isToday&&!hasOverdue) cls+=' '+'';
+  const evHtml=events.slice(0,maxItems).map(ev=>`<div class="cal-dot ${ev.done?'done-task':''}" style="color:${ev.color}">${ev.icon} ${esc(ev.label.slice(0,maxItems===2?20:26))}</div>`).join('')+(events.length>maxItems?`<div class="cal-more">+${events.length-maxItems} autres</div>`:(events.length===0&&isCurrent?'<div style="font-size:9px;color:var(--muted)">Libre</div>':''));
+  const day=new Date(ds+'T12:00:00').getDate();
+  return `<div class="${cls}" style="${hasRdv&&isCurrent?'outline:2px solid var(--orange);outline-offset:-2px':''}"><div class="cal-num">${day}${hasRdv&&isCurrent?'<span style="font-size:9px;color:var(--orange);margin-left:3px">📞</span>':''}</div><div class="cal-tasks">${evHtml}</div></div>`;
+}
 
 function renderCalendar2(){
   const today=new Date(); today.setHours(0,0,0,0);
@@ -1581,22 +1628,7 @@ function renderCalendar2(){
     label.textContent=start.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' – '+end.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
     grid.className='cal-grid view7';
     let html='';
-    for(let d=0;d<7;d++){
-      const date=new Date(start); date.setDate(date.getDate()+d);
-      const ds=date.toISOString().slice(0,10);
-      const items=getPlanItemsForDate(ds);
-      const statuses=items.map(({item,i})=>getItemStatus(item,i));
-      const hasOverdue=ds<todayStr&&statuses.some(s=>s!=='Fait'&&s!=='Reporté');
-      const allDone=items.length>0&&statuses.every(s=>s==='Fait');
-      const isToday=ds===todayStr;
-      const isWeekend=date.getDay()===0||date.getDay()===6;
-      let cls='cal-cell'+(isToday?' cal-today':hasOverdue?' cal-overdue':allDone?' cal-done-all':isWeekend?' cal-weekend':'');
-      const taskHtml=items.slice(0,5).map(({item,i})=>{
-        const st=getItemStatus(item,i); const ov=planOverrides['p'+i]||{};
-        return `<div class="cal-dot ${st==='Fait'?'done-task':''}">${PRIO_ICON[ov.priority||'Moyen']} ${esc((ov.action||item.action).slice(0,28))}</div>`;
-      }).join('')+(items.length>5?`<div class="cal-more">+${items.length-5} autres</div>`:items.length===0?'<div style="font-size:10px;color:var(--muted)">Libre</div>':'');
-      html+=`<div class="${cls}"><div class="cal-num">${date.getDate()}</div><div class="cal-tasks">${taskHtml}</div></div>`;
-    }
+    for(let d=0;d<7;d++){const date=new Date(start);date.setDate(date.getDate()+d);html+=calCellHtml(date.toISOString().slice(0,10),todayStr,true,5);}
     grid.innerHTML=html;
   } else {
     const ref=new Date(today.getFullYear(),today.getMonth()+cal2Offset,1);
@@ -1604,19 +1636,7 @@ function renderCalendar2(){
     grid.className='cal-grid';
     const firstDay=new Date(ref); const fdow=(firstDay.getDay()+6)%7; firstDay.setDate(firstDay.getDate()-fdow);
     let html='';
-    for(let w=0;w<6;w++) for(let d=0;d<7;d++){
-      const date=new Date(firstDay); date.setDate(firstDay.getDate()+w*7+d);
-      const ds=date.toISOString().slice(0,10);
-      const isCurrent=date.getMonth()===ref.getMonth();
-      const isToday=ds===todayStr; const isWeekend=date.getDay()===0||date.getDay()===6;
-      const items=getPlanItemsForDate(ds);
-      const statuses=items.map(({item,i})=>getItemStatus(item,i));
-      const hasOverdue=ds<todayStr&&statuses.some(s=>s!=='Fait'&&s!=='Reporté');
-      const allDone=items.length>0&&statuses.every(s=>s==='Fait');
-      let cls='cal-cell'+(!isCurrent?' cal-other':isToday?' cal-today':hasOverdue?' cal-overdue':allDone?' cal-done-all':isWeekend?' cal-weekend':'');
-      const taskHtml=items.slice(0,2).map(({item,i})=>{const st=getItemStatus(item,i);const ov=planOverrides['p'+i]||{};return `<div class="cal-dot ${st==='Fait'?'done-task':''}">${PRIO_ICON[ov.priority||'Moyen']} ${esc((ov.action||item.action).slice(0,18))}</div>`;}).join('')+(items.length>2?`<div class="cal-more">+${items.length-2}</div>`:'');
-      html+=`<div class="${cls}"><div class="cal-num">${date.getDate()}</div><div class="cal-tasks">${taskHtml}</div></div>`;
-    }
+    for(let w=0;w<6;w++) for(let d=0;d<7;d++){const date=new Date(firstDay);date.setDate(firstDay.getDate()+w*7+d);const isCurrent=date.getMonth()===ref.getMonth();html+=calCellHtml(date.toISOString().slice(0,10),todayStr,isCurrent,2);}
     grid.innerHTML=html;
   }
 }
