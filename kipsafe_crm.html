@@ -313,7 +313,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 <div id="app" style="display:none;flex-direction:column;height:100vh">
   <header>
     <div class="h-logo">🔒 KIPSAFE CRM <span class="badge">SECURE</span></div>
-    <div class="h-right"><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span class="h-date" id="header-date"></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
+    <div class="h-right"><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span id="lock-timer" style="font-size:10px;color:rgba(255,255,255,.6);margin-right:6px"></span><span class="h-date" id="header-date"></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
   </header>
   <nav>
     <button class="tab-btn active" onclick="showTab('dashboard')">🏠 Dashboard</button>
@@ -940,8 +940,46 @@ function pinPress(d){if(pinBuffer.length>=8)return;pinBuffer+=d;updateDots();if(
 function pinDel(){pinBuffer=pinBuffer.slice(0,-1);updateDots();}
 function updateDots(){document.querySelectorAll('.pin-dot').forEach((d,i)=>d.classList.toggle('filled',i<pinBuffer.length));}
 function processPIN(){const err=document.getElementById('pin-error');const stored=localStorage.getItem('kipsafe_pin');if(simpleHash(pinBuffer)===stored){pinBuffer='';unlockApp();}else{err.textContent='PIN incorrect.';pinBuffer='';updateDots();setTimeout(()=>{err.textContent='';},2000);}}
-function unlockApp(){document.getElementById('pin-screen').style.display='none';const app=document.getElementById('app');app.style.display='flex';initApp();}
-function lockApp(){document.getElementById('app').style.display='none';document.getElementById('pin-screen').style.display='flex';pinBuffer='';pinMode='check';document.getElementById('pin-title').textContent='Entrez votre code PIN';document.getElementById('pin-error').textContent='';updateDots();}
+function unlockApp(){document.getElementById('pin-screen').style.display='none';const app=document.getElementById('app');app.style.display='flex';initApp();startAutoLock();}
+function lockApp(){stopAutoLock();document.getElementById('app').style.display='none';document.getElementById('pin-screen').style.display='flex';pinBuffer='';pinMode='check';document.getElementById('pin-title').textContent='Entrez votre code PIN (8 chiffres)';document.getElementById('pin-error').textContent='';updateDots();}
+
+// ═══ AUTO-VERROUILLAGE ══════════════════════════════════════
+const AUTO_LOCK_MS = 4*60*60*1000;      // 4h en ms
+const AUTO_LOCK_WARN_MS = 5*60*1000;    // avertissement 5min avant
+let autoLockTimer=null, autoLockWarnTimer=null, autoLockStart=0, lockTimerInterval=null;
+
+function resetAutoLockTimer(){
+  clearTimeout(autoLockTimer);clearTimeout(autoLockWarnTimer);
+  autoLockStart=Date.now();
+  autoLockWarnTimer=setTimeout(()=>toast('⚠️ Verrouillage automatique dans 5 minutes — cliquez pour continuer'),AUTO_LOCK_MS-AUTO_LOCK_WARN_MS);
+  autoLockTimer=setTimeout(()=>{lockApp();},AUTO_LOCK_MS);
+}
+
+function startAutoLock(){
+  resetAutoLockTimer();
+  ['click','keydown','touchstart'].forEach(e=>document.getElementById('app').addEventListener(e,resetAutoLockTimer,{passive:true}));
+  lockTimerInterval=setInterval(updateLockTimerDisplay,60000);
+  updateLockTimerDisplay();
+}
+
+function stopAutoLock(){
+  clearTimeout(autoLockTimer);clearTimeout(autoLockWarnTimer);clearInterval(lockTimerInterval);
+  const el=document.getElementById('lock-timer');if(el)el.textContent='';
+  const app=document.getElementById('app');if(app){
+    ['click','keydown','touchstart'].forEach(e=>app.removeEventListener(e,resetAutoLockTimer));
+  }
+}
+
+function updateLockTimerDisplay(){
+  const el=document.getElementById('lock-timer');if(!el) return;
+  const remaining=AUTO_LOCK_MS-(Date.now()-autoLockStart);
+  if(remaining<=0){el.textContent='';return;}
+  const h=Math.floor(remaining/3600000);
+  const m=Math.floor((remaining%3600000)/60000);
+  const isWarning=remaining<AUTO_LOCK_WARN_MS+60000;
+  el.textContent='🔒 '+( h>0?h+'h ':'')+m+'min';
+  el.style.color=isWarning?'#fca5a5':'rgba(255,255,255,.5)';
+}
 
 // ═══ APP ════════════════════════════════════════════════════
 let currentView='kanban';
