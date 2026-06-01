@@ -66,7 +66,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .axe-Supports{background:#dbeafe;color:#1d4ed8}.axe-Marketing{background:#cffafe;color:#0e7490}
 .axe-Commercial{background:#dcfce7;color:#15803d}.axe-Web{background:#fef3c7;color:#b45309}
 .axe-Marchés{background:#fce7f3;color:#be185d}.axe-Bilan{background:#ede9fe;color:#7c3aed}
-.axe-Pause{background:#fef9c3;color:#a16207}.axe-Admin{background:#f1f5f9;color:#475569}
+.axe-Pause{background:#fef9c3;color:#a16207}.axe-Admin{background:#f1f5f9;color:#475569}.axe-Formation{background:#f3e8ff;color:#7c3aed}
 .toolbar{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
 .search-box{flex:1;padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;min-width:180px}
 .search-box:focus{outline:none;border-color:var(--accent)}
@@ -931,6 +931,7 @@ let objectives=load('objectives',null);
 let scheduleOverrides=load('schedule_overrides',{});
 let scheduleHidden=load('schedule_hidden',[]);
 let scheduleCustom=load('schedule_custom',[]);
+let scheduleRecurringDone=load('schedule_recurring_done',{});
 
 // ═══ PIN ════════════════════════════════════════════════════
 let pinBuffer='',pinMode='check',pinSetup1='';
@@ -983,7 +984,26 @@ function updateLockTimerDisplay(){
 
 // ═══ APP ════════════════════════════════════════════════════
 let currentView='kanban';
-function initApp(){updateHeaderDate();setInterval(updateHeaderDate,60000);renderDashboard();renderProspects();renderPlanning();renderOffres();renderMarches();initSupabase();}
+function seedDefaultEvents(){
+  if(localStorage.getItem('kipsafe_events_seeded')) return;
+  // RDV Moche - Promisec (02/06/2026)
+  if(!scheduleCustom.find(s=>s.id==='rdv_moche')){
+    scheduleCustom.push({id:'rdv_moche',date:'2026-06-02',time:'14:00',end:'15:00',dur:'60min',axe:'Commercial',icon:'📞',action:'RDV Moche — Présentation & démonstration PEM Promisec',done:false,recurring:'none',recurringUntil:''});
+  }
+  // Formation Promisec quotidienne du 02/06 au 09/06
+  if(!scheduleCustom.find(s=>s.id==='formation_promisec')){
+    scheduleCustom.push({id:'formation_promisec',date:'2026-06-02',time:'10:00',end:'11:00',dur:'1h',axe:'Formation',icon:'📚',action:'Formation Promisec (1h) — Objectif : être opérationnel sur le logiciel mardi 09/06',done:false,recurring:'daily',recurringUntil:'2026-06-09'});
+  }
+  // Moche comme prospect
+  if(!prospects.find(p=>p.nom==='Moche')){
+    prospects.push({id:nextId++,nom:'Moche',poste:'',societe:'',email:'',tel:'',linkedin:'',source:'Manuel',offre:'PEM Promisec',statut:'RDV',valeur:'',date:'2026-06-01',rdv_date:'2026-06-02',rdv_time:'14:00',notes:'RDV présentation PEM Promisec — démonstration logiciel'});
+    save('next_id',nextId);save('prospects',prospects);
+  }
+  save('schedule_custom',scheduleCustom);
+  localStorage.setItem('kipsafe_events_seeded','1');
+}
+
+function initApp(){updateHeaderDate();setInterval(updateHeaderDate,60000);seedDefaultEvents();renderDashboard();renderProspects();renderPlanning();renderOffres();renderMarches();initSupabase();}
 
 // ═══ SUPABASE SYNC ══════════════════════════════════════════════
 async function initSupabase(){
@@ -1115,8 +1135,15 @@ function renderScheduleToday(){
 function toggleScheduleDone(today,key){
   if(key.startsWith('custom_')){
     const id=parseInt(key.replace('custom_',''));
-    scheduleCustom=scheduleCustom.map(s=>s.id===id?{...s,done:!s.done}:s);
-    save('schedule_custom',scheduleCustom);
+    const item=scheduleCustom.find(s=>s.id===id);
+    if(item&&item.recurring&&item.recurring!=='none'){
+      const dk=id+'_'+today;
+      scheduleRecurringDone[dk]=!scheduleRecurringDone[dk];
+      save('schedule_recurring_done',scheduleRecurringDone);
+    } else {
+      scheduleCustom=scheduleCustom.map(s=>s.id===id?{...s,done:!s.done}:s);
+      save('schedule_custom',scheduleCustom);
+    }
   } else {
     scheduleOverrides[key]=scheduleOverrides[key]||{};
     scheduleOverrides[key].done=!scheduleOverrides[key].done;
@@ -1196,13 +1223,31 @@ function openAddScheduleItem(today){
     </div>
     <div class="form-group"><label class="form-label">Action *</label><textarea id="na-action" class="form-textarea" rows="2" placeholder="Décris ce que tu vas faire..."></textarea></div>
     <div class="grid-2">
-      <div class="form-group"><label class="form-label">Axe</label><select id="na-axe" class="form-select"><option>Admin</option><option>Commercial</option><option>Marketing</option><option>Web</option><option>Supports</option><option>Marchés</option><option>Pause</option></select></div>
+      <div class="form-group"><label class="form-label">Axe</label><select id="na-axe" class="form-select"><option>Admin</option><option>Commercial</option><option>Marketing</option><option>Web</option><option>Supports</option><option>Marchés</option><option>Formation</option><option>Pause</option></select></div>
       <div class="form-group"><label class="form-label">Icône</label><input id="na-icon" class="form-input" placeholder="🎯" value="🎯"></div>
+    </div>
+    <div class="form-group"><label class="form-label">🔁 Récurrence</label>
+      <select id="na-recurring" class="form-select" onchange="document.getElementById('na-until-wrap').style.display=this.value!=='none'?'block':'none'">
+        <option value="none">Aucune (événement unique)</option>
+        <option value="daily">📅 Quotidienne</option>
+        <option value="weekly">📆 Hebdomadaire (même jour)</option>
+        <option value="monthly">🗓 Mensuelle (même date)</option>
+      </select>
+    </div>
+    <div id="na-until-wrap" style="display:none" class="form-group">
+      <label class="form-label">Répéter jusqu'au</label>
+      <input id="na-until" type="date" class="form-input" value="${today}">
     </div>
   `,[
     {label:'Ajouter',cls:'btn-primary',fn:`addScheduleItem('${today}')`},
     {label:'Annuler',cls:'btn-outline',fn:'closeModal()'}
   ]);
+}
+
+function calcDur(time,end){
+  const[sh,sm]=time.split(':').map(Number),[eh,em]=end.split(':').map(Number);
+  const mins=(eh*60+em)-(sh*60+sm);
+  return mins>0?(mins>=60?Math.floor(mins/60)+'h'+(mins%60?mins%60+'min':''):mins+'min'):'';
 }
 
 function addScheduleItem(today){
@@ -1212,12 +1257,11 @@ function addScheduleItem(today){
   if(!action){alert('Action requise');return;}
   const axe=document.getElementById('na-axe').value;
   const icon=document.getElementById('na-icon').value||'🎯';
-  const[sh,sm]=time.split(':').map(Number),[eh,em]=end.split(':').map(Number);
-  const mins=(eh*60+em)-(sh*60+sm);
-  const dur=mins>0?(mins>=60?Math.floor(mins/60)+'h'+(mins%60?''+mins%60:'')+'min':mins+'min'):'';
-  scheduleCustom.push({id:Date.now(),date:today,time,end,dur,axe,icon,action,done:false});
+  const recurring=document.getElementById('na-recurring')?.value||'none';
+  const recurringUntil=document.getElementById('na-until')?.value||'';
+  scheduleCustom.push({id:Date.now(),date:today,time,end,dur:calcDur(time,end),axe,icon,action,done:false,recurring,recurringUntil});
   save('schedule_custom',scheduleCustom);
-  closeModal();renderScheduleToday();toast('✅ Créneau ajouté');
+  closeModal();renderScheduleToday();toast('✅ Créneau ajouté'+(recurring!=='none'?' ('+RECUR_LABEL[recurring]+')':''));
 }
 function renderPipelineSummary(){const counts={};STATUTS.forEach(s=>counts[s]=0);prospects.forEach(p=>{if(counts[p.statut]!==undefined)counts[p.statut]++;});const colors={Nouveau:'#0369a1',Contacté:'#1d4ed8',RDV:'#059669',Proposition:'#d97706',Signé:'#228B22',Perdu:'#C00000'};let html='<div style="display:flex;flex-direction:column;gap:6px">';STATUTS.forEach(s=>{const pct=prospects.length?Math.round(counts[s]/prospects.length*100):0;html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:78px;color:${colors[s]};font-weight:700">${s}</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:${colors[s]}"></div></div><span style="width:20px;text-align:right;color:var(--muted)">${counts[s]}</span></div>`;});html+='</div>';document.getElementById('pipeline-summary').innerHTML=html;}
 function renderPlanTodayAction(){const today=new Date().toISOString().slice(0,10);const item=PLAN_30J.find(p=>p.date===today);if(!item){document.getElementById('plan-today-action').innerHTML='<div class="empty"><div class="empty-icon">🗓️</div><div class="empty-text">Pas d\'action planifiée aujourd\'hui</div></div>';return;}const done=planDone.includes(item.date);document.getElementById('plan-today-action').innerHTML=`<div style="background:var(--light);border-radius:10px;padding:14px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="axe-badge axe-${item.axe}">${item.axe}</span><button class="btn btn-sm ${done?'btn-success':'btn-outline'}" onclick="togglePlanDone('${item.date}')">${done?'✅ Fait':'Marquer fait'}</button></div><div style="font-size:13px;font-weight:600">${item.action}</div></div>`;}
@@ -1446,6 +1490,20 @@ function getItemStatus(item,i){
   return ov.status||(planDone.includes(item.date)?'Fait':'À faire');
 }
 
+function isRecurringOnDate(s,dateStr){
+  const start=new Date(s.date+'T12:00:00');
+  const check=new Date(dateStr+'T12:00:00');
+  if(check<start) return false;
+  if(s.recurringUntil){const until=new Date(s.recurringUntil+'T23:59:59');if(check>until) return false;}
+  if(!s.recurring||s.recurring==='none') return s.date===dateStr;
+  if(s.recurring==='daily') return true;
+  if(s.recurring==='weekly') return check.getDay()===start.getDay();
+  if(s.recurring==='monthly') return check.getDate()===start.getDate();
+  return false;
+}
+
+const RECUR_LABEL={daily:'🔁 Quotidien',weekly:'🔁 Hebdo',monthly:'🔁 Mensuel'};
+
 // ═══ Tous les événements d'une date (tâches + RDV + objectifs + créneaux) ═══
 function getAllEventsForDate(dateStr){
   const events=[];
@@ -1457,8 +1515,13 @@ function getAllEventsForDate(dateStr){
     events.push({type:'task',label:(ov.action||item.action),axe:(ov.axe||item.axe),status,priority:ov.priority||'Moyen',color:status==='Fait'?'var(--green)':item.date<new Date().toISOString().slice(0,10)&&status!=='Fait'?'var(--red)':'var(--accent)',icon:'📋',done:status==='Fait',planIdx:i});
   });
   // 2. Tâches personnalisées du schedule
-  scheduleCustom.filter(s=>s.date===dateStr).forEach(s=>{
-    events.push({type:'schedule',label:s.action,axe:s.axe,status:s.done?'Fait':'À faire',color:s.done?'var(--green)':'var(--secondary)',icon:s.icon||'⏰',done:s.done||false,time:s.time});
+  scheduleCustom.forEach(s=>{
+    if(!isRecurringOnDate(s,dateStr)) return;
+    const isRec=s.recurring&&s.recurring!=='none';
+    const doneKey=s.id+'_'+dateStr;
+    const isDone=isRec?(scheduleRecurringDone[doneKey]||false):(s.done||false);
+    const recurTag=isRec?` (${RECUR_LABEL[s.recurring]||'🔁'})` :'';
+    events.push({type:'schedule',label:s.action+recurTag,axe:s.axe,status:isDone?'Fait':'À faire',color:isDone?'var(--green)':'var(--secondary)',icon:s.icon||'⏰',done:isDone,time:s.time,itemId:s.id,isRecurring:isRec});
   });
   // 3. RDV prospects (par date RDV ou date si statut RDV/Proposition)
   prospects.forEach(p=>{
