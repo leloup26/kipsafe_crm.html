@@ -183,6 +183,14 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .empty{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-icon{font-size:40px;margin-bottom:12px}.empty-text{font-size:14px}
 .sync-pill{font-size:10px;padding:3px 9px;border-radius:99px;font-weight:700;transition:.3s;cursor:default}
+.plan-row-overdue{background:#fef2f2!important}.plan-row-overdue td{color:#7f1d1d}
+.plan-row-inprogress{background:#eff9ff!important}
+.plan-table tbody tr{cursor:pointer;transition:.1s}.plan-table tbody tr:hover td{background:#f8fbff!important}
+.overdue-banner{background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:10px 16px;margin-bottom:12px;color:#7f1d1d;font-size:13px;display:flex;align-items:center;gap:8px}
+.prio-high{color:#C00000;font-size:15px}.prio-med{color:#d97706;font-size:15px}.prio-low{color:#228B22;font-size:15px}
+.stat-badge{font-size:10px;padding:2px 7px;border-radius:99px;font-weight:700;white-space:nowrap}
+.stat-todo{background:#f1f5f9;color:#475569}.stat-inprogress{background:#dbeafe;color:#1d4ed8}
+.stat-done{background:#dcfce7;color:#15803d}.stat-postponed{background:#ede9fe;color:#7c3aed}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--primary);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transform:translateY(10px);transition:.3s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -328,12 +336,16 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     <!-- PLANNING 30J -->
     <div id="panel-planning" class="panel">
       <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-        <div class="card" style="flex:1;min-width:140px"><div class="card-title">Jours planifiés</div><div class="kpi-value">22</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill" id="plan-progress" style="width:0%"></div></div><div class="kpi-sub" id="plan-done-label">0 / 22 complétés</div></div>
+        <div class="card" style="flex:1;min-width:140px"><div class="card-title">Complétées</div><div class="kpi-value" id="plan-done-count">0</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill" id="plan-progress" style="width:0%"></div></div><div class="kpi-sub" id="plan-done-label">0 / 0 tâches</div></div>
         <div class="card" style="flex:1;min-width:140px"><div class="card-title">Axe du moment</div><div class="kpi-value" style="font-size:20px" id="plan-axe-now">—</div></div>
         <div class="card" style="flex:1;min-width:140px"><div class="card-title">Semaine en cours</div><div class="kpi-value" id="plan-week">S1</div></div>
       </div>
+      <div id="overdue-banner-plan"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+        <div style="font-size:12px;color:var(--muted)">💡 Cliquez sur une ligne pour modifier · Priorité · Statut · Notes</div>
+      </div>
       <div class="card">
-        <table class="plan-table"><thead><tr><th style="width:40px"></th><th>Date</th><th>Axe</th><th>Action</th><th style="width:90px">Statut</th></tr></thead><tbody id="plan-tbody"></tbody></table>
+        <table class="plan-table"><thead><tr><th style="width:28px">P</th><th>Date</th><th>Axe</th><th>Action</th><th style="width:110px">Statut</th></tr></thead><tbody id="plan-tbody"></tbody></table>
       </div>
     </div>
 
@@ -796,6 +808,7 @@ let quickTasks=load('quick_tasks',[
   {id:5,text:'Mettre à jour le site web H1',done:false}
 ]);
 let nextId=load('next_id',100);
+let planOverrides=load('plan_overrides',{});
 
 // ═══ PIN ════════════════════════════════════════════════════
 let pinBuffer='',pinMode='check',pinSetup1='';
@@ -827,6 +840,7 @@ async function initSupabase(){
       planDone=load('plan_done',[]);
       quickTasks=load('quick_tasks',[{id:1,text:'Finaliser plaquette Debal Cyber',done:false},{id:2,text:'Optimiser profil LinkedIn',done:false},{id:3,text:'Constituer liste 50 prospects',done:false},{id:4,text:'Envoyer 5 messages LinkedIn',done:false},{id:5,text:'Mettre à jour le site web H1',done:false}]);
       nextId=load('next_id',100);
+      planOverrides=load('plan_overrides',{});
       renderDashboard();renderProspects();renderPlanning();renderMarches();
     }
     setSyncPill('online');
@@ -993,8 +1007,111 @@ function openProspectModal(p){
 function saveProspect(id){const nom=document.getElementById('f-nom').value.trim();if(!nom){alert('Nom requis');return;}const data={nom,poste:document.getElementById('f-poste').value.trim(),societe:document.getElementById('f-societe').value.trim(),email:document.getElementById('f-email').value.trim(),tel:document.getElementById('f-tel').value.trim(),linkedin:document.getElementById('f-linkedin').value.trim(),source:document.getElementById('f-source').value,offre:document.getElementById('f-offre').value,statut:document.getElementById('f-statut').value,valeur:document.getElementById('f-valeur').value,date:document.getElementById('f-date').value,notes:document.getElementById('f-notes').value.trim()};if(id){prospects=prospects.map(p=>p.id===id?{...p,...data}:p);}else{data.id=nextId++;save('next_id',nextId);prospects.push(data);}save('prospects',prospects);closeModal();renderProspects();renderDashboard();}
 function deleteProspect(id){if(!confirm('Supprimer ce prospect ?'))return;prospects=prospects.filter(p=>p.id!==id);save('prospects',prospects);renderProspects();renderDashboard();}
 
-// ═══ PLANNING ═══════════════════════════════════════════════
-function renderPlanning(){const done=planDone.length,today=new Date().toISOString().slice(0,10);document.getElementById('plan-progress').style.width=Math.round(done/22*100)+'%';document.getElementById('plan-done-label').textContent=done+' / 22 complétés';const ti=PLAN_30J.find(p=>p.date===today);document.getElementById('plan-axe-now').textContent=ti?ti.axe:'—';const wd=new Date(today),ws=new Date('2026-06-01'),wn=Math.floor((wd-ws)/(7*24*3600*1000))+1;document.getElementById('plan-week').textContent='S'+Math.max(1,Math.min(4,wn));let rows='';PLAN_30J.forEach(item=>{const isDone=planDone.includes(item.date),isToday=item.date===today,cls=isToday?'today':isDone?'done':'';rows+=`<tr class="${cls}"><td class="done-check" onclick="togglePlanDone('${item.date}')">${isDone?'✅':'⬜'}</td><td><strong>${item.day}</strong></td><td><span class="axe-badge axe-${item.axe}">${item.axe}</span></td><td>${esc(item.action)}</td><td style="font-size:11px;color:var(--muted)">${isToday?'📍 Aujourd\'hui':isDone?'Complété':''}</td></tr>`;});document.getElementById('plan-tbody').innerHTML=rows;}
+// ═══ PLANNING v3 ════════════════════════════════════════════
+const PRIO_ICON={Important:'🔴',Moyen:'🟡',Bas:'🟢'};
+const STAT_CLS={'À faire':'stat-todo','En cours':'stat-inprogress','Fait':'stat-done','Reporté':'stat-postponed'};
+const STAT_ICON={'À faire':'⬜','En cours':'🔄','Fait':'✅','Reporté':'⏩'};
+
+function renderPlanning(){
+  const today=new Date().toISOString().slice(0,10);
+  const total=PLAN_30J.length;
+  const done=PLAN_30J.filter((item,i)=>{
+    const ov=planOverrides['p'+i]||{};
+    return (ov.status||(planDone.includes(item.date)?'Fait':'À faire'))==='Fait';
+  }).length;
+  document.getElementById('plan-done-count').textContent=done;
+  document.getElementById('plan-progress').style.width=Math.round(done/total*100)+'%';
+  document.getElementById('plan-done-label').textContent=done+' / '+total+' tâches';
+  const ti=PLAN_30J.find(p=>p.date===today);
+  document.getElementById('plan-axe-now').textContent=ti?ti.axe:'—';
+  const wd=new Date(today),ws=new Date('2026-06-01'),wn=Math.floor((wd-ws)/(7*24*3600*1000))+1;
+  document.getElementById('plan-week').textContent='S'+Math.max(1,Math.min(5,wn));
+  const overdue=PLAN_30J.filter((item,i)=>{
+    const ov=planOverrides['p'+i]||{};
+    const st=ov.status||(planDone.includes(item.date)?'Fait':'À faire');
+    return item.date<today&&st!=='Fait'&&st!=='Reporté';
+  });
+  const ob=document.getElementById('overdue-banner-plan');
+  if(ob) ob.innerHTML=overdue.length?`<div class="overdue-banner">⚠️ <strong>${overdue.length} tâche(s) en retard</strong> — ${overdue.slice(0,2).map(i=>i.action.slice(0,35)+'…').join(' · ')}</div>`:'';
+  let rows='';
+  PLAN_30J.forEach((item,i)=>{
+    const key='p'+i;
+    const ov=planOverrides[key]||{};
+    const status=ov.status||(planDone.includes(item.date)?'Fait':'À faire');
+    const priority=ov.priority||'Moyen';
+    const isToday=item.date===today;
+    const isOverdue=item.date<today&&status!=='Fait'&&status!=='Reporté';
+    const isDone=status==='Fait';
+    let cls=isOverdue?'plan-row-overdue':isToday?'today':status==='En cours'?'plan-row-inprogress':isDone?'done':'';
+    const action=ov.action||item.action;
+    const axe=ov.axe||item.axe;
+    const notes=ov.notes?`<br><span style="font-size:10px;color:var(--muted);font-style:italic">${esc(ov.notes.slice(0,60))}</span>`:'';
+    rows+=`<tr class="${cls}" onclick="openPlanModal(${i})">
+      <td style="text-align:center;font-size:14px">${PRIO_ICON[priority]}</td>
+      <td><strong style="font-size:12px">${item.day||item.date}</strong>${isToday?'<br><span style="font-size:9px;color:var(--accent);font-weight:700">AUJOURD\'HUI</span>':''}</td>
+      <td><span class="axe-badge axe-${axe.replace(/\s/g,'')}">${axe}</span></td>
+      <td>${esc(action)}${notes}</td>
+      <td><span class="stat-badge ${STAT_CLS[status]||'stat-todo'}">${STAT_ICON[status]||'⬜'} ${status}</span>${isOverdue?'<br><span style="font-size:9px;color:var(--red);font-weight:700">EN RETARD</span>':''}</td>
+    </tr>`;
+  });
+  document.getElementById('plan-tbody').innerHTML=rows;
+}
+
+function openPlanModal(i){
+  const item=PLAN_30J[i];
+  if(!item) return;
+  const ov=planOverrides['p'+i]||{};
+  const status=ov.status||(planDone.includes(item.date)?'Fait':'À faire');
+  const priority=ov.priority||'Moyen';
+  const action=ov.action||item.action;
+  const axe=ov.axe||item.axe;
+  const AXES=['Supports','Marketing','Commercial','Web','Marchés','Bilan','Admin'];
+  const PRIOS=['Important','Moyen','Bas'];
+  const STATS=['À faire','En cours','Fait','Reporté'];
+  openModal(`📋 ${item.day||item.date}`,`
+    <div class="form-group"><label class="form-label">Axe</label>
+      <select id="pm-axe" class="form-select">${AXES.map(a=>`<option ${a===axe?'selected':''}>${a}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="form-label">Action</label>
+      <textarea id="pm-action" class="form-textarea" rows="3">${esc(action)}</textarea></div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Priorité</label>
+        <select id="pm-prio" class="form-select">${PRIOS.map(p=>`<option ${p===priority?'selected':''}>${p}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Statut</label>
+        <select id="pm-stat" class="form-select">${STATS.map(s=>`<option ${s===status?'selected':''}>${s}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes / Contexte</label>
+      <textarea id="pm-notes" class="form-textarea" style="min-height:50px" placeholder="Ajouter des notes, un lien, un contact...">${esc(ov.notes||'')}</textarea></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">Date : ${item.date}</div>
+  `,[
+    {label:'💾 Enregistrer',cls:'btn-primary',fn:`savePlanItem(${i})`},
+    {label:'↩️ Réinitialiser',cls:'btn-outline',fn:`resetPlanItem(${i})`},
+    {label:'Fermer',cls:'btn-outline',fn:'closeModal()'}
+  ]);
+}
+
+function savePlanItem(i){
+  const key='p'+i;
+  const item=PLAN_30J[i];
+  const status=document.getElementById('pm-stat').value;
+  planOverrides[key]={
+    axe:document.getElementById('pm-axe').value,
+    action:document.getElementById('pm-action').value.trim(),
+    priority:document.getElementById('pm-prio').value,
+    status,
+    notes:document.getElementById('pm-notes').value.trim()
+  };
+  save('plan_overrides',planOverrides);
+  if(status==='Fait'&&!planDone.includes(item.date)){planDone.push(item.date);save('plan_done',planDone);}
+  else if(status!=='Fait'&&planDone.includes(item.date)){planDone=planDone.filter(d=>d!==item.date);save('plan_done',planDone);}
+  closeModal();renderPlanning();renderDashboard();toast('✅ Tâche mise à jour');
+}
+
+function resetPlanItem(i){
+  if(!confirm('Réinitialiser cette tâche ?')) return;
+  delete planOverrides['p'+i];
+  save('plan_overrides',planOverrides);
+  closeModal();renderPlanning();toast('↩️ Tâche réinitialisée');
+}
 
 // ═══ OFFRES ═════════════════════════════════════════════════
 function renderOffres(){const od=[{cls:'debal',name:'🔵 Debal Cyber',sub:'Audit & Protection Cybersécurité',color:'var(--accent)',stats:[{v:prospects.filter(p=>p.offre==='Debal Cyber').length,l:'Prospects'},{v:'48h',l:'Délai audit'},{v:'1 500€',l:'Prix d\'appel'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'CTA "Audit gratuit" en ligne'},{ok:false,t:'2 témoignages clients'},{ok:true,t:'Grille tarifaire définie'},{ok:false,t:'Landing page dédiée'}]},{cls:'info',name:'🟢 Infogérance',sub:'Pilotage SI Externalisé',color:'var(--green)',stats:[{v:prospects.filter(p=>p.offre==='Infogérance').length,l:'Prospects'},{v:'30€',l:'User/mois'},{v:'12 mois',l:'Engagement'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'Comparatif DSI vs Infogérance'},{ok:false,t:'Grille tarifaire publiée'},{ok:false,t:'Formulaire contact direct'},{ok:false,t:'SLA document finalisé'}]},{cls:'pem',name:'🟠 PEM Promisec',sub:'Gestion Accès & Identités',color:'var(--orange)',stats:[{v:prospects.filter(p=>p.offre==='PEM Promisec').length,l:'Prospects'},{v:'10j',l:'Déploiement'},{v:'NIS2',l:'Conformité'}],items:[{ok:true,t:'Plaquette v2 (en cours)'},{ok:false,t:'Logo Promisec intégré'},{ok:false,t:'Section FAQ réglementaire'},{ok:false,t:'Badges certifications'},{ok:false,t:'Démo vidéo disponible'}]}];let html='';od.forEach(o=>{const done=o.items.filter(i=>i.ok).length,pct=Math.round(done/o.items.length*100);html+=`<div class="offre-card ${o.cls}"><div class="offre-name" style="color:${o.color}">${o.name}</div><div class="offre-promise">${o.sub}</div><div class="offre-stat">${o.stats.map(s=>`<div class="ostat"><div class="ostat-val">${s.v}</div><div class="ostat-lbl">${s.l}</div></div>`).join('')}</div><div style="margin-bottom:10px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:700">COMPLÉTION ${pct}%</div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${o.color}"></div></div></div><ul class="checklist">${o.items.map(i=>`<li><span style="color:${i.ok?'var(--green)':'var(--orange)'}">${i.ok?'✅':'⏳'}</span>${esc(i.t)}</li>`).join('')}</ul></div>`;});document.getElementById('offres-grid').innerHTML=html;}
@@ -1094,7 +1211,7 @@ function importCSV(source){
 
 // ═══ SETTINGS ═══════════════════════════════════════════════
 function changePin(){const np=document.getElementById('new-pin').value,cp=document.getElementById('confirm-pin').value,msg=document.getElementById('pin-change-msg');if(!/^\d{4}$/.test(np)){msg.style.color='var(--red)';msg.textContent='PIN = 4 chiffres exactement.';return;}if(np!==cp){msg.style.color='var(--red)';msg.textContent='PINs différents.';return;}localStorage.setItem('kipsafe_pin',simpleHash(np));document.getElementById('new-pin').value='';document.getElementById('confirm-pin').value='';msg.style.color='var(--green)';msg.textContent='✅ PIN mis à jour !';setTimeout(()=>msg.textContent='',3000);}
-function resetData(){if(!confirm('⚠️ Effacer TOUTES les données ? Irréversible.'))return;['prospects','marches','plan_done','quick_tasks','next_id'].forEach(k=>localStorage.removeItem('kipsafe_'+k));prospects=[];marches=[];planDone=[];quickTasks=[];nextId=100;initApp();alert('Réinitialisé.');}
+function resetData(){if(!confirm('⚠️ Effacer TOUTES les données ? Irréversible.'))return;['prospects','marches','plan_done','quick_tasks','next_id','plan_overrides'].forEach(k=>{localStorage.removeItem('kipsafe_'+k);if(sbClient)sbClient.from('kipsafe_data').delete().eq('key',k).then(()=>{});});prospects=[];marches=[];planDone=[];quickTasks=[];nextId=100;planOverrides={};initApp();alert('Réinitialisé.');}
 
 // ═══ MODAL ══════════════════════════════════════════════════
 function openModal(title,body,buttons){document.getElementById('modal-title-text').textContent=title;document.getElementById('modal-body').innerHTML=body;document.getElementById('modal-actions').innerHTML=buttons.map(b=>`<button class="btn ${b.cls}" onclick="${b.fn}">${b.label}</button>`).join('');document.getElementById('modal').style.display='flex';}
