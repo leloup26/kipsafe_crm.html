@@ -427,6 +427,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
               <button id="cal2-btn-7" class="active" onclick="setCal2View(7)">7 jours</button>
               <button id="cal2-btn-30" onclick="setCal2View(30)">1 mois</button>
             </div>
+            <button class="btn btn-accent btn-sm" onclick="openAddScheduleItem(localDate())">➕ Ajouter</button>
           </div>
           <div class="cal-nav">
             <button onclick="cal2NavPrev()">‹</button>
@@ -1360,15 +1361,25 @@ function deleteScheduleItem(today,key){
 }
 
 function openAddScheduleItem(today){
-  openModal('➕ Nouveau créneau',`
-    <div class="grid-2">
-      <div class="form-group"><label class="form-label">Heure début</label><input id="na-time" type="time" class="form-input" value="17:30"></div>
-      <div class="form-group"><label class="form-label">Heure fin</label><input id="na-end" type="time" class="form-input" value="18:00"></div>
+  openModal('➕ Ajouter au planning',`
+    <div class="form-group"><label class="form-label">Type</label>
+      <select id="na-type" class="form-select" onchange="applyEventType()">
+        <option value="tache">✅ Tâche</option>
+        <option value="rdv">📞 RDV</option>
+        <option value="reunion">👥 Réunion</option>
+        <option value="formation">📚 Formation</option>
+        <option value="perso">📌 Personnel / Autre</option>
+      </select>
     </div>
-    <div class="form-group"><label class="form-label">Action *</label><textarea id="na-action" class="form-textarea" rows="2" placeholder="Décris ce que tu vas faire..."></textarea></div>
+    <div class="form-group"><label class="form-label">📅 Date</label><input id="na-date" type="date" class="form-input" value="${today}"></div>
     <div class="grid-2">
-      <div class="form-group"><label class="form-label">Axe</label><select id="na-axe" class="form-select"><option>Admin</option><option>Commercial</option><option>Marketing</option><option>Web</option><option>Supports</option><option>Marchés</option><option>Formation</option><option>Pause</option></select></div>
-      <div class="form-group"><label class="form-label">Icône</label><input id="na-icon" class="form-input" placeholder="🎯" value="🎯"></div>
+      <div class="form-group"><label class="form-label">Heure début</label><input id="na-time" type="time" class="form-input" value="10:00"></div>
+      <div class="form-group"><label class="form-label">Heure fin</label><input id="na-end" type="time" class="form-input" value="11:00"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Intitulé *</label><textarea id="na-action" class="form-textarea" rows="2" placeholder="Ex: RDV client Dupont / Réunion équipe / Préparer plaquette..."></textarea></div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Axe / Catégorie</label><select id="na-axe" class="form-select"><option>Commercial</option><option>Marketing</option><option>Web</option><option>Supports</option><option>Marchés</option><option>Formation</option><option>Admin</option><option>Pause</option></select></div>
+      <div class="form-group"><label class="form-label">Icône</label><input id="na-icon" class="form-input" placeholder="🎯" value="✅"></div>
     </div>
     <div class="form-group"><label class="form-label">🔁 Récurrence</label>
       <select id="na-recurring" class="form-select" onchange="document.getElementById('na-until-wrap').style.display=this.value!=='none'?'block':'none'">
@@ -1383,9 +1394,17 @@ function openAddScheduleItem(today){
       <input id="na-until" type="date" class="form-input" value="${today}">
     </div>
   `,[
-    {label:'Ajouter',cls:'btn-primary',fn:`addScheduleItem('${today}')`},
+    {label:'➕ Ajouter',cls:'btn-primary',fn:`addScheduleItem()`},
     {label:'Annuler',cls:'btn-outline',fn:'closeModal()'}
   ]);
+}
+
+function applyEventType(){
+  const t=document.getElementById('na-type').value;
+  const map={tache:{icon:'✅',axe:'Admin'},rdv:{icon:'📞',axe:'Commercial'},reunion:{icon:'👥',axe:'Admin'},formation:{icon:'📚',axe:'Formation'},perso:{icon:'📌',axe:'Admin'}};
+  const c=map[t]||map.tache;
+  document.getElementById('na-icon').value=c.icon;
+  document.getElementById('na-axe').value=c.axe;
 }
 
 function calcDur(time,end){
@@ -1394,18 +1413,20 @@ function calcDur(time,end){
   return mins>0?(mins>=60?Math.floor(mins/60)+'h'+(mins%60?mins%60+'min':''):mins+'min'):'';
 }
 
-function addScheduleItem(today){
+function addScheduleItem(){
+  const date=document.getElementById('na-date').value;
+  if(!date){alert('Date requise');return;}
   const time=document.getElementById('na-time').value;
   const end=document.getElementById('na-end').value;
   const action=document.getElementById('na-action').value.trim();
-  if(!action){alert('Action requise');return;}
+  if(!action){alert('Intitulé requis');return;}
   const axe=document.getElementById('na-axe').value;
   const icon=document.getElementById('na-icon').value||'🎯';
   const recurring=document.getElementById('na-recurring')?.value||'none';
   const recurringUntil=document.getElementById('na-until')?.value||'';
-  scheduleCustom.push({id:Date.now(),date:today,time,end,dur:calcDur(time,end),axe,icon,action,done:false,recurring,recurringUntil});
+  scheduleCustom.push({id:Date.now(),date,time,end,dur:calcDur(time,end),axe,icon,action,done:false,recurring,recurringUntil});
   save('schedule_custom',scheduleCustom);
-  closeModal();renderScheduleToday();toast('✅ Créneau ajouté'+(recurring!=='none'?' ('+RECUR_LABEL[recurring]+')':''));
+  closeModal();refreshScheduleViews();toast('✅ Ajouté au planning'+(recurring!=='none'?' ('+RECUR_LABEL[recurring]+')':''));
 }
 function renderPipelineSummary(){const pp=onlyProspects();const counts={};STATUTS.forEach(s=>counts[s]=0);pp.forEach(p=>{if(counts[p.statut]!==undefined)counts[p.statut]++;});const colors={Nouveau:'#0369a1',Contacté:'#1d4ed8',RDV:'#059669',Proposition:'#d97706',Signé:'#228B22',Perdu:'#C00000'};let html='<div style="display:flex;flex-direction:column;gap:6px">';STATUTS.forEach(s=>{const pct=pp.length?Math.round(counts[s]/pp.length*100):0;html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:78px;color:${colors[s]};font-weight:700">${s}</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:${colors[s]}"></div></div><span style="width:20px;text-align:right;color:var(--muted)">${counts[s]}</span></div>`;});html+='</div>';document.getElementById('pipeline-summary').innerHTML=html;}
 function renderPlanTodayAction(){const today=localDate();const item=PLAN_30J.find(p=>p.date===today);if(!item){document.getElementById('plan-today-action').innerHTML='<div class="empty"><div class="empty-icon">🗓️</div><div class="empty-text">Pas d\'action planifiée aujourd\'hui</div></div>';return;}const done=planDone.includes(item.date);document.getElementById('plan-today-action').innerHTML=`<div style="background:var(--light);border-radius:10px;padding:14px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="axe-badge axe-${item.axe}">${item.axe}</span><button class="btn btn-sm ${done?'btn-success':'btn-outline'}" onclick="togglePlanDone('${item.date}')">${done?'✅ Fait':'Marquer fait'}</button></div><div style="font-size:13px;font-weight:600">${item.action}</div></div>`;}
@@ -1948,7 +1969,7 @@ function openDayDetail(ds){
       </div>`;
     }).join('');
   }
-  openModal(`📅 ${titre} (${events.length})`,body,[{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
+  openModal(`📅 ${titre} (${events.length})`,body,[{label:'➕ Ajouter (tâche / RDV / réunion)',cls:'btn-primary',fn:`openAddScheduleItem('${ds}')`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
 }
 
 function renderCalendar2(){
