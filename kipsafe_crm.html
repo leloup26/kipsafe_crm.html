@@ -205,23 +205,26 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .cal-day-name{font-size:10px;font-weight:700;color:var(--muted);text-align:center;padding:3px 0;text-transform:uppercase}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 /* Cellule jour */
-.cal-cell{border-radius:8px;padding:6px;border:2px solid var(--border);background:#fff;min-height:68px;cursor:pointer;transition:.15s;position:relative}
+.cal-cell{border-radius:8px;padding:8px;border:2px solid var(--border);background:#fff;min-height:90px;cursor:pointer;transition:.15s;position:relative}
 .cal-cell:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(0,174,239,.15)}
 .cal-cell.cal-today{border-color:var(--accent);background:#eff9ff}
 .cal-cell.cal-overdue{border-color:var(--red);background:#fef2f2}
 .cal-cell.cal-done-all{border-color:#86efac;background:#f0fdf4}
-.cal-cell.cal-other{opacity:.35;cursor:default;min-height:40px}
+.cal-cell.cal-other{opacity:.35;cursor:default;min-height:48px}
 .cal-cell.cal-weekend{background:#fafafa}
-.cal-num{font-size:13px;font-weight:800;color:var(--primary);margin-bottom:3px;line-height:1}
+.cal-num{font-size:15px;font-weight:800;color:var(--primary);margin-bottom:5px;line-height:1}
 .cal-cell.cal-today .cal-num{color:var(--accent)}
 .cal-cell.cal-overdue .cal-num{color:var(--red)}
-.cal-tasks{display:flex;flex-direction:column;gap:2px}
-.cal-dot{font-size:9px;line-height:1.4;display:flex;align-items:flex-start;gap:2px}
+.cal-tasks{display:flex;flex-direction:column;gap:3px}
+.cal-dot{font-size:11px;line-height:1.35;display:flex;align-items:flex-start;gap:3px}
 .cal-dot.done-task{opacity:.5;text-decoration:line-through}
-.cal-more{font-size:9px;color:var(--accent);font-weight:700}
-/* Vue 7 jours — cellules plus grandes */
-.cal-grid.view7{grid-template-columns:repeat(7,1fr)}
-.cal-grid.view7 .cal-cell{min-height:100px}
+.cal-more{font-size:10px;color:var(--accent);font-weight:700}
+/* Vue 7 jours — cellules grandes et lisibles */
+.cal-grid.view7{grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-grid.view7 .cal-cell{min-height:260px;padding:10px}
+.cal-grid.view7 .cal-num{font-size:17px;margin-bottom:8px}
+.cal-grid.view7 .cal-dot{font-size:12px;line-height:1.45;padding:3px 5px;border-radius:5px;background:rgba(0,0,0,.025)}
+.cal-grid.view7 .cal-tasks{gap:4px}
 .plan-row-overdue{background:#fef2f2!important}.plan-row-overdue td{color:#7f1d1d}
 .plan-row-inprogress{background:#eff9ff!important}
 .plan-table tbody tr{cursor:pointer;transition:.1s}.plan-table tbody tr:hover td{background:#f8fbff!important}
@@ -285,6 +288,10 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
   .s-axe{display:none}
   .s-dur{display:none}
   .s-time{min-width:80px;font-size:11px}
+  /* Calendrier 7 jours → liste verticale sur mobile */
+  .cal-grid.view7{grid-template-columns:1fr}
+  .cal-grid.view7 .cal-cell{min-height:auto}
+  .cal-days-header{display:none}
 }
 </style>
 </head>
@@ -1842,7 +1849,7 @@ function calCellHtml(ds,todayStr,isCurrent,maxItems){
   const isWeekend=new Date(ds+'T12:00:00').getDay()===0||new Date(ds+'T12:00:00').getDay()===6;
   let cls='cal-cell'+(!isCurrent?' cal-other':isToday?' cal-today':hasOverdue?' cal-overdue':allDone&&events.length?' cal-done-all':isWeekend?' cal-weekend':'');
   if(hasRdv&&!isToday&&!hasOverdue) cls+=' '+'';
-  const evHtml=events.slice(0,maxItems).map(ev=>{const t=ev.time?`<b style="color:var(--secondary)">${ev.time}</b> `:'';return `<div class="cal-dot ${ev.done?'done-task':''}" style="color:${ev.color}">${t}${ev.icon} ${esc(ev.label.slice(0,maxItems===2?18:30))}</div>`;}).join('')+(events.length>maxItems?`<div class="cal-more">+${events.length-maxItems} autres</div>`:(events.length===0&&isCurrent?'<div style="font-size:9px;color:var(--muted)">Libre</div>':''));
+  const evHtml=events.slice(0,maxItems).map(ev=>{const t=ev.time?`<b style="color:var(--secondary)">${ev.time}</b> `:'';return `<div class="cal-dot ${ev.done?'done-task':''}" style="color:${ev.color}">${t}${ev.icon} ${esc(ev.label.slice(0,maxItems===2?18:42))}</div>`;}).join('')+(events.length>maxItems?`<div class="cal-more">+${events.length-maxItems} autres</div>`:(events.length===0&&isCurrent?'<div style="font-size:9px;color:var(--muted)">Libre</div>':''));
   const day=new Date(ds+'T12:00:00').getDate();
   return `<div class="${cls}" style="${hasRdv&&isCurrent?'outline:2px solid var(--orange);outline-offset:-2px':''}"><div class="cal-num">${day}${hasRdv&&isCurrent?'<span style="font-size:9px;color:var(--orange);margin-left:3px">📞</span>':''}</div><div class="cal-tasks">${evHtml}</div></div>`;
 }
