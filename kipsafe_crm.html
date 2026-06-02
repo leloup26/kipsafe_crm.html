@@ -1851,7 +1851,34 @@ function calCellHtml(ds,todayStr,isCurrent,maxItems){
   if(hasRdv&&!isToday&&!hasOverdue) cls+=' '+'';
   const evHtml=events.slice(0,maxItems).map(ev=>{const t=ev.time?`<b style="color:var(--secondary)">${ev.time}</b> `:'';return `<div class="cal-dot ${ev.done?'done-task':''}" style="color:${ev.color}">${t}${ev.icon} ${esc(ev.label.slice(0,maxItems===2?18:42))}</div>`;}).join('')+(events.length>maxItems?`<div class="cal-more">+${events.length-maxItems} autres</div>`:(events.length===0&&isCurrent?'<div style="font-size:9px;color:var(--muted)">Libre</div>':''));
   const day=new Date(ds+'T12:00:00').getDate();
-  return `<div class="${cls}" style="${hasRdv&&isCurrent?'outline:2px solid var(--orange);outline-offset:-2px':''}"><div class="cal-num">${day}${hasRdv&&isCurrent?'<span style="font-size:9px;color:var(--orange);margin-left:3px">📞</span>':''}</div><div class="cal-tasks">${evHtml}</div></div>`;
+  const clickAttr=isCurrent?`onclick="openDayDetail('${ds}')"`:'';
+  return `<div class="${cls}" ${clickAttr} style="${hasRdv&&isCurrent?'outline:2px solid var(--orange);outline-offset:-2px':''}"><div class="cal-num">${day}${hasRdv&&isCurrent?'<span style="font-size:9px;color:var(--orange);margin-left:3px">📞</span>':''}</div><div class="cal-tasks">${evHtml}</div></div>`;
+}
+
+function openDayDetail(ds){
+  const events=getAllEventsForDate(ds);
+  const d=new Date(ds+'T12:00:00');
+  const jours=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const mois=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const titre=`${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]} ${d.getFullYear()}`;
+  const typeLabel={programme:'Programme',task:'Tâche plan',rdv:'RDV',schedule:'Créneau',objectif:'Objectif'};
+  let body;
+  if(!events.length){
+    body='<div style="text-align:center;padding:30px;color:var(--muted)"><div style="font-size:34px;margin-bottom:8px">🌴</div>Aucun événement ce jour-là</div>';
+  } else {
+    body=events.map(ev=>{
+      const t=ev.time?`<span style="font-weight:800;color:var(--secondary);min-width:48px;display:inline-block">${ev.time}</span>`:'<span style="min-width:48px;display:inline-block;color:var(--muted)">—</span>';
+      const action=ev.type==='rdv'&&ev.prospectId?`onclick="closeModal();viewProspect(${ev.prospectId})" style="cursor:pointer"`:ev.type==='objectif'&&ev.objectifId?`onclick="closeModal();viewObjectifDetail('${ev.objectifId}')" style="cursor:pointer"`:'';
+      return `<div ${action} style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:8px;border:1px solid var(--border);margin-bottom:6px;border-left:4px solid ${ev.color};${ev.done?'opacity:.55':''}">
+        ${t}
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;${ev.done?'text-decoration:line-through':''}">${ev.icon} ${esc(ev.label)}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">${typeLabel[ev.type]||ev.type}${ev.axe?' · '+ev.axe:''} · ${ev.status}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  openModal(`📅 ${titre} (${events.length})`,body,[{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
 }
 
 function renderCalendar2(){
