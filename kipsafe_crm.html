@@ -1207,9 +1207,9 @@ function renderScheduleToday(){
   items.forEach(item=>{
     const[sh,sm]=item.time.split(':').map(Number);
     const[eh,em]=item.end.split(':').map(Number);
-    const past=!item.done&&(h>eh||(h===eh&&m>=em));
     const isNow=h>=sh&&m>=sm&&(h<eh||(h===eh&&m<em));
-    let cls=item.done?'done':past?'done':'';
+    // On ne barre QUE si réellement marqué fait (pas automatiquement quand l'heure passe)
+    let cls=item.done?'done':'';
     if(isNow&&!item.done) cls='now';
     if(item.axe==='Pause') cls='break';
     const axeClass=item.axe?`axe-badge axe-${item.axe.replace(/\s/g,'')}`:'';
@@ -1572,6 +1572,19 @@ function resetPlanItem(i){
   closeModal();renderPlanning();toast('↩️ Tâche réinitialisée');
 }
 
+function togglePlanDoneIdx(i){
+  const item=PLAN_30J[i];
+  if(!item) return;
+  const key='p'+i;
+  const cur=getItemStatus(item,i);
+  const newStatus=cur==='Fait'?'À faire':'Fait';
+  planOverrides[key]={...(planOverrides[key]||{}),status:newStatus};
+  save('plan_overrides',planOverrides);
+  if(newStatus==='Fait'&&!planDone.includes(item.date)){planDone.push(item.date);save('plan_done',planDone);}
+  else if(newStatus!=='Fait'&&planDone.includes(item.date)){planDone=planDone.filter(d=>d!==item.date);save('plan_done',planDone);}
+  renderPlanning();renderDashboard();
+}
+
 // ═══ CALENDRIER ═════════════════════════════════════════════
 let calView=7, calOffset=0;
 const CAL_DAYS=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
@@ -1868,13 +1881,28 @@ function openDayDetail(ds){
   } else {
     body=events.map(ev=>{
       const t=ev.time?`<span style="font-weight:800;color:var(--secondary);min-width:48px;display:inline-block">${ev.time}</span>`:'<span style="min-width:48px;display:inline-block;color:var(--muted)">—</span>';
-      const action=ev.type==='rdv'&&ev.prospectId?`onclick="closeModal();viewProspect(${ev.prospectId})" style="cursor:pointer"`:ev.type==='objectif'&&ev.objectifId?`onclick="closeModal();viewObjectifDetail('${ev.objectifId}')" style="cursor:pointer"`:'';
-      return `<div ${action} style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:8px;border:1px solid var(--border);margin-bottom:6px;border-left:4px solid ${ev.color};${ev.done?'opacity:.55':''}">
+      // Handler d'édition selon le type
+      let editFn='';
+      if(ev.type==='rdv'&&ev.prospectId) editFn=`closeModal();viewProspect(${ev.prospectId})`;
+      else if(ev.type==='objectif'&&ev.objectifId) editFn=`closeModal();openObjectifModal('${ev.objectifId}')`;
+      else if(ev.type==='programme'&&ev.key) editFn=`closeModal();openScheduleItemModal('${ds}','${ev.key}')`;
+      else if(ev.type==='schedule'&&ev.itemId!==undefined) editFn=`closeModal();openScheduleItemModal('${ds}','custom_${ev.itemId}')`;
+      else if(ev.type==='task'&&ev.planIdx!==undefined) editFn=`closeModal();openPlanModal(${ev.planIdx})`;
+      const clickAttr=editFn?`onclick="${editFn}" style="cursor:pointer"`:'';
+      // Bouton fait/à faire pour programme, schedule et task
+      let doneBtn='';
+      if(ev.type==='programme'||ev.type==='schedule'){
+        doneBtn=`<span onclick="event.stopPropagation();toggleScheduleDone('${ds}','${ev.type==='schedule'?'custom_'+ev.itemId:ev.key}');closeModal();setTimeout(()=>openDayDetail('${ds}'),50)" style="font-size:18px;cursor:pointer" title="${ev.done?'Marquer à faire':'Marquer fait'}">${ev.done?'↩️':'⬜'}</span>`;
+      } else if(ev.type==='task'){
+        doneBtn=`<span onclick="event.stopPropagation();togglePlanDoneIdx(${ev.planIdx});closeModal();setTimeout(()=>openDayDetail('${ds}'),50)" style="font-size:18px;cursor:pointer" title="${ev.done?'Marquer à faire':'Marquer fait'}">${ev.done?'✅':'⬜'}</span>`;
+      }
+      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:8px;border:1px solid var(--border);margin-bottom:6px;border-left:4px solid ${ev.color};${ev.done?'opacity:.55':''}">
         ${t}
-        <div style="flex:1">
+        <div style="flex:1" ${clickAttr}>
           <div style="font-size:13px;font-weight:600;${ev.done?'text-decoration:line-through':''}">${ev.icon} ${esc(ev.label)}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">${typeLabel[ev.type]||ev.type}${ev.axe?' · '+ev.axe:''} · ${ev.status}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">${typeLabel[ev.type]||ev.type}${ev.axe?' · '+ev.axe:''} · ${ev.status} · ✏️ cliquer pour modifier</div>
         </div>
+        ${doneBtn}
       </div>`;
     }).join('');
   }
