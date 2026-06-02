@@ -1025,6 +1025,21 @@ let scheduleOverrides=load('schedule_overrides',{});
 let scheduleHidden=load('schedule_hidden',[]);
 let scheduleCustom=load('schedule_custom',[]);
 let scheduleRecurringDone=load('schedule_recurring_done',{});
+let occStatus=load('occ_status',{});
+const OCC_STATUS=[
+  {v:'À faire', icon:'⬜', color:'#64748b'},
+  {v:'En cours',icon:'🔄', color:'#1d4ed8'},
+  {v:'Terminé', icon:'✅', color:'#15803d'},
+  {v:'Reporté', icon:'⏩', color:'#7c3aed'},
+  {v:'Annulé',  icon:'❌', color:'#b91c1c'}
+];
+function occKeyOf(ev,ds){
+  if(ev.type==='programme'&&ev.key) return ds+'|prog|'+ev.key;
+  if(ev.type==='schedule'&&ev.itemId!==undefined) return ds+'|cust|'+ev.itemId;
+  if(ev.type==='task'&&ev.planIdx!==undefined) return ds+'|task|'+ev.planIdx;
+  if(ev.type==='rdv'&&ev.prospectId!==undefined) return ds+'|rdv|'+ev.prospectId;
+  return null;
+}
 
 // ═══ PIN ════════════════════════════════════════════════════
 let pinBuffer='',pinMode='check',pinSetup1='';
@@ -1738,6 +1753,17 @@ function getAllEventsForDate(dateStr){
     if(o.deadline!==dateStr) return;
     events.push({type:'objectif',label:`🎯 Deadline : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Atteint'?'var(--green)':o.status==='En cours'?'var(--purple)':'var(--muted)',icon:'🎯',done:o.status==='Atteint',objectifId:o.id});
   });
+  // Appliquer le statut manuel (occStatus) qui prime sur tout
+  events.forEach(ev=>{
+    const k=occKeyOf(ev,dateStr);
+    if(k&&occStatus[k]){
+      ev.status=occStatus[k];
+      const cfg=OCC_STATUS.find(s=>s.v===occStatus[k]);
+      if(cfg) ev.color=cfg.color;
+      ev.done=(occStatus[k]==='Terminé'||occStatus[k]==='Annulé');
+      ev.cancelled=(occStatus[k]==='Annulé');
+    }
+  });
   // Trier : événements avec heure en premier (par heure croissante), puis sans heure par type
   events.sort((a,b)=>{
     if(a.time&&b.time) return a.time<b.time?-1:1;
@@ -1952,24 +1978,50 @@ function openDayDetail(ds){
       else if(ev.type==='schedule'&&ev.itemId!==undefined) editFn=`closeModal();openScheduleItemModal('${ds}','custom_${ev.itemId}')`;
       else if(ev.type==='task'&&ev.planIdx!==undefined) editFn=`closeModal();openPlanModal(${ev.planIdx})`;
       const clickAttr=editFn?`onclick="${editFn}" style="cursor:pointer"`:'';
-      // Bouton fait/à faire pour programme, schedule et task
-      let doneBtn='';
-      if(ev.type==='programme'||ev.type==='schedule'){
-        doneBtn=`<span onclick="event.stopPropagation();toggleScheduleDone('${ds}','${ev.type==='schedule'?'custom_'+ev.itemId:ev.key}');closeModal();setTimeout(()=>openDayDetail('${ds}'),50)" style="font-size:18px;cursor:pointer" title="${ev.done?'Marquer à faire':'Marquer fait'}">${ev.done?'↩️':'⬜'}</span>`;
-      } else if(ev.type==='task'){
-        doneBtn=`<span onclick="event.stopPropagation();togglePlanDoneIdx(${ev.planIdx});closeModal();setTimeout(()=>openDayDetail('${ds}'),50)" style="font-size:18px;cursor:pointer" title="${ev.done?'Marquer à faire':'Marquer fait'}">${ev.done?'✅':'⬜'}</span>`;
+      // Sélecteur de statut (sauf objectif qui a son propre statut)
+      const k=occKeyOf(ev,ds);
+      let statusBtns='';
+      if(k){
+        const cur=ev.status;
+        statusBtns='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">'+OCC_STATUS.map(s=>{
+          const active=cur===s.v||(s.v==='À faire'&&(cur==='À faire'||cur==='RDV'||cur==='Nouveau'));
+          return `<button onclick="event.stopPropagation();setEventStatus('${k}','${s.v}','${ds}')" style="font-size:10px;padding:3px 8px;border-radius:99px;cursor:pointer;border:1px solid ${active?s.color:'var(--border)'};background:${active?s.color:'#fff'};color:${active?'#fff':s.color};font-weight:700">${s.icon} ${s.v}</button>`;
+        }).join('')+'</div>';
       }
-      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:8px;border:1px solid var(--border);margin-bottom:6px;border-left:4px solid ${ev.color};${ev.done?'opacity:.55':''}">
-        ${t}
-        <div style="flex:1" ${clickAttr}>
-          <div style="font-size:13px;font-weight:600;${ev.done?'text-decoration:line-through':''}">${ev.icon} ${esc(ev.label)}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">${typeLabel[ev.type]||ev.type}${ev.axe?' · '+ev.axe:''} · ${ev.status} · ✏️ cliquer pour modifier</div>
+      const strike=(ev.done||ev.cancelled)?'text-decoration:line-through':'';
+      return `<div style="padding:10px;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;border-left:4px solid ${ev.color};${ev.cancelled?'opacity:.5':ev.done?'opacity:.7':''}">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          ${t}
+          <div style="flex:1" ${clickAttr}>
+            <div style="font-size:13px;font-weight:600;${strike}">${ev.icon} ${esc(ev.label)}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">${typeLabel[ev.type]||ev.type}${ev.axe?' · '+ev.axe:''} · <b style="color:${ev.color}">${ev.status}</b> · ✏️ modifier</div>
+          </div>
         </div>
-        ${doneBtn}
+        ${statusBtns}
       </div>`;
     }).join('');
   }
   openModal(`📅 ${titre} (${events.length})`,body,[{label:'➕ Ajouter (tâche / RDV / réunion)',cls:'btn-primary',fn:`openAddScheduleItem('${ds}')`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
+}
+
+function setEventStatus(key,status,ds){
+  // Si on remet "À faire", on retire l'override pour revenir au comportement par défaut
+  if(status==='À faire') delete occStatus[key];
+  else occStatus[key]=status;
+  save('occ_status',occStatus);
+  // Pour une tâche du plan, synchroniser aussi planOverrides
+  const parts=key.split('|');
+  if(parts[1]==='task'){
+    const i=parseInt(parts[2]);
+    const mapToPlan={'Terminé':'Fait','En cours':'En cours','Reporté':'Reporté','Annulé':'Abandonné','À faire':'À faire'};
+    const ps=mapToPlan[status]||'À faire';
+    planOverrides['p'+i]={...(planOverrides['p'+i]||{}),status:ps};
+    save('plan_overrides',planOverrides);
+    const item=PLAN_30J[i];
+    if(item){ if(ps==='Fait'&&!planDone.includes(item.date)){planDone.push(item.date);save('plan_done',planDone);} else if(ps!=='Fait'&&planDone.includes(item.date)){planDone=planDone.filter(d=>d!==item.date);save('plan_done',planDone);} }
+  }
+  refreshScheduleViews();renderObjectifDashboard();
+  closeModal();setTimeout(()=>openDayDetail(ds),60);
 }
 
 function renderCalendar2(){
