@@ -1256,11 +1256,29 @@ function toggleScheduleDone(today,key){
   renderScheduleToday();
 }
 
+function getScheduleItemByKey(dateStr,key){
+  if(key.startsWith('custom_')){
+    const rawId=key.slice(7);
+    const s=scheduleCustom.find(x=>String(x.id)===rawId);
+    if(!s) return null;
+    const isRec=s.recurring&&s.recurring!=='none';
+    const done=isRec?(scheduleRecurringDone[s.id+'_'+dateStr]||false):(s.done||false);
+    return {time:s.time,end:s.end,dur:s.dur,axe:s.axe||'',icon:s.icon||'',action:s.action,done,isCustom:true,isRec};
+  }
+  const dow=new Date(dateStr+'T12:00:00').getDay();
+  const base=getBaseSchedule(dateStr,dow);
+  if(!base) return null;
+  const idx=parseInt(key.split('_').pop());
+  const s=base.sched[idx];
+  if(!s) return null;
+  const ov=scheduleOverrides[key]||{};
+  return {time:ov.time||s.time,end:ov.end||s.end,dur:ov.dur||s.dur,axe:ov.axe||s.axe||'',icon:ov.icon!==undefined?ov.icon:(s.icon||''),action:ov.action||s.action,done:ov.done||false,isCustom:false,isRec:false};
+}
+
 function openScheduleItemModal(today,key){
-  const items=getFullSchedule(today);
-  const item=items.find(i=>i.key===key);
-  if(!item) return;
-  const AXES=['','Admin','Commercial','Marketing','Web','Supports','Marchés','Pause'];
+  const item=getScheduleItemByKey(today,key);
+  if(!item){toast('⚠️ Créneau introuvable');return;}
+  const AXES=['','Admin','Commercial','Marketing','Web','Supports','Marchés','Formation','Pause'];
   openModal(`✏️ Modifier le créneau`,`
     <div class="grid-2">
       <div class="form-group"><label class="form-label">Heure début</label><input id="si-time" type="time" class="form-input" value="${item.time}"></div>
@@ -1284,6 +1302,11 @@ function openScheduleItemModal(today,key){
   ]);
 }
 
+function refreshScheduleViews(){
+  renderScheduleToday();
+  if(document.getElementById('panel-calendrier')?.classList.contains('active')) renderCalendrierTab();
+}
+
 function saveScheduleItem(today,key){
   const time=document.getElementById('si-time').value;
   const end=document.getElementById('si-end').value;
@@ -1291,32 +1314,48 @@ function saveScheduleItem(today,key){
   const axe=document.getElementById('si-axe').value;
   const icon=document.getElementById('si-icon').value;
   const done=document.getElementById('si-done').checked;
-  // Calculer durée
   const [sh,sm]=time.split(':').map(Number), [eh,em]=end.split(':').map(Number);
   const mins=(eh*60+em)-(sh*60+sm);
   const dur=mins>0?(mins>=60?Math.floor(mins/60)+'h'+(mins%60?''+mins%60:'')+'min':mins+'min'):'';
   if(key.startsWith('custom_')){
-    const id=parseInt(key.replace('custom_',''));
-    scheduleCustom=scheduleCustom.map(s=>s.id===id?{...s,time,end,dur,axe,icon,action,done}:s);
+    const rawId=key.slice(7);
+    const s=scheduleCustom.find(x=>String(x.id)===rawId);
+    const isRec=s&&s.recurring&&s.recurring!=='none';
+    scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,time,end,dur,axe,icon,action,...(isRec?{}:{done})}:x);
     save('schedule_custom',scheduleCustom);
+    if(isRec){ // le "fait" est par date pour les récurrents
+      scheduleRecurringDone[rawId+'_'+today]=done;
+      save('schedule_recurring_done',scheduleRecurringDone);
+    }
   } else {
     scheduleOverrides[key]={...scheduleOverrides[key]||{},time,end,dur,axe,icon,action,done};
     save('schedule_overrides',scheduleOverrides);
   }
-  closeModal();renderScheduleToday();toast('✅ Créneau mis à jour');
+  closeModal();refreshScheduleViews();toast('✅ Créneau mis à jour');
 }
 
 function deleteScheduleItem(today,key){
   if(!confirm('Supprimer ce créneau ?')) return;
   if(key.startsWith('custom_')){
-    const id=parseInt(key.replace('custom_',''));
-    scheduleCustom=scheduleCustom.filter(s=>s.id!==id);
-    save('schedule_custom',scheduleCustom);
+    const rawId=key.slice(7);
+    const s=scheduleCustom.find(x=>String(x.id)===rawId);
+    if(s&&s.recurring&&s.recurring!=='none'){
+      if(confirm('Supprimer TOUTES les occurrences ? (Annuler = supprimer seulement ce jour)')){
+        scheduleCustom=scheduleCustom.filter(x=>String(x.id)!==rawId);
+        save('schedule_custom',scheduleCustom);
+      } else {
+        scheduleHidden.push('rec_'+rawId+'_'+today);
+        save('schedule_hidden',scheduleHidden);
+      }
+    } else {
+      scheduleCustom=scheduleCustom.filter(x=>String(x.id)!==rawId);
+      save('schedule_custom',scheduleCustom);
+    }
   } else {
     scheduleHidden.push(key);
     save('schedule_hidden',scheduleHidden);
   }
-  closeModal();renderScheduleToday();toast('🗑️ Créneau supprimé');
+  closeModal();refreshScheduleViews();toast('🗑️ Créneau supprimé');
 }
 
 function openAddScheduleItem(today){
@@ -1613,6 +1652,7 @@ function isRecurringOnDate(s,dateStr){
   const start=new Date(s.date+'T12:00:00');
   const check=new Date(dateStr+'T12:00:00');
   if(check<start) return false;
+  if(scheduleHidden.includes('rec_'+s.id+'_'+dateStr)) return false; // occurrence supprimée
   if(s.recurringUntil){const until=new Date(s.recurringUntil+'T23:59:59');if(check>until) return false;}
   if(!s.recurring||s.recurring==='none') return s.date===dateStr;
   if(s.recurring==='daily') return true;
