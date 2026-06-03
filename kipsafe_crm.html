@@ -35,9 +35,16 @@ header{background:var(--primary);color:#fff;padding:0 20px;display:flex;align-it
 .h-date{opacity:.8}
 .lock-btn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s}
 .lock-btn:hover{background:rgba(255,255,255,.3)}
-nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid var(--border);flex-shrink:0;overflow-x:auto}
-.tab-btn{padding:13px 14px;border:none;background:transparent;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:.2s}
+nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid var(--border);flex-shrink:0;overflow-x:visible;align-items:center}
+.tab-btn{padding:13px 16px;border:none;background:transparent;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:.2s}
 .tab-btn.active{color:var(--primary);border-bottom-color:var(--accent);font-weight:700}
+.more-menu{position:relative;display:inline-block}
+.more-dropdown{display:none;position:absolute;top:100%;right:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 30px rgba(10,46,92,.18);min-width:210px;z-index:200;padding:6px;margin-top:2px}
+.more-dropdown.open{display:block}
+.more-item{display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:transparent;cursor:pointer;font-size:13px;color:var(--text);border-radius:7px;transition:.12s;white-space:nowrap}
+.more-item:hover{background:var(--light);color:var(--primary)}
+.more-item.active{background:#eff9ff;color:var(--primary);font-weight:700}
+#more-btn.has-active{color:var(--primary);font-weight:700}
 .tab-btn:hover:not(.active){color:var(--secondary)}
 .panels{flex:1;overflow-y:auto;padding:20px}
 .panel{display:none}.panel.active{display:block}
@@ -323,16 +330,22 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     <div class="h-right"><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span id="lock-timer" style="font-size:10px;color:rgba(255,255,255,.6);margin-right:6px"></span><span class="h-date" id="header-date"></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
   </header>
   <nav>
-    <button class="tab-btn active" onclick="showTab('dashboard')">🏠 Dashboard</button>
-    <button class="tab-btn" onclick="showTab('prospects')">👥 Prospects</button>
-    <button class="tab-btn" onclick="showTab('planning')">🎯 Objectif</button>
-    <button class="tab-btn" onclick="showTab('calendrier')">📆 Calendrier</button>
-    <button class="tab-btn" onclick="showTab('documents')">📁 Documents</button>
-    <button class="tab-btn" onclick="showTab('pitch')">📢 Pitch</button>
-    <button class="tab-btn" onclick="showTab('offres')">💼 Offres</button>
-    <button class="tab-btn" onclick="showTab('marches')">🏛️ Marchés</button>
-    <button class="tab-btn" onclick="showTab('integrations')">🔗 Intégrations</button>
-    <button class="tab-btn" onclick="showTab('settings')">⚙️ Paramètres</button>
+    <button class="tab-btn active" data-tab="dashboard" onclick="showTab('dashboard')">🏠 Accueil</button>
+    <button class="tab-btn" data-tab="prospects" onclick="showTab('prospects')">👥 Prospects</button>
+    <button class="tab-btn" data-tab="calendrier" onclick="showTab('calendrier')">📆 Calendrier</button>
+    <button class="tab-btn" data-tab="planning" onclick="showTab('planning')">🎯 Objectif</button>
+    <div class="more-menu">
+      <button class="tab-btn" id="more-btn" onclick="toggleMoreMenu(event)">➕ Plus ▾</button>
+      <div class="more-dropdown" id="more-dropdown">
+        <button class="more-item" data-tab="pitch" onclick="showTab('pitch')">📢 Pitch commercial</button>
+        <button class="more-item" data-tab="offres" onclick="showTab('offres')">💼 Offres</button>
+        <button class="more-item" data-tab="marches" onclick="showTab('marches')">🏛️ Marchés publics</button>
+        <button class="more-item" data-tab="documents" onclick="showTab('documents')">📁 Documents</button>
+        <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+        <button class="more-item" data-tab="integrations" onclick="showTab('integrations')">🔗 Intégrations</button>
+        <button class="more-item" data-tab="settings" onclick="showTab('settings')">⚙️ Paramètres</button>
+      </div>
+    </div>
   </nav>
   <div class="panels">
 
@@ -1168,7 +1181,22 @@ function setSyncPill(s){
   el.textContent=cfg.t;el.style.background=cfg.bg;el.style.color=cfg.c;
 }
 function updateHeaderDate(){const now=new Date();const days=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];const months=['jan','fév','mars','avr','mai','juin','juil','août','sep','oct','nov','déc'];document.getElementById('header-date').textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear()+' — '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
-function showTab(tab){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+tab).classList.add('active');document.querySelectorAll('.tab-btn').forEach(b=>{if(b.getAttribute('onclick').includes("'"+tab+"'"))b.classList.add('active');});if(tab==='dashboard')renderDashboard();if(tab==='planning')renderObjectifDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='pitch')renderPitch();if(tab==='documents')loadDocuments();}
+const MAIN_TABS=['dashboard','prospects','calendrier','planning'];
+function showTab(tab){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+  // Marquer l'onglet/élément actif via data-tab
+  document.querySelectorAll('.tab-btn,.more-item').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('[data-tab="'+tab+'"]').forEach(b=>b.classList.add('active'));
+  // Surligner le bouton "Plus" si l'onglet actif est dans le menu
+  const moreBtn=document.getElementById('more-btn');
+  if(moreBtn) moreBtn.classList.toggle('has-active',!MAIN_TABS.includes(tab));
+  closeMoreMenu();
+  if(tab==='dashboard')renderDashboard();if(tab==='planning')renderObjectifDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='pitch')renderPitch();if(tab==='documents')loadDocuments();
+}
+function toggleMoreMenu(e){e.stopPropagation();document.getElementById('more-dropdown').classList.toggle('open');}
+function closeMoreMenu(){const d=document.getElementById('more-dropdown');if(d)d.classList.remove('open');}
+document.addEventListener('click',function(e){if(!e.target.closest('.more-menu'))closeMoreMenu();});
 let objStatus=load('obj_status',{});
 
 // ═══ DASHBOARD ══════════════════════════════════════════════
