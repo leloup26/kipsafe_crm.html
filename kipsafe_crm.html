@@ -2116,6 +2116,27 @@ if(!objectives || !Array.isArray(objectives) || !objectives.length || !objective
   save('objectives',objectives);
 }
 
+// ── Périodes datées ──
+const MOIS_FR=['','janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const MOIS_COURT=['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];
+function defaultPeriod(level){if(level==='annee')return '2026';if(level==='mois')return '2026-06';if(level==='semaine')return '2026-06-01';return '';}
+function periodLabel(o){
+  if(!o.period) return '';
+  if(o.level==='annee') return o.period;
+  if(o.level==='mois'){const[y,m]=o.period.split('-');return (MOIS_FR[parseInt(m)]||'')+' '+y;}
+  if(o.level==='semaine'){
+    const d=new Date(o.period+'T12:00:00'); if(isNaN(d)) return '';
+    const dow=(d.getDay()+6)%7; const mon=new Date(d); mon.setDate(d.getDate()-dow); const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+    const fmt=x=>x.getDate()+' '+MOIS_COURT[x.getMonth()];
+    return 'Sem. '+fmt(mon)+'–'+fmt(sun);
+  }
+  return '';
+}
+// Migration douce : ajouter une période par défaut aux objectifs qui n'en ont pas
+let _objMig=false;
+objectives.forEach(o=>{if(!o.period){o.period=defaultPeriod(o.level);_objMig=true;}});
+if(_objMig) save('objectives',objectives);
+
 let currentObjLevel='annee';
 const objOpen=new Set();
 
@@ -2184,6 +2205,7 @@ function objCardHtml(o,lvl){
     <div style="flex:1;min-width:0">
       <div class="obj-title">${esc(o.title)}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${periodLabel(o)?`<span style="background:var(--primary);color:#fff;padding:2px 9px;border-radius:99px;font-weight:700">📆 ${periodLabel(o)}</span>`:''}
         <span class="axe-badge axe-${o.axe.replace(/\s/g,'')}">${o.axe}</span>
         ${statusPill(o.status)}
         ${o.hours?`<span>⏱ ${o.hours}h</span>`:''}
@@ -2226,7 +2248,7 @@ function objSubHtml(k){
       <div style="width:30px;height:30px;border-radius:50%;background:conic-gradient(${color} ${pct*3.6}deg,#e2e8f0 0deg);position:relative;flex-shrink:0"><div style="position:absolute;inset:3px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${color}">${pct}</div></div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:700">${esc(k.title)}</div>
-        <div style="font-size:10px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px">${statusPill(k.status)}${k.hours?`<span>⏱ ${k.hours}h</span>`:''}</div>
+        <div style="font-size:10px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px">${periodLabel(k)?`<span style="background:#eef2f7;color:var(--secondary);padding:1px 7px;border-radius:99px;font-weight:700">📆 ${periodLabel(k)}</span>`:''}${statusPill(k.status)}${k.hours?`<span>⏱ ${k.hours}h</span>`:''}</div>
       </div>
       <div onclick="event.stopPropagation()" style="display:flex;gap:3px">
         <button class="btn btn-xs btn-outline" onclick="openObjectifModal('${k.id}')">✏️</button>
@@ -2281,6 +2303,13 @@ function openObjectifModal(id,parentIdPreset){
       <div class="form-group"><label class="form-label">Axe</label><select id="om-axe" class="form-select">${AXES.map(a=>`<option ${a===o.axe?'selected':''}>${a}</option>`).join('')}</select></div>
     </div>
     <div class="form-group"><label class="form-label">Titre *</label><input id="om-title" class="form-input" value="${esc(o.title)}" placeholder="Ex: Refondre la page d'accueil"></div>
+    <div class="form-group" id="om-period-wrap">
+      <label class="form-label">📆 Période</label>
+      <input id="om-year" type="number" class="form-input" value="${o.level==='annee'?(o.period||'2026'):'2026'}" placeholder="2026" style="${o.level==='annee'?'':'display:none'}">
+      <input id="om-month" type="month" class="form-input" value="${o.level==='mois'?(o.period||'2026-06'):'2026-06'}" style="${o.level==='mois'?'':'display:none'}">
+      <input id="om-week" type="date" class="form-input" value="${o.level==='semaine'?(o.period||'2026-06-01'):'2026-06-01'}" style="${o.level==='semaine'?'':'display:none'}">
+      <div style="font-size:10px;color:var(--muted);margin-top:3px" id="om-period-hint"></div>
+    </div>
     <div id="om-parent-wrap" class="form-group" style="${parentLvl?'':'display:none'}">
       <label class="form-label">Rattaché à (objectif <span id="om-parent-lvl">${parentLvl?LVL_LABEL[parentLvl]:''}</span>)</label>
       <select id="om-parent" class="form-select">${parentOptions}</select>
@@ -2302,6 +2331,11 @@ function om_levelChange(){
   const pl=LVL_PARENT[lvl];
   document.getElementById('om-parent-wrap').style.display=pl?'block':'none';
   document.getElementById('om-hours-wrap').style.display=lvl==='semaine'?'block':'none';
+  // Basculer le bon champ de période
+  document.getElementById('om-year').style.display=lvl==='annee'?'block':'none';
+  document.getElementById('om-month').style.display=lvl==='mois'?'block':'none';
+  document.getElementById('om-week').style.display=lvl==='semaine'?'block':'none';
+  document.getElementById('om-period-hint').textContent=lvl==='semaine'?'Choisissez un jour de la semaine (lun→dim sera calculé)':'';
   if(pl){
     document.getElementById('om-parent-lvl').textContent=LVL_LABEL[pl];
     const cand=objectives.filter(x=>x.level===pl);
@@ -2314,10 +2348,15 @@ function saveObjectif(id){
   if(!title){alert('Titre requis');return;}
   const level=document.getElementById('om-level').value;
   const planItems=[...document.querySelectorAll('#modal-body input[type=checkbox]:checked')].map(c=>parseInt(c.value));
+  let period='';
+  if(level==='annee') period=document.getElementById('om-year').value;
+  else if(level==='mois') period=document.getElementById('om-month').value;
+  else if(level==='semaine') period=document.getElementById('om-week').value;
   const data={
     id:id||('obj_'+Date.now()),
     level,
     title,
+    period,
     axe:document.getElementById('om-axe').value,
     status:document.getElementById('om-status').value,
     parentId:LVL_PARENT[level]?(document.getElementById('om-parent').value||null):null,
