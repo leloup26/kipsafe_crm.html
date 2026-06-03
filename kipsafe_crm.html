@@ -1777,12 +1777,16 @@ function getAllEventsForDate(dateStr){
     const label=`${cc.icon} ${cat} — ${p.nom}${p.societe?' ('+p.societe+')':''}`;
     events.push({type:'rdv',category:cat,label,axe:p.offre,status:p.statut,color:cc.color,icon:cc.icon,done:p.statut==='Signé',time:p.rdv_time||'',prospectId:p.id});
   });
-  // 4. Échéances des objectifs
+  // 4. Objectifs : marqueur de début + échéance
   if(objectives) objectives.forEach(o=>{
-    const ech=o.echeance||o.deadline;
-    if(ech!==dateStr) return;
     const lvlTxt={annee:'Année',mois:'Mois',semaine:'Semaine'}[o.level]||'';
-    events.push({type:'objectif',label:`🎯 Échéance ${lvlTxt} : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Terminé'?'var(--green)':o.status==='Annulé'?'var(--muted)':'var(--purple)',icon:'🎯',done:o.status==='Terminé',objectifId:o.id});
+    if(o.debut===dateStr){
+      events.push({type:'objectif',isStart:true,label:`🚀 Début ${lvlTxt} : ${o.title}`,axe:o.axe,status:o.status,color:'#0e7490',icon:'🚀',done:false,objectifId:o.id});
+    }
+    const ech=o.echeance||o.deadline;
+    if(ech===dateStr){
+      events.push({type:'objectif',label:`🎯 Échéance ${lvlTxt} : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Terminé'?'var(--green)':o.status==='Annulé'?'var(--muted)':'var(--purple)',icon:'🎯',done:o.status==='Terminé',objectifId:o.id});
+    }
   });
   // Appliquer le statut manuel (occStatus) qui prime sur tout
   events.forEach(ev=>{
@@ -2004,7 +2008,7 @@ function openDayDetail(ds){
       // Handler d'édition selon le type
       let editFn='';
       if(ev.type==='rdv'&&ev.prospectId) editFn=`closeModal();viewProspect(${ev.prospectId})`;
-      else if(ev.type==='objectif'&&ev.objectifId) editFn=`closeModal();openObjReview('${ev.objectifId}')`;
+      else if(ev.type==='objectif'&&ev.objectifId) editFn=ev.isStart?`closeModal();openObjectifModal('${ev.objectifId}')`:`closeModal();openObjReview('${ev.objectifId}')`;
       else if(ev.type==='programme'&&ev.key) editFn=`closeModal();openScheduleItemModal('${ds}','${ev.key}')`;
       else if(ev.type==='schedule'&&ev.itemId!==undefined) editFn=`closeModal();openScheduleItemModal('${ds}','custom_${ev.itemId}')`;
       else if(ev.type==='task'&&ev.planIdx!==undefined) editFn=`closeModal();openPlanModal(${ev.planIdx})`;
@@ -2141,13 +2145,21 @@ function defaultEcheance(level,period){
   if(level==='semaine'){const d=new Date((period||'2026-06-01')+'T12:00:00');if(isNaN(d))return '';const dow=(d.getDay()+6)%7;const sun=new Date(d);sun.setDate(d.getDate()-dow+6);return localDate(sun);}
   return '';
 }
+function defaultDebut(level,period){
+  if(level==='annee') return (period||'2026')+'-01-01';
+  if(level==='mois') return (period||'2026-06')+'-01';
+  if(level==='semaine'){const d=new Date((period||'2026-06-01')+'T12:00:00');if(isNaN(d))return '';const dow=(d.getDay()+6)%7;const mon=new Date(d);mon.setDate(d.getDate()-dow);return localDate(mon);}
+  return '';
+}
 function addDaysStr(dateStr,days){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+days);return localDate(d);}
 function frDate(dateStr){if(!dateStr)return '';const d=new Date(dateStr+'T12:00:00');if(isNaN(d))return dateStr;return d.getDate()+' '+MOIS_COURT[d.getMonth()]+' '+d.getFullYear();}
+function frDateShort(dateStr){if(!dateStr)return '';const d=new Date(dateStr+'T12:00:00');if(isNaN(d))return dateStr;return d.getDate()+' '+MOIS_COURT[d.getMonth()];}
 
-// Migration douce : période + échéance par défaut
+// Migration douce : période + début + échéance par défaut
 let _objMig=false;
 objectives.forEach(o=>{
   if(!o.period){o.period=defaultPeriod(o.level);_objMig=true;}
+  if(!o.debut){o.debut=defaultDebut(o.level,o.period);_objMig=true;}
   if(!o.echeance){o.echeance=o.deadline||defaultEcheance(o.level,o.period);_objMig=true;}
 });
 if(_objMig) save('objectives',objectives);
@@ -2221,6 +2233,7 @@ function objCardHtml(o,lvl){
       <div class="obj-title">${esc(o.title)}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         ${periodLabel(o)?`<span style="background:var(--primary);color:#fff;padding:2px 9px;border-radius:99px;font-weight:700">📆 ${periodLabel(o)}</span>`:''}
+        ${o.debut&&o.echeance?`<span style="color:var(--muted)">🚀 ${frDateShort(o.debut)} → ⏳ ${frDateShort(o.echeance)}</span>`:''}
         <span class="axe-badge axe-${o.axe.replace(/\s/g,'')}">${o.axe}</span>
         ${statusPill(o.status)}
         ${o.hours?`<span>⏱ ${o.hours}h</span>`:''}
@@ -2325,11 +2338,17 @@ function openObjectifModal(id,parentIdPreset){
       <input id="om-week" type="date" class="form-input" value="${o.level==='semaine'?(o.period||'2026-06-01'):'2026-06-01'}" style="${o.level==='semaine'?'':'display:none'}">
       <div style="font-size:10px;color:var(--muted);margin-top:3px" id="om-period-hint"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">⏳ Échéance (date butoir) <span style="color:var(--muted);font-weight:400;text-transform:none">— allongez-la si besoin de plus de temps</span></label>
-      <input id="om-echeance" type="date" class="form-input" value="${o.echeance||defaultEcheance(o.level,o.period)}">
-      <div style="font-size:10px;color:var(--muted);margin-top:3px">📆 Apparaîtra dans le Planning à cette date. Modifiez-la pour reporter / allonger l'objectif.</div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">🚀 Date de début</label>
+        <input id="om-debut" type="date" class="form-input" value="${o.debut||defaultDebut(o.level,o.period)}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">⏳ Échéance (fin)</label>
+        <input id="om-echeance" type="date" class="form-input" value="${o.echeance||defaultEcheance(o.level,o.period)}">
+      </div>
     </div>
+    <div style="font-size:10px;color:var(--muted);margin:-6px 0 10px">📆 Les deux dates apparaissent dans le Planning et cadrent la période. Allongez l'échéance si besoin de plus de temps.</div>
     <div id="om-parent-wrap" class="form-group" style="${parentLvl?'':'display:none'}">
       <label class="form-label">Rattaché à un objectif <span id="om-parent-lvl">${parentLvl?LVL_LABEL[parentLvl]:''}</span> <span style="color:var(--muted);font-weight:400;text-transform:none">— optionnel</span></label>
       <select id="om-parent" class="form-select">${parentOptions}</select>
@@ -2378,6 +2397,7 @@ function saveObjectif(id){
     level,
     title,
     period,
+    debut:document.getElementById('om-debut').value||defaultDebut(level,period),
     echeance:document.getElementById('om-echeance').value||defaultEcheance(level,period),
     axe:document.getElementById('om-axe').value,
     status:document.getElementById('om-status').value,
@@ -2426,7 +2446,8 @@ function openObjReview(id){
     <div style="text-align:center;margin-bottom:14px">
       <div style="font-size:16px;font-weight:800;color:var(--primary)">${esc(o.title)}</div>
       <div style="font-size:12px;color:var(--muted);margin-top:4px">Objectif ${lvlTxt} · ${periodLabel(o)} · Avancement ${pct}%</div>
-      <div style="font-size:12px;margin-top:4px;color:${isOver?'var(--red)':'var(--muted)'}">⏳ Échéance : ${frDate(ech)}${isOver?' (dépassée)':''}</div>
+      <div style="font-size:12px;margin-top:4px;color:var(--muted)">🚀 Début : ${frDate(o.debut)}</div>
+      <div style="font-size:12px;margin-top:2px;color:${isOver?'var(--red)':'var(--muted)'}">⏳ Échéance : ${frDate(ech)}${isOver?' (dépassée)':''}</div>
     </div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Que voulez-vous faire ?</div>
     <div style="display:flex;flex-direction:column;gap:8px">
