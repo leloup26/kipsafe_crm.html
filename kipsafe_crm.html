@@ -45,6 +45,22 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .more-item:hover{background:var(--light);color:var(--primary)}
 .more-item.active{background:#eff9ff;color:var(--primary);font-weight:700}
 #more-btn.has-active{color:var(--primary);font-weight:700}
+/* Objectifs : niveaux */
+.lvl-tabs{display:flex;gap:6px;margin-bottom:16px;background:var(--light);padding:5px;border-radius:12px;width:fit-content}
+.lvl-tab{padding:9px 22px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);transition:.15s}
+.lvl-tab.active{background:#fff;color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.obj-card{background:#fff;border-radius:12px;border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
+.obj-head{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}
+.obj-head:hover{background:#f8fbff}
+.obj-arrow{font-size:12px;color:var(--muted);transition:.2s;width:14px;flex-shrink:0}
+.obj-arrow.open{transform:rotate(90deg)}
+.obj-title{font-size:15px;font-weight:800;color:var(--primary);flex:1}
+.obj-children{padding:0 16px 12px 42px;display:none}
+.obj-children.open{display:block}
+.obj-sub{border-left:2px solid var(--border);padding-left:14px;margin-bottom:8px}
+.obj-sub-head{display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer}
+.obj-ring{width:38px;height:38px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.obj-week-item{display:flex;align-items:center;gap:8px;padding:6px 0 6px 14px;font-size:13px;border-left:2px solid #e2e8f0;margin-left:8px}
 .tab-btn:hover:not(.active){color:var(--secondary)}
 .panels{flex:1;overflow-y:auto;padding:20px}
 .panel{display:none}.panel.active{display:block}
@@ -330,10 +346,10 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     <div class="h-right"><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span id="lock-timer" style="font-size:10px;color:rgba(255,255,255,.6);margin-right:6px"></span><span class="h-date" id="header-date"></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
   </header>
   <nav>
-    <button class="tab-btn active" data-tab="dashboard" onclick="showTab('dashboard')">🏠 Accueil</button>
+    <button class="tab-btn active" data-tab="dashboard" onclick="showTab('dashboard')">🏠 Tableau de bord</button>
+    <button class="tab-btn" data-tab="planning" onclick="showTab('planning')">🎯 Objectifs</button>
+    <button class="tab-btn" data-tab="calendrier" onclick="showTab('calendrier')">📆 Planning</button>
     <button class="tab-btn" data-tab="prospects" onclick="showTab('prospects')">👥 Prospects</button>
-    <button class="tab-btn" data-tab="calendrier" onclick="showTab('calendrier')">📆 Calendrier</button>
-    <button class="tab-btn" data-tab="planning" onclick="showTab('planning')">🎯 Objectif</button>
     <div class="more-menu">
       <button class="tab-btn" id="more-btn" onclick="toggleMoreMenu(event)">➕ Plus ▾</button>
       <div class="more-dropdown" id="more-dropdown">
@@ -402,31 +418,25 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
       <div id="prospects-container"></div>
     </div>
 
-    <!-- OBJECTIF (ex Plan 30J) -->
+    <!-- OBJECTIFS (Année → Mois → Semaine) -->
     <div id="panel-planning" class="panel">
-      <!-- KPIs -->
-      <div class="grid-4" id="obj-kpis" style="margin-bottom:16px"></div>
-      <!-- Toolbar -->
-      <div class="toolbar" style="margin-bottom:14px">
-        <select id="obj-f-axe" class="form-select" style="width:145px" onchange="renderObjectifDashboard()">
-          <option value="">Tous les axes</option>
-          <option>Commercial</option><option>Marketing</option><option>Web</option>
-          <option>Supports</option><option>Marchés</option><option>Admin</option>
-        </select>
-        <select id="obj-f-status" class="form-select" style="width:145px" onchange="renderObjectifDashboard()">
-          <option value="">Tous statuts</option>
-          <option>À faire</option><option>En cours</option><option>Atteint</option>
-          <option>Reporté</option><option>Abandonné</option>
-        </select>
-        <select id="obj-f-prio" class="form-select" style="width:135px" onchange="renderObjectifDashboard()">
-          <option value="">Toutes priorités</option>
-          <option>Important</option><option>Moyen</option><option>Bas</option>
-        </select>
-        <div style="flex:1"></div>
-        <button class="btn btn-primary" onclick="openObjectifModal(null)">+ Nouvel objectif</button>
+      <div class="lvl-tabs">
+        <button class="lvl-tab active" data-lvl="annee" onclick="setObjLevel('annee')">📅 Année</button>
+        <button class="lvl-tab" data-lvl="mois" onclick="setObjLevel('mois')">🗓️ Mois</button>
+        <button class="lvl-tab" data-lvl="semaine" onclick="setObjLevel('semaine')">📋 Semaine</button>
       </div>
-      <!-- Liste objectifs -->
-      <div id="obj-dashboard-list"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <div id="obj-lvl-hint" style="font-size:12px;color:var(--muted)"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="obj-f-axe" class="form-select" style="width:140px" onchange="renderObjectifs()">
+            <option value="">Tous les axes</option>
+            <option>Commercial</option><option>Marketing</option><option>Web</option>
+            <option>Supports</option><option>Marchés</option><option>Admin</option>
+          </select>
+          <button class="btn btn-primary" id="obj-add-btn" onclick="openObjectifModal(null)">+ Nouvel objectif</button>
+        </div>
+      </div>
+      <div id="obj-list"></div>
     </div>
 
     <!-- CALENDRIER -->
@@ -487,17 +497,6 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- OBJECTIFS -->
-    <div id="panel-objectifs" class="panel">
-      <div class="import-tabs" id="obj-tabs">
-        <button class="import-tab active" onclick="setObjTab('annee')">📅 Année 2026</button>
-        <button class="import-tab" onclick="setObjTab('mois')">📆 Juin 2026</button>
-        <button class="import-tab" onclick="setObjTab('semaine')">📋 Par semaine</button>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="obj-filters"></div>
-      <div id="obj-content"></div>
     </div>
 
     <!-- DOCUMENTS -->
@@ -1153,6 +1152,8 @@ async function initSupabase(){
       nextId=load('next_id',100);
       planOverrides=load('plan_overrides',{});
       const newObj=load('objectives',null); if(newObj) objectives=newObj;
+      // Migration : si données anciennes sans niveau hiérarchique → réinitialiser structure
+      if(!objectives||!objectives.length||!objectives[0].level){objectives=DEFAULT_OBJECTIVES_DATA.map(o=>({...o}));save('objectives',objectives);}
       renderDashboard();renderProspects();renderObjectifDashboard();renderMarches();
     }
     setSyncPill('online');
@@ -1181,7 +1182,7 @@ function setSyncPill(s){
   el.textContent=cfg.t;el.style.background=cfg.bg;el.style.color=cfg.c;
 }
 function updateHeaderDate(){const now=new Date();const days=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];const months=['jan','fév','mars','avr','mai','juin','juil','août','sep','oct','nov','déc'];document.getElementById('header-date').textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear()+' — '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
-const MAIN_TABS=['dashboard','prospects','calendrier','planning'];
+const MAIN_TABS=['dashboard','planning','calendrier','prospects'];
 function showTab(tab){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+tab).classList.add('active');
@@ -1779,7 +1780,7 @@ function getAllEventsForDate(dateStr){
   // 4. Deadlines objectifs
   if(objectives) objectives.forEach(o=>{
     if(o.deadline!==dateStr) return;
-    events.push({type:'objectif',label:`🎯 Deadline : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Atteint'?'var(--green)':o.status==='En cours'?'var(--purple)':'var(--muted)',icon:'🎯',done:o.status==='Atteint',objectifId:o.id});
+    events.push({type:'objectif',label:`🎯 Deadline : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Terminé'?'var(--green)':o.status==='En cours'?'var(--purple)':'var(--muted)',icon:'🎯',done:o.status==='Terminé',objectifId:o.id});
   });
   // Appliquer le statut manuel (occStatus) qui prime sur tout
   events.forEach(ev=>{
@@ -1908,7 +1909,7 @@ function renderCalendrierTab(){
   const rdvAll=prospects.filter(p=>['RDV','Proposition'].includes(p.statut));
   const overdueAll=PLAN_30J.map((item,i)=>({item,i,status:getItemStatus(item,i)})).filter(({item,status})=>item.date<today&&status!=='Fait'&&status!=='Reporté');
   const doneAll=PLAN_30J.map((item,i)=>({item,i})).filter(({item,i})=>getItemStatus(item,i)==='Fait');
-  const overdueObj=objectives?objectives.filter(o=>o.deadline&&o.deadline<today&&o.status!=='Atteint'&&o.status!=='Abandonné'):[];
+  const overdueObj=objectives?objectives.filter(o=>o.deadline&&o.deadline<today&&o.status!=='Terminé'&&o.status!=='Annulé'):[];
 
   document.getElementById('cal-summary-cards').innerHTML=`
     <div class="card" style="border-top:3px solid var(--accent)">
@@ -2079,292 +2080,277 @@ function renderCalendar2(){
   }
 }
 
-// ═══ ONGLET OBJECTIFS ═══════════════════════════════════════
-const OBJECTIFS_DATA={
-  annee:[
-    {id:'a1',axe:'Commercial',title:'Signer 10 contrats clients PME/ETI',target:10,unit:'contrats',linked:'signes'},
-    {id:'a2',axe:'Commercial',title:'Atteindre 50 000 € de CA',target:50000,unit:'€'},
-    {id:'a3',axe:'Marchés',title:'Déposer 5 appels d\'offres publics',target:5,unit:'AO'},
-    {id:'a4',axe:'Marchés',title:'Référencer KIPSAFE sur UGAP',target:1,unit:'√'},
-    {id:'a5',axe:'Marketing',title:'Atteindre 500 connexions LinkedIn',target:500,unit:'connexions'},
-    {id:'a6',axe:'Commercial',title:'Réseau 10 apporteurs d\'affaires',target:10,unit:'partenaires'}
-  ],
-  mois:[
-    {id:'m1',axe:'Commercial',title:'1 contrat signé (pilote)',target:1,unit:'contrat',deadline:'30/06'},
-    {id:'m2',axe:'Commercial',title:'5 RDV qualifiés minimum',target:5,unit:'RDV',deadline:'17/06'},
-    {id:'m3',axe:'Supports',title:'3 plaquettes finalisées',target:3,unit:'plaquettes',deadline:'10/06'},
-    {id:'m4',axe:'Web',title:'Site web optimisé (H1 + Analytics)',target:1,unit:'√',deadline:'04/06'},
-    {id:'m5',axe:'Commercial',title:'50+ prospects dans le CRM',target:50,unit:'prospects',deadline:'03/06'},
-    {id:'m6',axe:'Marchés',title:'2 AO déposés (BOAMP/Maximilien)',target:2,unit:'AO',deadline:'24/06'},
-    {id:'m7',axe:'Marketing',title:'12 posts LinkedIn publiés',target:12,unit:'posts',deadline:'30/06'},
-    {id:'m8',axe:'Marketing',title:'Google My Business créé',target:1,unit:'√',deadline:'09/06'}
-  ],
-  semaines:[
-    {num:'S1',dates:'01–05 juin',theme:'Fondations',color:'var(--accent)',items:['Plaquettes Debal Cyber + Infogérance v2','Profil LinkedIn + page KIPSAFE créés','50 prospects PME identifiés','Calendly + template email prospection','Google Analytics installé','15 premiers messages LinkedIn envoyés']},
-    {num:'S2',dates:'08–12 juin',theme:'Prospection active',color:'var(--secondary)',items:['Plaquette PEM Promisec v2','10 relances téléphoniques J+3','2 RDV qualifiés confirmés','Use case PME rédigé','Google My Business créé','Alertes BOAMP/Maximilien configurées']},
-    {num:'S3',dates:'15–19 juin',theme:'Closing 1er client',color:'var(--orange)',items:['1 contrat signé ← OBJECTIF CLÉ','Landing page audit gratuit live','3 RDV qualifiés cette semaine','Kit RDV complet assemblé','Article blog NIS2 publié','5 cabinets comptables contactés']},
-    {num:'S4',dates:'22–26 juin',theme:'Consolidation',color:'var(--green)',items:['2 contrats supplémentaires signés','Dossier AO BOAMP déposé','Contact UGAP référencement','FAQ cybersécurité PME publiée','Google Ads test 100€ lancé','Newsletter Cyber Flash n°1 envoyée']}
-  ]
-};
-let currentObjTab='annee';
-const OBJ_AXES=['Tous','Commercial','Marketing','Web','Supports','Marchés'];
+// ═══ OBJECTIFS HIÉRARCHIQUES (Année → Mois → Semaine) ═══════════
+const OBJ_STATUSES=['À faire','En cours','Terminé','Reporté','Annulé'];
+const OBJ_SC={'À faire':'#64748b','En cours':'#1d4ed8','Terminé':'#15803d','Reporté':'#7c3aed','Annulé':'#b91c1c'};
+const OBJ_SBG={'À faire':'#f1f5f9','En cours':'#dbeafe','Terminé':'#dcfce7','Reporté':'#ede9fe','Annulé':'#fef2f2'};
+const OBJ_SICON={'À faire':'⬜','En cours':'🔄','Terminé':'✅','Reporté':'⏩','Annulé':'❌'};
+const LVL_LABEL={annee:'Année',mois:'Mois',semaine:'Semaine'};
+const LVL_PARENT={mois:'annee',semaine:'mois'};
+const LVL_CHILD={annee:'mois',mois:'semaine'};
 
-function setObjTab(tab){
-  currentObjTab=tab;
-  document.querySelectorAll('#obj-tabs .import-tab').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick').includes("'"+tab+"'")));
+const DEFAULT_OBJECTIVES_DATA=[
+  // ANNÉE
+  {id:'a_comm',level:'annee',title:'Signer 10 clients en 2026',axe:'Commercial',status:'En cours',parentId:null,planItems:[],notes:'Objectif business principal'},
+  {id:'a_web',level:'annee',title:'Site kipsafe.fr professionnel & optimisé',axe:'Web',status:'En cours',parentId:null,planItems:[],notes:''},
+  {id:'a_mkt',level:'annee',title:'Notoriété & présence LinkedIn',axe:'Marketing',status:'En cours',parentId:null,planItems:[],notes:''},
+  {id:'a_marche',level:'annee',title:'Référencement marchés publics',axe:'Marchés',status:'En cours',parentId:null,planItems:[],notes:''},
+  // MOIS (Juin)
+  {id:'m_contrat',level:'mois',title:'Signer le 1er contrat pilote',axe:'Commercial',status:'En cours',parentId:'a_comm',deadline:'2026-06-30',planItems:[6,8,11,13,15,17,19],notes:'Juin 2026'},
+  {id:'m_pipeline',level:'mois',title:'Constituer un pipeline de 50 prospects',axe:'Commercial',status:'En cours',parentId:'a_comm',deadline:'2026-06-12',planItems:[2],notes:''},
+  {id:'m_plaq',level:'mois',title:'3 plaquettes commerciales finalisées',axe:'Supports',status:'En cours',parentId:'a_comm',deadline:'2026-06-10',planItems:[0,4,9],notes:''},
+  {id:'m_acc',level:'mois',title:"Refondre la page d'accueil + SEO",axe:'Web',status:'En cours',parentId:'a_web',deadline:'2026-06-22',planItems:[3,10,17,21],notes:''},
+  {id:'m_li',level:'mois',title:'Profil + page entreprise LinkedIn actifs',axe:'Marketing',status:'En cours',parentId:'a_mkt',deadline:'2026-06-30',planItems:[1,7],notes:''},
+  {id:'m_ao',level:'mois',title:'Déposer 2 appels d\'offres',axe:'Marchés',status:'En cours',parentId:'a_marche',deadline:'2026-06-25',planItems:[14,20,23],notes:''},
+  // SEMAINE
+  {id:'s_design',level:'semaine',title:"2h sur le design de la page d'accueil",axe:'Web',status:'À faire',parentId:'m_acc',hours:2,planItems:[],notes:''},
+  {id:'s_textes',level:'semaine',title:'1h relecture des textes + offres',axe:'Web',status:'À faire',parentId:'m_acc',hours:1,planItems:[],notes:''},
+  {id:'s_liste',level:'semaine',title:'Lister 50 prospects (Pappers + LinkedIn)',axe:'Commercial',status:'À faire',parentId:'m_pipeline',hours:2,planItems:[2],notes:''},
+  {id:'s_msg',level:'semaine',title:'Envoyer 15 messages LinkedIn',axe:'Commercial',status:'À faire',parentId:'m_pipeline',hours:1,planItems:[],notes:''},
+  {id:'s_debal',level:'semaine',title:'Finaliser la plaquette Debal Cyber',axe:'Supports',status:'À faire',parentId:'m_plaq',hours:2,planItems:[0],notes:''}
+];
+
+// Migration / seed : si pas de niveau défini, on (ré)initialise la structure hiérarchique
+if(!objectives || !Array.isArray(objectives) || !objectives.length || !objectives[0].level){
+  objectives=DEFAULT_OBJECTIVES_DATA.map(o=>({...o}));
+  save('objectives',objectives);
+}
+
+let currentObjLevel='annee';
+const objOpen=new Set();
+
+function renderPlanning(){renderObjectifs();}
+function renderObjectifDashboard(){renderObjectifs();}
+
+function setObjLevel(lvl){
+  currentObjLevel=lvl;
+  document.querySelectorAll('.lvl-tab').forEach(b=>b.classList.toggle('active',b.dataset.lvl===lvl));
   renderObjectifs();
 }
 
-function renderObjectifs(){
-  const tab=currentObjTab;
-  const filterEl=document.getElementById('obj-filters');
-  const content=document.getElementById('obj-content');
-  if(!filterEl||!content) return;
+function objChildren(id){return objectives.filter(o=>o.parentId===id);}
+function objById(id){return objectives.find(o=>o.id===id);}
 
-  // Filtres axes (sauf semaines)
-  if(tab!=='semaine'){
-    const activeAxe=window._objAxeFilter||'Tous';
-    filterEl.innerHTML=OBJ_AXES.map(a=>`<button class="btn btn-sm ${a===activeAxe?'btn-primary':'btn-outline'}" onclick="window._objAxeFilter='${a}';renderObjectifs()">${a}</button>`).join('');
-  } else filterEl.innerHTML='';
-
-  if(tab==='annee'||tab==='mois'){
-    const items=OBJECTIFS_DATA[tab];
-    const axeFilter=window._objAxeFilter||'Tous';
-    const filtered=axeFilter==='Tous'?items:items.filter(o=>o.axe===axeFilter);
-    const prospectsCount=prospects.length;
-    const signesCount=prospects.filter(p=>p.statut==='Signé').length;
-    const rdvCount=prospects.filter(p=>p.statut==='RDV'||p.statut==='Proposition').length;
-    content.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">`+
-      filtered.map(o=>{
-        const st=objStatus[o.id]||{progress:0,status:'En cours'};
-        let progress=st.progress;
-        if(o.linked==='signes') progress=signesCount;
-        else if(o.id==='m5') progress=Math.min(prospectsCount,o.target);
-        else if(o.id==='m2') progress=rdvCount;
-        const pct=Math.min(100,Math.round(progress/o.target*100));
-        const statusColor=st.status==='Atteint'?'var(--green)':st.status==='Non atteint'?'var(--red)':'var(--orange)';
-        return `<div class="card" style="border-left:4px solid ${statusColor}">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-            <span class="axe-badge axe-${o.axe.replace(/\s/g,'')}">${o.axe}</span>
-            ${o.deadline?`<span style="font-size:10px;color:var(--muted)">📅 ${o.deadline}</span>`:''}
-          </div>
-          <div style="font-size:14px;font-weight:700;margin-bottom:10px;color:var(--primary)">${o.title}</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:${statusColor}"></div></div>
-            <span style="font-size:12px;font-weight:700;color:${statusColor}">${pct}%</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px">
-            <span style="color:var(--muted)">${progress} / ${o.target} ${o.unit}</span>
-            <select class="form-select" style="font-size:10px;padding:2px 6px;height:24px;width:110px" onchange="updateObjStatus('${o.id}',this.value)">
-              <option ${st.status==='En cours'?'selected':''}>En cours</option>
-              <option ${st.status==='Atteint'?'selected':''}>Atteint</option>
-              <option ${st.status==='Non atteint'?'selected':''}>Non atteint</option>
-            </select>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
-            <span style="font-size:11px;color:var(--muted)">Avancement :</span>
-            <input type="number" min="0" max="${o.target}" value="${progress}" style="width:60px;font-size:12px;padding:2px 6px;border:1px solid var(--border);border-radius:4px" onchange="updateObjProgress('${o.id}',this.value,${o.target})">
-            <span style="font-size:11px;color:var(--muted)">/ ${o.target} ${o.unit}</span>
-          </div>
-        </div>`;
-      }).join('')+'</div>';
-
-  } else {
-    // Semaines
-    content.innerHTML=OBJECTIFS_DATA.semaines.map(s=>{
-      const sItems=s.items.map((item,idx)=>{
-        const key=`${s.num}_${idx}`;
-        const done=objStatus[key]?.done||false;
-        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
-          <input type="checkbox" ${done?'checked':''} onchange="toggleSemObj('${key}',this.checked)" style="width:15px;height:15px;accent-color:${s.color};cursor:pointer">
-          <span style="font-size:13px;${done?'text-decoration:line-through;color:var(--muted)':''}">${item}</span>
-        </div>`;
-      }).join('');
-      const doneCount=s.items.filter((_,idx)=>objStatus[`${s.num}_${idx}`]?.done).length;
-      const pct=Math.round(doneCount/s.items.length*100);
-      return `<div class="card" style="border-top:4px solid ${s.color};margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div>
-            <span style="font-size:18px;font-weight:900;color:${s.color}">${s.num}</span>
-            <span style="font-size:13px;font-weight:700;color:var(--primary);margin-left:8px">${s.theme}</span>
-            <span style="font-size:11px;color:var(--muted);margin-left:8px">${s.dates}</span>
-          </div>
-          <span style="font-size:14px;font-weight:800;color:${s.color}">${pct}%</span>
-        </div>
-        <div class="progress-bar" style="margin-bottom:12px"><div class="progress-fill" style="width:${pct}%;background:${s.color}"></div></div>
-        ${sItems}
-      </div>`;
-    }).join('');
+function objProgress(o){
+  if(o.status==='Terminé') return 100;
+  if(o.status==='Annulé') return 0;
+  const kids=objChildren(o.id);
+  if(kids.length){
+    const vals=kids.filter(k=>k.status!=='Annulé').map(objProgress);
+    if(!vals.length) return 0;
+    return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
   }
+  if(o.planItems&&o.planItems.length){
+    const done=o.planItems.filter(i=>{const it=PLAN_30J[i];return it&&getItemStatus(it,i)==='Fait';}).length;
+    return Math.round(done/o.planItems.length*100);
+  }
+  return o.status==='En cours'?50:0;
 }
 
-function updateObjStatus(id,status){objStatus[id]=objStatus[id]||{};objStatus[id].status=status;save('obj_status',objStatus);renderObjectifs();}
-function updateObjProgress(id,val,max){objStatus[id]=objStatus[id]||{};objStatus[id].progress=Math.min(Number(val),max);if(Number(val)>=max)objStatus[id].status='Atteint';save('obj_status',objStatus);renderObjectifs();}
-function toggleSemObj(key,done){objStatus[key]=objStatus[key]||{};objStatus[key].done=done;save('obj_status',objStatus);renderObjectifs();}
+function objLinkedTasks(o){return (o.planItems||[]).map(i=>({item:PLAN_30J[i],i})).filter(x=>x.item);}
 
-// ═══ GESTION OBJECTIFS ══════════════════════════════════════
-const DEFAULT_OBJECTIVES_DATA=[
-  {id:'obj1',title:'Signer 1er contrat client PME',axe:'Commercial',priority:'Important',status:'En cours',deadline:'2026-06-30',parentId:null,planItems:[6,8,11,13,15,17,19],notes:'Objectif principal juin 2026'},
-  {id:'obj2',title:'Constituer pipeline 50 prospects',axe:'Commercial',priority:'Important',status:'En cours',deadline:'2026-06-03',parentId:'obj1',planItems:[2],notes:'Via Pappers + LinkedIn'},
-  {id:'obj3',title:'5 RDV qualifiés confirmés',axe:'Commercial',priority:'Important',status:'En cours',deadline:'2026-06-17',parentId:'obj1',planItems:[9,11,15,16],notes:'Objectif intermédiaire avant closing'},
-  {id:'obj4',title:'3 plaquettes finalisées',axe:'Supports',priority:'Important',status:'En cours',deadline:'2026-06-10',parentId:null,planItems:[0,4,9],notes:'Debal Cyber + Infogérance + PEM Promisec v2'},
-  {id:'obj5',title:'Site kipsafe.fr optimisé SEO',axe:'Web',priority:'Moyen',status:'En cours',deadline:'2026-06-22',parentId:null,planItems:[3,10,17,21],notes:'H1/H2 + Analytics + blog NIS2'},
-  {id:'obj6',title:'Stratégie LinkedIn active',axe:'Marketing',priority:'Moyen',status:'En cours',deadline:'2026-06-30',parentId:null,planItems:[1,7,11,15,22],notes:'Profil + posts réguliers'},
-  {id:'obj7',title:'2 appels d\'offres BOAMP déposés',axe:'Marchés',priority:'Moyen',status:'En cours',deadline:'2026-06-25',parentId:null,planItems:[14,20,23],notes:'BOAMP + Maximilien IDF'}
-];
-if(!objectives){objectives=DEFAULT_OBJECTIVES_DATA.map(o=>({...o}));save('objectives',objectives);}
+function ring(pct,color){
+  return `<div class="obj-ring" style="background:conic-gradient(${color} ${pct*3.6}deg, #e2e8f0 0deg);position:relative"><div style="position:absolute;inset:4px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;color:${color}">${pct}%</div></div>`;
+}
+function statusPill(status){
+  return `<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px;background:${OBJ_SBG[status]||'#f1f5f9'};color:${OBJ_SC[status]||'#475569'}">${OBJ_SICON[status]||''} ${status}</span>`;
+}
 
-function renderPlanning(){renderObjectifDashboard();}
-
-function renderObjectifDashboard(){
-  const today=localDate();
-  const axeF=document.getElementById('obj-f-axe')?.value||'';
-  const stF=document.getElementById('obj-f-status')?.value||'';
-  const prioF=document.getElementById('obj-f-prio')?.value||'';
-  const total=objectives.length;
-  const atteints=objectives.filter(o=>o.status==='Atteint').length;
-  const enCours=objectives.filter(o=>o.status==='En cours'||o.status==='À faire').length;
-  const retard=objectives.filter(o=>o.deadline&&o.deadline<today&&o.status!=='Atteint'&&o.status!=='Abandonné').length;
-  const rdvCount=prospects.filter(p=>p.statut==='RDV'||p.statut==='Proposition').length;
-  const kpis=document.getElementById('obj-kpis');
-  if(kpis) kpis.innerHTML=`
-    <div class="card" style="border-top:3px solid var(--primary)"><span class="kpi-icon">🎯</span><div class="card-title">Objectifs</div><div class="kpi-value">${total}</div><div class="kpi-sub">${atteints} atteints</div></div>
-    <div class="card" style="border-top:3px solid var(--accent)"><span class="kpi-icon">🔄</span><div class="card-title">En cours</div><div class="kpi-value" style="color:var(--accent)">${enCours}</div><div class="kpi-sub">actifs</div></div>
-    <div class="card" style="border-top:3px solid var(--red)"><span class="kpi-icon">⚠️</span><div class="card-title">En retard</div><div class="kpi-value" style="color:var(--red)">${retard}</div><div class="kpi-sub">${retard>0?'À traiter':'RAS 🎉'}</div></div>
-    <div class="card" style="border-top:3px solid var(--orange)"><span class="kpi-icon">📞</span><div class="card-title">RDV actifs</div><div class="kpi-value" style="color:var(--orange)">${rdvCount}</div><div class="kpi-sub">pipeline</div></div>`;
-  let filtered=objectives.filter(o=>{
-    if(axeF&&o.axe!==axeF)return false;
-    if(stF&&o.status!==stF)return false;
-    if(prioF&&o.priority!==prioF)return false;
-    return true;
-  });
-  const list=document.getElementById('obj-dashboard-list');
+function renderObjectifs(){
+  const list=document.getElementById('obj-list');
   if(!list) return;
-  if(!filtered.length){list.innerHTML='<div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">Aucun objectif trouvé. Créez-en un avec "+ Nouvel objectif".</div></div>';return;}
-  const sortOrder={'À faire':1,'En cours':2,'Reporté':3,'Atteint':4,'Abandonné':5};
-  filtered.sort((a,b)=>{
-    const ar=a.deadline&&a.deadline<today&&a.status!=='Atteint'?0:1;
-    const br=b.deadline&&b.deadline<today&&b.status!=='Atteint'?0:1;
-    if(ar!==br)return ar-br;
-    return (sortOrder[a.status]||9)-(sortOrder[b.status]||9);
-  });
-  const SC={'À faire':'#475569','En cours':'var(--accent)','Atteint':'var(--green)','Reporté':'var(--purple)','Abandonné':'var(--muted)'};
-  const SB={'À faire':'#f1f5f9','En cours':'#dbeafe','Atteint':'#dcfce7','Reporté':'#ede9fe','Abandonné':'#f1f5f9'};
-  list.innerHTML=filtered.map(o=>{
-    const isR=o.deadline&&o.deadline<today&&o.status!=='Atteint'&&o.status!=='Abandonné';
-    const tasks=(o.planItems||[]).map((pi,idx)=>({item:PLAN_30J[pi],pi,idx})).filter(x=>x.item);
-    const tasksDone=tasks.filter(({pi})=>{const ov=planOverrides['p'+pi]||{};return(ov.status||(planDone.includes(PLAN_30J[pi]?.date)?'Fait':'À faire'))==='Fait';}).length;
-    const pct=tasks.length?Math.round(tasksDone/tasks.length*100):0;
-    const parent=o.parentId?objectives.find(p=>p.id===o.parentId):null;
-    const children=objectives.filter(c=>c.parentId===o.id);
-    const border=isR?'var(--red)':SC[o.status]||'var(--border)';
-    return `<div class="card" style="border-left:4px solid ${border};margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-size:18px">${PRIO_ICON[o.priority]||'🟡'}</span>
-          <span style="font-size:15px;font-weight:800;color:var(--primary)">${esc(o.title)}</span>
-          <span class="axe-badge axe-${o.axe.replace(/\s/g,'')}">${o.axe}</span>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          <span style="font-size:11px;background:${SB[o.status]||'#f1f5f9'};color:${SC[o.status]||'#475569'};padding:3px 10px;border-radius:99px;font-weight:700">${o.status}</span>
-          ${isR?'<span style="font-size:10px;background:#fef2f2;color:var(--red);padding:2px 8px;border-radius:99px;font-weight:700">EN RETARD</span>':''}
-          ${o.deadline?`<span style="font-size:11px;color:var(--muted)">📅 ${o.deadline}</span>`:''}
-        </div>
+  const axeF=document.getElementById('obj-f-axe')?.value||'';
+  const lvl=currentObjLevel;
+  const hint={annee:"🎯 Vos grands objectifs de l'année. Dépliez pour voir les objectifs mensuels et hebdo rattachés, et toutes les tâches faites pour les atteindre.",mois:'🗓️ Objectifs du mois, rattachés à un objectif annuel.',semaine:"📋 Objectifs de la semaine, rattachés à un objectif mensuel. C'est ici que vous planifiez vos heures."}[lvl];
+  const hintEl=document.getElementById('obj-lvl-hint'); if(hintEl) hintEl.textContent=hint;
+  const addBtn=document.getElementById('obj-add-btn'); if(addBtn) addBtn.textContent='+ Objectif '+({annee:'annuel',mois:'mensuel',semaine:'hebdo'}[lvl]);
+  let items=objectives.filter(o=>(o.level||'annee')===lvl);
+  if(axeF) items=items.filter(o=>o.axe===axeF);
+  if(!items.length){ list.innerHTML='<div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">Aucun objectif à ce niveau. Cliquez sur "+ Objectif".</div></div>'; return; }
+  list.innerHTML=items.map(o=>objCardHtml(o,lvl)).join('');
+}
+
+function objCardHtml(o,lvl){
+  const pct=objProgress(o);
+  const color=OBJ_SC[o.status]||'#1d4ed8';
+  const kids=objChildren(o.id);
+  const parent=o.parentId?objById(o.parentId):null;
+  const isOpen=objOpen.has(o.id);
+  const tasks=objLinkedTasks(o);
+  const hasDetail=kids.length>0||tasks.length>0;
+  let head=`<div class="obj-head" onclick="toggleObjOpen('${o.id}')">
+    <span class="obj-arrow ${isOpen?'open':''}">${hasDetail?'▶':'•'}</span>
+    ${ring(pct,color)}
+    <div style="flex:1;min-width:0">
+      <div class="obj-title">${esc(o.title)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span class="axe-badge axe-${o.axe.replace(/\s/g,'')}">${o.axe}</span>
+        ${statusPill(o.status)}
+        ${o.hours?`<span>⏱ ${o.hours}h</span>`:''}
+        ${parent?`<span>↳ ${esc(parent.title.slice(0,30))}</span>`:''}
+        ${kids.length?`<span>📎 ${kids.length} ${esc(LVL_LABEL[LVL_CHILD[lvl]]||'')}</span>`:''}
       </div>
-      ${o.notes?`<div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-style:italic">${esc(o.notes)}</div>`:''}
-      ${parent?`<div style="font-size:11px;color:var(--secondary);margin-bottom:6px">↳ Sous-objectif de : <strong>${esc(parent.title)}</strong></div>`:''}
-      ${children.length?`<div style="font-size:11px;color:var(--muted);margin-bottom:6px">📎 ${children.length} sous-objectif(s) : ${children.slice(0,3).map(c=>`<span style="color:var(--secondary);font-weight:600">${esc(c.title)}</span>`).join(', ')}</div>`:''}
-      <div style="display:flex;gap:16px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:160px">
-          <span style="font-size:11px;color:var(--muted);white-space:nowrap">${tasksDone}/${tasks.length} tâches</span>
-          <div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:${border}"></div></div>
-          <span style="font-size:12px;font-weight:700;color:${border}">${pct}%</span>
-        </div>
+    </div>
+    <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
+      <button class="btn btn-xs btn-outline" onclick="openObjectifModal('${o.id}')">✏️</button>
+      <button class="btn btn-xs btn-danger" onclick="deleteObjectif('${o.id}')">🗑️</button>
+    </div>
+  </div>`;
+  let body='';
+  if(isOpen){
+    body+='<div class="obj-children open">';
+    kids.forEach(k=>{ body+=objSubHtml(k); });
+    if(tasks.length){
+      body+='<div style="font-size:11px;color:var(--muted);margin:8px 0 2px;font-weight:700">Tâches liées :</div>';
+      tasks.forEach(({item,i})=>{ body+=taskLineHtml(item,i); });
+    }
+    if(!kids.length&&!tasks.length){ body+='<div style="font-size:12px;color:var(--muted)">Aucun sous-objectif ni tâche. Cliquez ✏️ pour en rattacher.</div>'; }
+    if(LVL_CHILD[lvl]){
+      body+=`<button class="btn btn-sm btn-outline" style="margin-top:10px" onclick="openObjectifModal(null,'${o.id}')">+ Objectif ${({mois:'mensuel',semaine:'hebdo'}[LVL_CHILD[lvl]])} rattaché</button>`;
+    }
+    body+='</div>';
+  }
+  return `<div class="obj-card">${head}${body}</div>`;
+}
+
+function objSubHtml(k){
+  const pct=objProgress(k);
+  const color=OBJ_SC[k.status]||'#1d4ed8';
+  const subKids=objChildren(k.id);
+  const tasks=objLinkedTasks(k);
+  const isOpen=objOpen.has(k.id);
+  const hasDetail=subKids.length>0||tasks.length>0;
+  let h=`<div class="obj-sub">
+    <div class="obj-sub-head" onclick="toggleObjOpen('${k.id}')">
+      <span class="obj-arrow ${isOpen?'open':''}" style="font-size:10px">${hasDetail?'▶':'•'}</span>
+      <div style="width:30px;height:30px;border-radius:50%;background:conic-gradient(${color} ${pct*3.6}deg,#e2e8f0 0deg);position:relative;flex-shrink:0"><div style="position:absolute;inset:3px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${color}">${pct}</div></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700">${esc(k.title)}</div>
+        <div style="font-size:10px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px">${statusPill(k.status)}${k.hours?`<span>⏱ ${k.hours}h</span>`:''}</div>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-sm btn-outline" onclick="viewObjectifDetail('${o.id}')">👁 Voir détail</button>
-        <button class="btn btn-sm btn-primary" onclick="openObjectifModal('${o.id}')">✏️ Modifier</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteObjectif('${o.id}')">🗑️</button>
-        <button class="btn btn-sm btn-outline" onclick="openObjectifModal(null,'${o.id}')">+ Sous-objectif</button>
+      <div onclick="event.stopPropagation()" style="display:flex;gap:3px">
+        <button class="btn btn-xs btn-outline" onclick="openObjectifModal('${k.id}')">✏️</button>
+        <button class="btn btn-xs btn-danger" onclick="deleteObjectif('${k.id}')">🗑️</button>
       </div>
     </div>`;
-  }).join('');
+  if(isOpen){
+    subKids.forEach(sk=>{ h+='<div style="margin-left:14px">'+objSubHtml(sk)+'</div>'; });
+    tasks.forEach(({item,i})=>{ h+=taskLineHtml(item,i); });
+    if(LVL_CHILD[k.level]){
+      h+=`<button class="btn btn-xs btn-outline" style="margin:6px 0 0 14px" onclick="openObjectifModal(null,'${k.id}')">+ sous-objectif</button>`;
+    }
+  }
+  h+='</div>';
+  return h;
 }
+
+function taskLineHtml(item,i){
+  const st=getItemStatus(item,i);
+  const done=st==='Fait';
+  const action=(planOverrides['p'+i]&&planOverrides['p'+i].action)||item.action;
+  return `<div class="obj-week-item" onclick="openPlanModal(${i})" style="cursor:pointer">
+    <span>${done?'✅':'⬜'}</span>
+    <span style="flex:1;${done?'text-decoration:line-through;color:var(--muted)':''}">${esc(action)}</span>
+    <span style="font-size:10px;color:var(--muted)">${item.day||item.date}</span>
+  </div>`;
+}
+
+function toggleObjOpen(id){ if(objOpen.has(id)) objOpen.delete(id); else objOpen.add(id); renderObjectifs(); }
 
 function openObjectifModal(id,parentIdPreset){
   const isEdit=!!id;
-  const o=isEdit?objectives.find(x=>x.id===id):{title:'',axe:'Commercial',priority:'Moyen',status:'En cours',deadline:'',parentId:parentIdPreset||null,planItems:[],notes:''};
-  if(!o) return;
+  let o=isEdit?objById(id):null;
+  let level=o?o.level:(parentIdPreset?(LVL_CHILD[(objById(parentIdPreset)||{}).level]||'mois'):currentObjLevel);
+  o=o||{title:'',level,axe:'Commercial',status:'À faire',parentId:parentIdPreset||null,planItems:[],notes:'',hours:''};
   const AXES=['Commercial','Marketing','Web','Supports','Marchés','Admin'];
-  const PRIOS=['Important','Moyen','Bas'];
-  const STATS=['À faire','En cours','Atteint','Reporté','Abandonné'];
-  const parentOpts='<option value="">— Aucun parent —</option>'+objectives.filter(x=>x.id!==id).map(x=>`<option value="${x.id}" ${(o.parentId||parentIdPreset)===x.id?'selected':''}>${esc(x.title.slice(0,40))}</option>`).join('');
-  const planItemsHtml=PLAN_30J.slice(0,44).map((item,i)=>`<label style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer"><input type="checkbox" value="${i}" ${(o.planItems||[]).includes(i)?'checked':''} style="accent-color:var(--accent)"><span class="axe-badge axe-${item.axe}" style="font-size:9px;padding:1px 5px">${item.axe}</span>${esc(item.action.slice(0,50))}</label>`).join('');
-  openModal(isEdit?`✏️ Modifier objectif`:'🎯 Nouvel objectif',`
-    <div class="form-group"><label class="form-label">Titre *</label><input id="om-title" class="form-input" value="${esc(o.title)}" placeholder="Ex: Signer 1er contrat PME"></div>
+  const parentLvl=LVL_PARENT[o.level];
+  let parentOptions='';
+  if(parentLvl){
+    const cand=objectives.filter(x=>x.level===parentLvl&&x.id!==id);
+    parentOptions='<option value="">— Aucun (indépendant) —</option>'+cand.map(x=>`<option value="${x.id}" ${o.parentId===x.id?'selected':''}>${esc(x.title.slice(0,45))}</option>`).join('');
+  }
+  const planItemsHtml=PLAN_30J.slice(0,44).map((item,i)=>`<label style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px;cursor:pointer"><input type="checkbox" value="${i}" ${(o.planItems||[]).includes(i)?'checked':''} style="accent-color:var(--accent)"><span class="axe-badge axe-${item.axe}" style="font-size:9px;padding:1px 5px">${item.axe}</span>${esc(item.action.slice(0,46))}</label>`).join('');
+  openModal(isEdit?"✏️ Modifier l'objectif":'🎯 Nouvel objectif',`
     <div class="grid-2">
+      <div class="form-group"><label class="form-label">Niveau</label>
+        <select id="om-level" class="form-select" onchange="om_levelChange()">
+          <option value="annee" ${o.level==='annee'?'selected':''}>📅 Année</option>
+          <option value="mois" ${o.level==='mois'?'selected':''}>🗓️ Mois</option>
+          <option value="semaine" ${o.level==='semaine'?'selected':''}>📋 Semaine</option>
+        </select></div>
       <div class="form-group"><label class="form-label">Axe</label><select id="om-axe" class="form-select">${AXES.map(a=>`<option ${a===o.axe?'selected':''}>${a}</option>`).join('')}</select></div>
-      <div class="form-group"><label class="form-label">Priorité</label><select id="om-prio" class="form-select">${PRIOS.map(p=>`<option ${p===o.priority?'selected':''}>${p}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Titre *</label><input id="om-title" class="form-input" value="${esc(o.title)}" placeholder="Ex: Refondre la page d'accueil"></div>
+    <div id="om-parent-wrap" class="form-group" style="${parentLvl?'':'display:none'}">
+      <label class="form-label">Rattaché à (objectif <span id="om-parent-lvl">${parentLvl?LVL_LABEL[parentLvl]:''}</span>)</label>
+      <select id="om-parent" class="form-select">${parentOptions}</select>
     </div>
     <div class="grid-2">
-      <div class="form-group"><label class="form-label">Statut</label><select id="om-status" class="form-select">${STATS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></div>
-      <div class="form-group"><label class="form-label">Date limite</label><input id="om-deadline" type="date" class="form-input" value="${o.deadline||''}"></div>
+      <div class="form-group"><label class="form-label">Statut</label><select id="om-status" class="form-select">${OBJ_STATUSES.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group" id="om-hours-wrap" style="${o.level==='semaine'?'':'display:none'}"><label class="form-label">⏱ Heures prévues</label><input id="om-hours" type="number" class="form-input" value="${o.hours||''}" placeholder="2"></div>
     </div>
-    <div class="form-group"><label class="form-label">Objectif parent (optionnel)</label><select id="om-parent" class="form-select">${parentOpts}</select></div>
-    <div class="form-group"><label class="form-label">Notes</label><textarea id="om-notes" class="form-textarea" style="min-height:50px">${esc(o.notes||'')}</textarea></div>
-    <div class="form-group"><label class="form-label">Tâches liées du plan (cochez)</label><div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px">${planItemsHtml}</div></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea id="om-notes" class="form-textarea" style="min-height:46px">${esc(o.notes||'')}</textarea></div>
+    <div class="form-group"><label class="form-label">Tâches du plan à rattacher (optionnel)</label><div style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px">${planItemsHtml}</div></div>
   `,[
     {label:'💾 Enregistrer',cls:'btn-primary',fn:`saveObjectif('${isEdit?id:''}')`},
     {label:'Annuler',cls:'btn-outline',fn:'closeModal()'}
   ]);
 }
 
+function om_levelChange(){
+  const lvl=document.getElementById('om-level').value;
+  const pl=LVL_PARENT[lvl];
+  document.getElementById('om-parent-wrap').style.display=pl?'block':'none';
+  document.getElementById('om-hours-wrap').style.display=lvl==='semaine'?'block':'none';
+  if(pl){
+    document.getElementById('om-parent-lvl').textContent=LVL_LABEL[pl];
+    const cand=objectives.filter(x=>x.level===pl);
+    document.getElementById('om-parent').innerHTML='<option value="">— Aucun (indépendant) —</option>'+cand.map(x=>`<option value="${x.id}">${esc(x.title.slice(0,45))}</option>`).join('');
+  }
+}
+
 function saveObjectif(id){
   const title=document.getElementById('om-title').value.trim();
   if(!title){alert('Titre requis');return;}
-  const planItems=[...document.querySelectorAll('#modal-body input[type=checkbox]:checked')].map(cb=>parseInt(cb.value));
-  const data={id:id||('obj_'+Date.now()),title,axe:document.getElementById('om-axe').value,priority:document.getElementById('om-prio').value,status:document.getElementById('om-status').value,deadline:document.getElementById('om-deadline').value,parentId:document.getElementById('om-parent').value||null,planItems,notes:document.getElementById('om-notes').value.trim()};
-  if(id){objectives=objectives.map(o=>o.id===id?data:o);}else objectives.push(data);
-  save('objectives',objectives);closeModal();renderObjectifDashboard();toast('✅ Objectif enregistré');
+  const level=document.getElementById('om-level').value;
+  const planItems=[...document.querySelectorAll('#modal-body input[type=checkbox]:checked')].map(c=>parseInt(c.value));
+  const data={
+    id:id||('obj_'+Date.now()),
+    level,
+    title,
+    axe:document.getElementById('om-axe').value,
+    status:document.getElementById('om-status').value,
+    parentId:LVL_PARENT[level]?(document.getElementById('om-parent').value||null):null,
+    hours:document.getElementById('om-hours')?document.getElementById('om-hours').value:'',
+    notes:document.getElementById('om-notes').value.trim(),
+    planItems
+  };
+  if(id) objectives=objectives.map(o=>o.id===id?{...o,...data}:o);
+  else objectives.push(data);
+  save('objectives',objectives);
+  closeModal();
+  currentObjLevel=level;
+  document.querySelectorAll('.lvl-tab').forEach(b=>b.classList.toggle('active',b.dataset.lvl===level));
+  renderObjectifs();
+  toast('✅ Objectif enregistré');
 }
 
 function deleteObjectif(id){
-  const o=objectives.find(x=>x.id===id);
-  if(!confirm(`Supprimer "${o?.title}" ?`))return;
-  objectives=objectives.filter(x=>x.id!==id);
-  objectives=objectives.map(o=>o.parentId===id?{...o,parentId:null}:o);
-  save('objectives',objectives);renderObjectifDashboard();toast('🗑️ Objectif supprimé');
+  const o=objById(id);
+  const kids=objChildren(id);
+  let msg='Supprimer "'+(o?o.title:'')+'" ?';
+  if(kids.length) msg+='\n('+kids.length+' sous-objectif(s) seront détachés, pas supprimés)';
+  if(!confirm(msg)) return;
+  objectives=objectives.filter(x=>x.id!==id).map(x=>x.parentId===id?{...x,parentId:null}:x);
+  save('objectives',objectives);renderObjectifs();toast('🗑️ Supprimé');
 }
 
 function viewObjectifDetail(id){
-  const o=objectives.find(x=>x.id===id);
-  if(!o) return;
-  const today=localDate();
-  const parent=o.parentId?objectives.find(p=>p.id===o.parentId):null;
-  const children=objectives.filter(c=>c.parentId===id);
-  const tasks=(o.planItems||[]).map((pi)=>({item:PLAN_30J[pi],pi})).filter(x=>x.item);
-  const rdvs=prospects.filter(p=>p.statut==='RDV'||p.statut==='Proposition');
-  const isR=o.deadline&&o.deadline<today&&o.status!=='Atteint'&&o.status!=='Abandonné';
-  const tasksHtml=tasks.length?tasks.map(({item,pi})=>{const ov=planOverrides['p'+pi]||{};const st=ov.status||(planDone.includes(item.date)?'Fait':'À faire');return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span>${STAT_ICON[st]||'⬜'}</span><span class="axe-badge axe-${(ov.axe||item.axe).replace(/\s/g,'')}" style="font-size:9px">${ov.axe||item.axe}</span><span style="font-size:12px;flex:1;${st==='Fait'?'text-decoration:line-through;color:var(--muted)':''}">${esc(ov.action||item.action)}</span><span style="font-size:10px;color:var(--muted)">${item.day||item.date}</span></div>`;}).join(''):'<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucune tâche liée</div>';
-  const rdvsHtml=rdvs.length?rdvs.slice(0,5).map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--orange)">📞</span><strong>${esc(p.nom)}</strong> — ${esc(p.societe||'—')}<span style="color:var(--orange);margin-left:auto;font-weight:700">${p.statut}</span></div>`).join(''):'<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun RDV dans le pipeline</div>';
-  openModal(`🎯 ${esc(o.title)}`,`
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      <span class="axe-badge axe-${o.axe.replace(/\s/g,'')}">${o.axe}</span>
-      <span style="font-size:11px;font-weight:700">${PRIO_ICON[o.priority]} ${o.priority}</span>
-      <span style="font-size:11px;font-weight:700;color:${o.status==='Atteint'?'var(--green)':o.status==='En cours'?'var(--accent)':'var(--muted)'}">${o.status}</span>
-      ${o.deadline?`<span style="font-size:11px;color:${isR?'var(--red)':'var(--muted)'}">📅 ${o.deadline}${isR?' ⚠️ EN RETARD':''}</span>`:''}
-    </div>
-    ${o.notes?`<div style="background:var(--light);border-radius:8px;padding:10px;font-size:13px;margin-bottom:12px;font-style:italic">${esc(o.notes)}</div>`:''}
-    ${parent?`<div style="font-size:12px;color:var(--secondary);margin-bottom:8px">↳ Sous-objectif de : <strong>${esc(parent.title)}</strong></div>`:''}
-    ${children.length?`<div style="font-size:12px;margin-bottom:10px"><strong>Sous-objectifs (${children.length}) :</strong> ${children.map(c=>`<span style="color:var(--secondary)">${esc(c.title)}</span>`).join(' · ')}</div>`:''}
-    <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:6px">📋 Tâches liées (${tasks.length})</div>
-    <div style="max-height:180px;overflow-y:auto;margin-bottom:14px">${tasksHtml}</div>
-    <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:6px">📞 RDV / Propositions en cours (${rdvs.length})</div>
-    <div style="max-height:110px;overflow-y:auto">${rdvsHtml}</div>
-  `,[
-    {label:'✏️ Modifier',cls:'btn-primary',fn:`closeModal();openObjectifModal('${id}')`},
-    {label:'Fermer',cls:'btn-outline',fn:'closeModal()'}
-  ]);
+  const o=objById(id); if(!o) return;
+  currentObjLevel=o.level||'annee';
+  objOpen.add(id);
+  showTab('planning');
+  setObjLevel(currentObjLevel);
 }
 
 // ═══ PITCH COMMERCIAL ═══════════════════════════════════════
