@@ -224,9 +224,9 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .cal-legend span{display:flex;align-items:center;gap:4px}
 .cal-legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
 /* Grille 7 colonnes */
-.cal-days-header{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+.cal-days-header{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:4px}
 .cal-day-name{font-size:10px;font-weight:700;color:var(--muted);text-align:center;padding:3px 0;text-transform:uppercase}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
 /* Cellule jour */
 .cal-cell{border-radius:10px;padding:8px;border:1px solid var(--border);background:#fff;min-height:90px;cursor:pointer;transition:.15s;position:relative}
 .cal-cell:hover{border-color:var(--accent);box-shadow:0 2px 10px rgba(0,174,239,.12)}
@@ -247,7 +247,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .cal-line.is-done .lt{text-decoration:line-through;color:#9ca3b0}
 .cal-more{font-size:10px;color:var(--accent);font-weight:700;margin-top:3px;cursor:pointer}
 /* Vue 7 jours — lisible et aérée */
-.cal-grid.view7{grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-grid.view7{grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .cal-grid.view7 .cal-cell{min-height:170px;padding:10px}
 .cal-grid.view7 .cal-num{font-size:16px;margin-bottom:8px}
 .cal-grid.view7 .cal-line{font-size:12px;line-height:1.6}
