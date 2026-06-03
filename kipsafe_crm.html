@@ -452,6 +452,14 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
               <button id="cal2-btn-30" onclick="setCal2View(30)">1 mois</button>
             </div>
             <button class="btn btn-accent btn-sm" onclick="openAddScheduleItem(localDate())">➕ Ajouter</button>
+            <select id="cal-status-filter" class="form-select" style="width:auto;font-size:12px;padding:5px 8px" onchange="renderCalendar2()">
+              <option value="">Tous les statuts</option>
+              <option value="todo">⬜ À faire</option>
+              <option value="inprogress">🔄 En cours</option>
+              <option value="late">⚠️ En retard</option>
+              <option value="postponed">⏩ Reporté</option>
+              <option value="done">✅ Terminé</option>
+            </select>
           </div>
           <div class="cal-nav">
             <button onclick="cal2NavPrev()">‹</button>
@@ -1366,10 +1374,7 @@ function openScheduleItemModal(today,key){
       <div class="form-group"><label class="form-label">Heure fin</label><input id="si-end" type="time" class="form-input" value="${item.end}"></div>
     </div>
     <div class="form-group"><label class="form-label">Intitulé</label><textarea id="si-action" class="form-textarea" rows="2">${esc(item.action)}</textarea></div>
-    <div class="grid-2">
-      <div class="form-group"><label class="form-label">Axe</label><select id="si-axe" class="form-select">${AXES.map(a=>`<option ${a===item.axe?'selected':''}>${a}</option>`).join('')}</select></div>
-      <div class="form-group"><label class="form-label">Icône</label><input id="si-icon" class="form-input" value="${item.icon||''}" placeholder="🎯"></div>
-    </div>
+    <div class="form-group"><label class="form-label">Axe</label><select id="si-axe" class="form-select">${AXES.map(a=>`<option ${a===item.axe?'selected':''}>${a}</option>`).join('')}</select></div>
     <div class="form-group"><label class="form-label">📊 Statut</label>
       <select id="si-status" class="form-select" onchange="si_statusChange()">
         ${SCHED_STATUSES.map(s=>`<option ${s===m.status?'selected':''}>${SCHED_SICON[s]} ${s}</option>`).join('')}
@@ -1415,7 +1420,7 @@ function saveScheduleItem(today,key){
   const end=document.getElementById('si-end').value;
   const action=document.getElementById('si-action').value.trim();
   const axe=document.getElementById('si-axe').value;
-  const icon=document.getElementById('si-icon').value;
+  const icon=(getScheduleItemByKey(today,key)||{}).icon||'📌';
   const status=document.getElementById('si-status').value.replace(/^[^\w\sÀ-ÿ]+\s*/,'').trim();
   const estFinish=document.getElementById('si-estfinish')?document.getElementById('si-estfinish').value:'';
   const reportDate=document.getElementById('si-reportdate')?document.getElementById('si-reportdate').value:'';
@@ -1487,7 +1492,7 @@ function openAddScheduleItem(today){
     <div class="form-group"><label class="form-label">Intitulé *</label><textarea id="na-action" class="form-textarea" rows="2" placeholder="Ex: RDV client Dupont / Réunion équipe / Préparer plaquette..."></textarea></div>
     <div class="grid-2">
       <div class="form-group"><label class="form-label">Axe / Catégorie</label><select id="na-axe" class="form-select"><option>Commercial</option><option>Marketing</option><option>Web</option><option>Supports</option><option>Marchés</option><option>Formation</option><option>Admin</option><option>Pause</option></select></div>
-      <div class="form-group"><label class="form-label">Icône</label><input id="na-icon" class="form-input" placeholder="🎯" value="✅"></div>
+      <div class="form-group"><label class="form-label">📊 Statut</label><select id="na-status" class="form-select"><option>À faire</option><option>En cours</option><option>Reporté</option><option>Terminé</option></select></div>
     </div>
     <div class="form-group"><label class="form-label">🔁 Récurrence</label>
       <select id="na-recurring" class="form-select" onchange="document.getElementById('na-until-wrap').style.display=this.value!=='none'?'block':'none'">
@@ -1507,12 +1512,11 @@ function openAddScheduleItem(today){
   ]);
 }
 
+const TYPE_ICON={tache:'✅',rdv:'📞',reunion:'👥',formation:'📚',perso:'📌'};
+const TYPE_AXE={tache:'Admin',rdv:'Commercial',reunion:'Admin',formation:'Formation',perso:'Admin'};
 function applyEventType(){
   const t=document.getElementById('na-type').value;
-  const map={tache:{icon:'✅',axe:'Admin'},rdv:{icon:'📞',axe:'Commercial'},reunion:{icon:'👥',axe:'Admin'},formation:{icon:'📚',axe:'Formation'},perso:{icon:'📌',axe:'Admin'}};
-  const c=map[t]||map.tache;
-  document.getElementById('na-icon').value=c.icon;
-  document.getElementById('na-axe').value=c.axe;
+  document.getElementById('na-axe').value=TYPE_AXE[t]||'Admin';
 }
 
 function calcDur(time,end){
@@ -1529,10 +1533,12 @@ function addScheduleItem(){
   const action=document.getElementById('na-action').value.trim();
   if(!action){alert('Intitulé requis');return;}
   const axe=document.getElementById('na-axe').value;
-  const icon=document.getElementById('na-icon').value||'🎯';
+  const type=document.getElementById('na-type')?.value||'tache';
+  const icon=TYPE_ICON[type]||'📌';
+  const status=document.getElementById('na-status')?.value||'À faire';
   const recurring=document.getElementById('na-recurring')?.value||'none';
   const recurringUntil=document.getElementById('na-until')?.value||'';
-  scheduleCustom.push({id:Date.now(),date,time,end,dur:calcDur(time,end),axe,icon,action,done:false,recurring,recurringUntil});
+  scheduleCustom.push({id:Date.now(),date,time,end,dur:calcDur(time,end),axe,icon,action,status,done:status==='Terminé',recurring,recurringUntil});
   save('schedule_custom',scheduleCustom);
   closeModal();refreshScheduleViews();toast('✅ Ajouté au planning'+(recurring!=='none'?' ('+RECUR_LABEL[recurring]+')':''));
 }
@@ -2042,8 +2048,19 @@ function cal2NavPrev(){cal2Offset--;renderCalendar2();}
 function cal2NavNext(){cal2Offset++;renderCalendar2();}
 function cal2NavToday(){cal2Offset=0;renderCalendar2();}
 
+function eventBucket(ev){
+  const st=ev.status;
+  if(ev.done||st==='Terminé'||st==='Fait'||st==='Signé') return 'done';
+  if(st==='Retard') return 'late';
+  if(st==='En cours') return 'inprogress';
+  if(st==='Reporté') return 'postponed';
+  if(st==='Annulé') return 'cancelled';
+  return 'todo';
+}
 function calCellHtml(ds,todayStr,isCurrent,maxItems){
-  const events=getAllEventsForDate(ds);
+  let events=getAllEventsForDate(ds);
+  const sf=document.getElementById('cal-status-filter')?.value||'';
+  if(sf) events=events.filter(e=>eventBucket(e)===sf);
   const hasRdv=events.some(e=>e.type==='rdv');
   const hasOverdue=ds<todayStr&&events.some(e=>e.type==='task'&&!e.done);
   const allDone=events.length>0&&events.filter(e=>e.type==='task').every(e=>e.done);
