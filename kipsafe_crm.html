@@ -1777,10 +1777,12 @@ function getAllEventsForDate(dateStr){
     const label=`${cc.icon} ${cat} — ${p.nom}${p.societe?' ('+p.societe+')':''}`;
     events.push({type:'rdv',category:cat,label,axe:p.offre,status:p.statut,color:cc.color,icon:cc.icon,done:p.statut==='Signé',time:p.rdv_time||'',prospectId:p.id});
   });
-  // 4. Deadlines objectifs
+  // 4. Échéances des objectifs
   if(objectives) objectives.forEach(o=>{
-    if(o.deadline!==dateStr) return;
-    events.push({type:'objectif',label:`🎯 Deadline : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Terminé'?'var(--green)':o.status==='En cours'?'var(--purple)':'var(--muted)',icon:'🎯',done:o.status==='Terminé',objectifId:o.id});
+    const ech=o.echeance||o.deadline;
+    if(ech!==dateStr) return;
+    const lvlTxt={annee:'Année',mois:'Mois',semaine:'Semaine'}[o.level]||'';
+    events.push({type:'objectif',label:`🎯 Échéance ${lvlTxt} : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Terminé'?'var(--green)':o.status==='Annulé'?'var(--muted)':'var(--purple)',icon:'🎯',done:o.status==='Terminé',objectifId:o.id});
   });
   // Appliquer le statut manuel (occStatus) qui prime sur tout
   events.forEach(ev=>{
@@ -1909,7 +1911,7 @@ function renderCalendrierTab(){
   const rdvAll=prospects.filter(p=>['RDV','Proposition'].includes(p.statut));
   const overdueAll=PLAN_30J.map((item,i)=>({item,i,status:getItemStatus(item,i)})).filter(({item,status})=>item.date<today&&status!=='Fait'&&status!=='Reporté');
   const doneAll=PLAN_30J.map((item,i)=>({item,i})).filter(({item,i})=>getItemStatus(item,i)==='Fait');
-  const overdueObj=objectives?objectives.filter(o=>o.deadline&&o.deadline<today&&o.status!=='Terminé'&&o.status!=='Annulé'):[];
+  const overdueObj=objectives?objectives.filter(o=>(o.echeance||o.deadline)&&(o.echeance||o.deadline)<today&&o.status!=='Terminé'&&o.status!=='Annulé'):[];
 
   document.getElementById('cal-summary-cards').innerHTML=`
     <div class="card" style="border-top:3px solid var(--accent)">
@@ -1944,7 +1946,7 @@ function renderCalendrierTab(){
   // Liste EN RETARD (tâches + objectifs)
   let overdueHtml='';
   overdueAll.forEach(({item,i})=>{const ov=planOverrides['p'+i]||{};overdueHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:7px;border-radius:6px;background:#fef2f2;margin-bottom:4px;cursor:pointer" onclick="openPlanModal(${i})"><span>📋</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:#7f1d1d">${esc(ov.action||item.action)}</div><div style="font-size:10px;color:#b91c1c">${item.day||item.date}</div></div><button class="btn btn-xs btn-danger" onclick="event.stopPropagation();openPlanModal(${i})">Modifier</button></div>`;});
-  overdueObj.forEach(o=>{overdueHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:7px;border-radius:6px;background:#fef2f2;margin-bottom:4px;cursor:pointer" onclick="viewObjectifDetail('${o.id}')"><span>🎯</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:#7f1d1d">${esc(o.title)}</div><div style="font-size:10px;color:#b91c1c">Deadline : ${o.deadline}</div></div><button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openObjectifModal('${o.id}')">Modifier</button></div>`;});
+  overdueObj.forEach(o=>{overdueHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:7px;border-radius:6px;background:#fef2f2;margin-bottom:4px;cursor:pointer" onclick="openObjReview('${o.id}')"><span>🎯</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:#7f1d1d">${esc(o.title)}</div><div style="font-size:10px;color:#b91c1c">Échéance dépassée : ${frDate(o.echeance||o.deadline)}</div></div><button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openObjReview('${o.id}')">Faire le point</button></div>`;});
   document.getElementById('cal-overdue-list').innerHTML=overdueHtml||'<div style="color:var(--green);font-size:13px;padding:10px 0">✅ Aucun retard !</div>';
 
   // Liste FAITES
@@ -2002,7 +2004,7 @@ function openDayDetail(ds){
       // Handler d'édition selon le type
       let editFn='';
       if(ev.type==='rdv'&&ev.prospectId) editFn=`closeModal();viewProspect(${ev.prospectId})`;
-      else if(ev.type==='objectif'&&ev.objectifId) editFn=`closeModal();openObjectifModal('${ev.objectifId}')`;
+      else if(ev.type==='objectif'&&ev.objectifId) editFn=`closeModal();openObjReview('${ev.objectifId}')`;
       else if(ev.type==='programme'&&ev.key) editFn=`closeModal();openScheduleItemModal('${ds}','${ev.key}')`;
       else if(ev.type==='schedule'&&ev.itemId!==undefined) editFn=`closeModal();openScheduleItemModal('${ds}','custom_${ev.itemId}')`;
       else if(ev.type==='task'&&ev.planIdx!==undefined) editFn=`closeModal();openPlanModal(${ev.planIdx})`;
@@ -2132,9 +2134,22 @@ function periodLabel(o){
   }
   return '';
 }
-// Migration douce : ajouter une période par défaut aux objectifs qui n'en ont pas
+// Échéance (date butoir) calculée depuis la période, modifiable pour allonger/reporter
+function defaultEcheance(level,period){
+  if(level==='annee') return (period||'2026')+'-12-31';
+  if(level==='mois'){const p=period||'2026-06';const[y,m]=p.split('-').map(Number);const last=new Date(y,m,0).getDate();return p+'-'+String(last).padStart(2,'0');}
+  if(level==='semaine'){const d=new Date((period||'2026-06-01')+'T12:00:00');if(isNaN(d))return '';const dow=(d.getDay()+6)%7;const sun=new Date(d);sun.setDate(d.getDate()-dow+6);return localDate(sun);}
+  return '';
+}
+function addDaysStr(dateStr,days){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+days);return localDate(d);}
+function frDate(dateStr){if(!dateStr)return '';const d=new Date(dateStr+'T12:00:00');if(isNaN(d))return dateStr;return d.getDate()+' '+MOIS_COURT[d.getMonth()]+' '+d.getFullYear();}
+
+// Migration douce : période + échéance par défaut
 let _objMig=false;
-objectives.forEach(o=>{if(!o.period){o.period=defaultPeriod(o.level);_objMig=true;}});
+objectives.forEach(o=>{
+  if(!o.period){o.period=defaultPeriod(o.level);_objMig=true;}
+  if(!o.echeance){o.echeance=o.deadline||defaultEcheance(o.level,o.period);_objMig=true;}
+});
 if(_objMig) save('objectives',objectives);
 
 let currentObjLevel='annee';
@@ -2310,6 +2325,11 @@ function openObjectifModal(id,parentIdPreset){
       <input id="om-week" type="date" class="form-input" value="${o.level==='semaine'?(o.period||'2026-06-01'):'2026-06-01'}" style="${o.level==='semaine'?'':'display:none'}">
       <div style="font-size:10px;color:var(--muted);margin-top:3px" id="om-period-hint"></div>
     </div>
+    <div class="form-group">
+      <label class="form-label">⏳ Échéance (date butoir) <span style="color:var(--muted);font-weight:400;text-transform:none">— allongez-la si besoin de plus de temps</span></label>
+      <input id="om-echeance" type="date" class="form-input" value="${o.echeance||defaultEcheance(o.level,o.period)}">
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">📆 Apparaîtra dans le Planning à cette date. Modifiez-la pour reporter / allonger l'objectif.</div>
+    </div>
     <div id="om-parent-wrap" class="form-group" style="${parentLvl?'':'display:none'}">
       <label class="form-label">Rattaché à un objectif <span id="om-parent-lvl">${parentLvl?LVL_LABEL[parentLvl]:''}</span> <span style="color:var(--muted);font-weight:400;text-transform:none">— optionnel</span></label>
       <select id="om-parent" class="form-select">${parentOptions}</select>
@@ -2358,6 +2378,7 @@ function saveObjectif(id){
     level,
     title,
     period,
+    echeance:document.getElementById('om-echeance').value||defaultEcheance(level,period),
     axe:document.getElementById('om-axe').value,
     status:document.getElementById('om-status').value,
     parentId:LVL_PARENT[level]?(document.getElementById('om-parent').value||null):null,
@@ -2392,6 +2413,36 @@ function viewObjectifDetail(id){
   showTab('planning');
   setObjLevel(currentObjLevel);
 }
+
+// ── Faire le point sur un objectif arrivé à échéance ──
+function openObjReview(id){
+  const o=objById(id); if(!o) return;
+  const pct=objProgress(o);
+  const lvlTxt={annee:'annuel',mois:'mensuel',semaine:'hebdo'}[o.level]||'';
+  const ech=o.echeance||o.deadline;
+  const today=localDate();
+  const isOver=ech&&ech<today;
+  openModal('🎯 Point sur l\'objectif',`
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:800;color:var(--primary)">${esc(o.title)}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Objectif ${lvlTxt} · ${periodLabel(o)} · Avancement ${pct}%</div>
+      <div style="font-size:12px;margin-top:4px;color:${isOver?'var(--red)':'var(--muted)'}">⏳ Échéance : ${frDate(ech)}${isOver?' (dépassée)':''}</div>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Que voulez-vous faire ?</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-success" style="justify-content:flex-start" onclick="objReviewValidate('${id}')">✅ Valider — objectif atteint</button>
+      <button class="btn btn-outline" style="justify-content:flex-start" onclick="objReviewExtend('${id}',7)">📅 Allonger d'1 semaine (→ ${frDate(addDaysStr(ech,7))})</button>
+      <button class="btn btn-outline" style="justify-content:flex-start" onclick="objReviewExtend('${id}',30)">📅 Allonger d'1 mois (→ ${frDate(addDaysStr(ech,30))})</button>
+      <button class="btn btn-outline" style="justify-content:flex-start" onclick="objReviewStatus('${id}','Reporté')">⏩ Marquer comme reporté</button>
+      <button class="btn btn-danger" style="justify-content:flex-start" onclick="objReviewStatus('${id}','Annulé')">❌ Abandonner l'objectif</button>
+      <button class="btn btn-outline" style="justify-content:flex-start" onclick="closeModal();openObjectifModal('${id}')">✏️ Modifier en détail</button>
+    </div>
+  `,[{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
+}
+function _objAfterReview(){save('objectives',objectives);closeModal();renderObjectifs();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();}
+function objReviewValidate(id){const o=objById(id);if(o){o.status='Terminé';}_objAfterReview();toast('✅ Objectif validé !');}
+function objReviewExtend(id,days){const o=objById(id);if(o){o.echeance=addDaysStr(o.echeance||o.deadline||localDate(),days);o.status='En cours';}_objAfterReview();toast('📅 Échéance repoussée au '+frDate(objById(id).echeance));}
+function objReviewStatus(id,status){const o=objById(id);if(o){o.status=status;}_objAfterReview();toast('Objectif : '+status);}
 
 // ═══ PITCH COMMERCIAL ═══════════════════════════════════════
 const PITCH_DATA={
