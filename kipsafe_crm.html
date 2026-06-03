@@ -368,6 +368,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     <!-- DASHBOARD -->
     <div id="panel-dashboard" class="panel active">
       <div id="soir-banner"></div>
+      <div id="reminders-banner"></div>
       <div class="grid-4" style="margin-bottom:16px" id="kpis"></div>
       <div class="grid-2">
         <div>
@@ -1046,8 +1047,7 @@ const OCC_STATUS=[
   {v:'Annulé',  icon:'❌', color:'#b91c1c'}
 ];
 function occKeyOf(ev,ds){
-  if(ev.type==='programme'&&ev.key) return ds+'|prog|'+ev.key;
-  if(ev.type==='schedule'&&ev.itemId!==undefined) return ds+'|cust|'+ev.itemId;
+  // Les créneaux (programme/schedule) ont désormais leur statut riche propre → pas d'occStatus
   if(ev.type==='task'&&ev.planIdx!==undefined) return ds+'|task|'+ev.planIdx;
   if(ev.type==='rdv'&&ev.prospectId!==undefined) return ds+'|rdv|'+ev.prospectId;
   return null;
@@ -1201,7 +1201,17 @@ document.addEventListener('click',function(e){if(!e.target.closest('.more-menu')
 let objStatus=load('obj_status',{});
 
 // ═══ DASHBOARD ══════════════════════════════════════════════
-function renderDashboard(){renderSoirBanner();renderKPIs();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
+function renderDashboard(){renderSoirBanner();renderRemindersBanner();renderKPIs();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
+function renderRemindersBanner(){
+  const el=document.getElementById('reminders-banner'); if(!el) return;
+  const today=localDate();
+  const rem=getRemindersForDate(today);
+  if(!rem.length){el.innerHTML='';return;}
+  el.innerHTML='<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:12px 16px;margin-bottom:16px">'+
+    '<div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:6px">🔔 Rappels du jour ('+rem.length+')</div>'+
+    rem.map(r=>{const j=r.offset===0?"aujourd'hui":r.offset===1?'demain':'dans '+r.offset+' jours';return `<div style="font-size:13px;color:#92400e;padding:3px 0">${r.icon} <strong>${esc(r.label)}</strong> — ${j} (${frDateShort(r.when)})</div>`;}).join('')+
+    '</div>';
+}
 function renderSoirBanner(){const now=new Date();const dow=now.getDay();const h=now.getHours(),m=now.getMinutes();const isToday01=localDate(now)==='2026-06-01';let html='';if(isToday01&&h<18){html='<div class="soir-banner"><div><div class="soir-title">📅 Session KIPSAFE — Lundi 01 juin 2026</div><div class="soir-sub">Planning actif jusqu\'à 18h00 · Session soir 17h30–21h30</div></div><span class="soir-badge">J1 du Plan 30J</span></div>';}else if(dow>=1&&dow<=4&&h>=17&&(h<21||(h===21&&m<30))){html='<div class="soir-banner"><div><div class="soir-title">🌙 Session soir KIPSAFE — 17h30 → 21h30</div><div class="soir-sub">Relances · Support · LinkedIn · Prospection · MAJ CRM</div></div><span class="soir-badge">EN COURS</span></div>';}
 else if(dow===0&&h>=10&&h<13){html='<div class="soir-banner"><div><div class="soir-title">☀️ Session dimanche KIPSAFE — 10h → 13h</div><div class="soir-sub">Formation · CRM · Marchés · Planification semaine</div></div><span class="soir-badge">EN COURS</span></div>';}document.getElementById('soir-banner').innerHTML=html;}
 function onlyProspects(){return prospects.filter(p=>(p.categorie||'Prospect')==='Prospect');}
@@ -1321,26 +1331,66 @@ function getScheduleItemByKey(dateStr,key){
   return {time:ov.time||s.time,end:ov.end||s.end,dur:ov.dur||s.dur,axe:ov.axe||s.axe||'',icon:ov.icon!==undefined?ov.icon:(s.icon||''),action:ov.action||s.action,done:ov.done||false,isCustom:false,isRec:false};
 }
 
+// ── Métadonnées riches d'un créneau (statut, objectif, rappel, historique) ──
+const SCHED_STATUSES=['À faire','En cours','Reporté','Terminé'];
+const SCHED_SC={'À faire':'#64748b','En cours':'#1d4ed8','Reporté':'#7c3aed','Terminé':'#15803d','Retard':'#b91c1c','Annulé':'#94a3b8'};
+const SCHED_SICON={'À faire':'⬜','En cours':'🔄','Reporté':'⏩','Terminé':'✅','Retard':'⚠️'};
+const REMINDER_OPTS={none:'Aucun',jourJ:'🔔 Le jour J',j1:'🔔 1 jour avant',j2:'🔔 2 jours avant'};
+const REMINDER_OFFSET={jourJ:0,j1:1,j2:2};
+
+function getSchedMeta(dateStr,key){
+  if(key.startsWith('custom_')){
+    const s=scheduleCustom.find(x=>String(x.id)===key.slice(7))||{};
+    const isRec=s.recurring&&s.recurring!=='none';
+    let status=s.status||'À faire';
+    if(isRec && scheduleRecurringDone[s.id+'_'+dateStr]) status='Terminé';
+    else if(!isRec && s.done) status='Terminé';
+    return {status,estFinish:s.estFinish||'',reportDate:s.reportDate||'',reportReason:s.reportReason||'',objectifId:s.objectifId||'',reminder:s.reminder||'none',history:s.history||[],isRec,sid:s.id};
+  }
+  const m=scheduleOverrides[key]||{};
+  const status=m.status||(m.done?'Terminé':'À faire');
+  return {status,estFinish:m.estFinish||'',reportDate:m.reportDate||'',reportReason:m.reportReason||'',objectifId:m.objectifId||'',reminder:m.reminder||'none',history:m.history||[],isRec:false};
+}
+function effSchedStatus(status,dateStr){ if(status==='À faire' && dateStr && dateStr<localDate()) return 'Retard'; return status; }
+
 function openScheduleItemModal(today,key){
   const item=getScheduleItemByKey(today,key);
   if(!item){toast('⚠️ Créneau introuvable');return;}
+  const m=getSchedMeta(today,key);
   const AXES=['','Admin','Commercial','Marketing','Web','Supports','Marchés','Formation','Pause'];
-  openModal(`✏️ Modifier le créneau`,`
+  const objOpts='<option value="">— Aucun objectif —</option>'+objectives.map(o=>`<option value="${o.id}" ${m.objectifId===o.id?'selected':''}>${({annee:'📅',mois:'🗓️',semaine:'📋'}[o.level]||'')} ${esc(o.title.slice(0,40))}</option>`).join('');
+  const histHtml=(m.history||[]).slice().reverse().map(h=>{const d=new Date(h.t);const ds=isNaN(d)?'':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});return `<div style="font-size:11px;padding:5px 8px;background:var(--light);border-radius:6px;margin-bottom:4px"><span style="color:var(--muted)">${ds}</span> — ${esc(h.text)}</div>`;}).join('')||'<div style="font-size:11px;color:var(--muted)">Aucune note pour l\'instant</div>';
+  openModal('✏️ Modifier',`
     <div class="grid-2">
       <div class="form-group"><label class="form-label">Heure début</label><input id="si-time" type="time" class="form-input" value="${item.time}"></div>
       <div class="form-group"><label class="form-label">Heure fin</label><input id="si-end" type="time" class="form-input" value="${item.end}"></div>
     </div>
-    <div class="form-group"><label class="form-label">Action</label><textarea id="si-action" class="form-textarea" rows="2">${esc(item.action)}</textarea></div>
+    <div class="form-group"><label class="form-label">Intitulé</label><textarea id="si-action" class="form-textarea" rows="2">${esc(item.action)}</textarea></div>
     <div class="grid-2">
       <div class="form-group"><label class="form-label">Axe</label><select id="si-axe" class="form-select">${AXES.map(a=>`<option ${a===item.axe?'selected':''}>${a}</option>`).join('')}</select></div>
-      <div class="form-group"><label class="form-label">Icône (emoji)</label><input id="si-icon" class="form-input" value="${item.icon||''}" placeholder="🎯"></div>
+      <div class="form-group"><label class="form-label">Icône</label><input id="si-icon" class="form-input" value="${item.icon||''}" placeholder="🎯"></div>
     </div>
-    <div class="form-group">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
-        <input type="checkbox" id="si-done" ${item.done?'checked':''} style="width:16px;height:16px;accent-color:var(--green)">
-        Marquer comme fait ✅
-      </label>
+    <div class="form-group"><label class="form-label">📊 Statut</label>
+      <select id="si-status" class="form-select" onchange="si_statusChange()">
+        ${SCHED_STATUSES.map(s=>`<option ${s===m.status?'selected':''}>${SCHED_SICON[s]} ${s}</option>`).join('')}
+      </select>
     </div>
+    <div id="si-encours-wrap" class="form-group" style="${m.status==='En cours'?'':'display:none'}">
+      <label class="form-label">📅 Date estimée de fin</label>
+      <input id="si-estfinish" type="date" class="form-input" value="${m.estFinish||''}">
+    </div>
+    <div id="si-report-wrap" style="${m.status==='Reporté'?'':'display:none'}">
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label">📅 Nouvelle date</label><input id="si-reportdate" type="date" class="form-input" value="${m.reportDate||''}"></div>
+        <div class="form-group"><label class="form-label">Motif du report</label><input id="si-reportreason" class="form-input" value="${esc(m.reportReason||'')}" placeholder="Pourquoi ?"></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">🎯 Rattaché à l'objectif</label><select id="si-objectif" class="form-select">${objOpts}</select></div>
+      <div class="form-group"><label class="form-label">🔔 Rappel</label><select id="si-reminder" class="form-select">${Object.keys(REMINDER_OPTS).map(k=>`<option value="${k}" ${m.reminder===k?'selected':''}>${REMINDER_OPTS[k]}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group"><label class="form-label">📝 Ajouter une note (historique)</label><textarea id="si-note" class="form-textarea" rows="2" placeholder="Compte-rendu, info, prochaine étape..."></textarea></div>
+    <div class="form-group"><label class="form-label">🕘 Historique</label><div style="max-height:120px;overflow-y:auto">${histHtml}</div></div>
   `,[
     {label:'💾 Enregistrer',cls:'btn-primary',fn:`saveScheduleItem('${today}','${key}')`},
     {label:'🗑️ Supprimer',cls:'btn-danger',fn:`deleteScheduleItem('${today}','${key}')`},
@@ -1348,9 +1398,16 @@ function openScheduleItemModal(today,key){
   ]);
 }
 
+function si_statusChange(){
+  const v=document.getElementById('si-status').value.replace(/^[^\w\sÀ-ÿ]+\s*/,'').trim();
+  document.getElementById('si-encours-wrap').style.display=v==='En cours'?'block':'none';
+  document.getElementById('si-report-wrap').style.display=v==='Reporté'?'block':'none';
+}
+
 function refreshScheduleViews(){
   renderScheduleToday();
   if(document.getElementById('panel-calendrier')?.classList.contains('active')) renderCalendrierTab();
+  if(document.getElementById('panel-planning')?.classList.contains('active')) renderObjectifs();
 }
 
 function saveScheduleItem(today,key){
@@ -1359,27 +1416,34 @@ function saveScheduleItem(today,key){
   const action=document.getElementById('si-action').value.trim();
   const axe=document.getElementById('si-axe').value;
   const icon=document.getElementById('si-icon').value;
-  const done=document.getElementById('si-done').checked;
-  const [sh,sm]=time.split(':').map(Number), [eh,em]=end.split(':').map(Number);
+  const status=document.getElementById('si-status').value.replace(/^[^\w\sÀ-ÿ]+\s*/,'').trim();
+  const estFinish=document.getElementById('si-estfinish')?document.getElementById('si-estfinish').value:'';
+  const reportDate=document.getElementById('si-reportdate')?document.getElementById('si-reportdate').value:'';
+  const reportReason=document.getElementById('si-reportreason')?document.getElementById('si-reportreason').value.trim():'';
+  const objectifId=document.getElementById('si-objectif').value;
+  const reminder=document.getElementById('si-reminder').value;
+  const note=document.getElementById('si-note').value.trim();
+  const done=status==='Terminé';
+  const [sh,sm]=time.split(':').map(Number),[eh,em]=end.split(':').map(Number);
   const mins=(eh*60+em)-(sh*60+sm);
   const dur=mins>0?(mins>=60?Math.floor(mins/60)+'h'+(mins%60?''+mins%60:'')+'min':mins+'min'):'';
+  const prev=getSchedMeta(today,key);
+  let history=(prev.history||[]).slice();
+  if(note) history.push({t:Date.now(),text:note});
+  const rich={status,estFinish,reportDate,reportReason,objectifId,reminder,history};
   if(key.startsWith('custom_')){
     const rawId=key.slice(7);
     const s=scheduleCustom.find(x=>String(x.id)===rawId);
     const isRec=s&&s.recurring&&s.recurring!=='none';
-    scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,time,end,dur,axe,icon,action,...(isRec?{}:{done})}:x);
+    scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,time,end,dur,axe,icon,action,...rich,...(isRec?{}:{done})}:x);
     save('schedule_custom',scheduleCustom);
-    if(isRec){ // le "fait" est par date pour les récurrents
-      scheduleRecurringDone[rawId+'_'+today]=done;
-      save('schedule_recurring_done',scheduleRecurringDone);
-    }
+    if(isRec){ if(done) scheduleRecurringDone[rawId+'_'+today]=true; else delete scheduleRecurringDone[rawId+'_'+today]; save('schedule_recurring_done',scheduleRecurringDone); }
   } else {
-    scheduleOverrides[key]={...scheduleOverrides[key]||{},time,end,dur,axe,icon,action,done};
+    scheduleOverrides[key]={...scheduleOverrides[key]||{},time,end,dur,axe,icon,action,done,...rich};
     save('schedule_overrides',scheduleOverrides);
   }
-  closeModal();refreshScheduleViews();toast('✅ Créneau mis à jour');
+  closeModal();refreshScheduleViews();renderDashboard();toast('✅ Enregistré');
 }
-
 function deleteScheduleItem(today,key){
   if(!confirm('Supprimer ce créneau ?')) return;
   if(key.startsWith('custom_')){
@@ -1745,9 +1809,10 @@ function getAllEventsForDate(dateStr){
       if(axe==='Pause') return; // on n'affiche pas la pause déjeuner
       const action=ov.action||s.action;
       const time=ov.time||s.time;
-      const isDone=ov.done||false;
       const icon=ov.icon!==undefined?ov.icon:(s.icon||'⏰');
-      events.push({type:'programme',label:action,axe,status:isDone?'Fait':'À faire',color:isDone?'var(--green)':'var(--primary)',icon,done:isDone,time,key});
+      const meta=getSchedMeta(dateStr,key);
+      const st=effSchedStatus(meta.status,dateStr);
+      events.push({type:'programme',label:action,axe,status:st,color:SCHED_SC[st]||'var(--primary)',icon,done:st==='Terminé',time,key,objectifId:meta.objectifId,reminder:meta.reminder});
     });
   }
   // 1. Tâches Plan 30J
@@ -1761,10 +1826,10 @@ function getAllEventsForDate(dateStr){
   scheduleCustom.forEach(s=>{
     if(!isRecurringOnDate(s,dateStr)) return;
     const isRec=s.recurring&&s.recurring!=='none';
-    const doneKey=s.id+'_'+dateStr;
-    const isDone=isRec?(scheduleRecurringDone[doneKey]||false):(s.done||false);
     const recurTag=isRec?` (${RECUR_LABEL[s.recurring]||'🔁'})` :'';
-    events.push({type:'schedule',label:s.action+recurTag,axe:s.axe,status:isDone?'Fait':'À faire',color:isDone?'var(--green)':'var(--secondary)',icon:s.icon||'⏰',done:isDone,time:s.time,itemId:s.id,isRecurring:isRec});
+    const meta=getSchedMeta(dateStr,'custom_'+s.id);
+    const st=effSchedStatus(meta.status,dateStr);
+    events.push({type:'schedule',label:s.action+recurTag,axe:s.axe,status:st,color:SCHED_SC[st]||'var(--secondary)',icon:s.icon||'⏰',done:st==='Terminé',time:s.time,itemId:s.id,isRecurring:isRec,objectifId:meta.objectifId,reminder:meta.reminder});
   });
   // 3. RDV contacts (par date RDV) — coloré selon la catégorie
   prospects.forEach(p=>{
@@ -2016,15 +2081,25 @@ function openDayDetail(ds){
       let btnLabel='✏️ Modifier';
       if(ev.type==='objectif'&&!ev.isStart) btnLabel='🎯 Faire le point';
       const editBtn=editFn?`<button class="btn btn-sm btn-primary" onclick="${editFn}" style="white-space:nowrap">${btnLabel}</button>`:'';
-      // Sélecteur de statut (sauf objectif qui a son propre statut)
-      const k=occKeyOf(ev,ds);
+      // Sélecteur de statut rapide
       let statusBtns='';
-      if(k){
+      const schedKey=ev.type==='programme'?ev.key:(ev.type==='schedule'?'custom_'+ev.itemId:null);
+      if(schedKey){
+        // Créneaux : statut riche (À faire / En cours / Reporté / Terminé)
         const cur=ev.status;
-        statusBtns='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:8px">'+OCC_STATUS.map(s=>{
-          const active=cur===s.v||(s.v==='À faire'&&(cur==='À faire'||cur==='RDV'||cur==='Nouveau'));
-          return `<button onclick="event.stopPropagation();setEventStatus('${k}','${s.v}','${ds}')" style="font-size:10px;padding:3px 8px;border-radius:99px;cursor:pointer;border:1px solid ${active?s.color:'var(--border)'};background:${active?s.color:'#fff'};color:${active?'#fff':s.color};font-weight:700">${s.icon} ${s.v}</button>`;
+        statusBtns='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:8px">'+SCHED_STATUSES.map(v=>{
+          const active=cur===v;const col=SCHED_SC[v];
+          return `<button onclick="event.stopPropagation();setScheduleStatusQuick('${ds}','${schedKey}','${v}')" style="font-size:10px;padding:3px 8px;border-radius:99px;cursor:pointer;border:1px solid ${active?col:'var(--border)'};background:${active?col:'#fff'};color:${active?'#fff':col};font-weight:700">${SCHED_SICON[v]} ${v}</button>`;
         }).join('')+'</div>';
+      } else {
+        const k=occKeyOf(ev,ds);
+        if(k){
+          const cur=ev.status;
+          statusBtns='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:8px">'+OCC_STATUS.map(s=>{
+            const active=cur===s.v||(s.v==='À faire'&&(cur==='À faire'||cur==='RDV'||cur==='Nouveau'));
+            return `<button onclick="event.stopPropagation();setEventStatus('${k}','${s.v}','${ds}')" style="font-size:10px;padding:3px 8px;border-radius:99px;cursor:pointer;border:1px solid ${active?s.color:'var(--border)'};background:${active?s.color:'#fff'};color:${active?'#fff':s.color};font-weight:700">${s.icon} ${s.v}</button>`;
+          }).join('')+'</div>';
+        }
       }
       const strike=(ev.done||ev.cancelled)?'text-decoration:line-through':'';
       return `<div style="padding:10px;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;border-left:4px solid ${ev.color};${ev.cancelled?'opacity:.5':ev.done?'opacity:.7':''}">
@@ -2061,6 +2136,42 @@ function setEventStatus(key,status,ds){
   }
   refreshScheduleViews();renderObjectifDashboard();
   closeModal();setTimeout(()=>openDayDetail(ds),60);
+}
+
+function setScheduleStatusQuick(ds,key,status){
+  const done=status==='Terminé';
+  if(key.startsWith('custom_')){
+    const rawId=key.slice(7); const s=scheduleCustom.find(x=>String(x.id)===rawId); const isRec=s&&s.recurring&&s.recurring!=='none';
+    scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,status,...(isRec?{}:{done})}:x); save('schedule_custom',scheduleCustom);
+    if(isRec){ if(done) scheduleRecurringDone[rawId+'_'+ds]=true; else delete scheduleRecurringDone[rawId+'_'+ds]; save('schedule_recurring_done',scheduleRecurringDone); }
+  } else {
+    scheduleOverrides[key]={...scheduleOverrides[key]||{},status,done}; save('schedule_overrides',scheduleOverrides);
+  }
+  refreshScheduleViews();renderDashboard();closeModal();setTimeout(()=>openDayDetail(ds),60);
+}
+
+// ── Rappels : calcule les rappels déclenchés à une date donnée ──
+function getRemindersForDate(dateStr){
+  const out=[];
+  // créneaux personnalisés
+  scheduleCustom.forEach(s=>{
+    if(!s.reminder||s.reminder==='none') return;
+    const off=REMINDER_OFFSET[s.reminder]; if(off===undefined) return;
+    // pour les récurrents, on regarde chaque occurrence proche
+    const targets=[];
+    if(s.recurring&&s.recurring!=='none'){ for(let d=0;d<=2;d++){const dd=addDaysStr(dateStr,d); if(isRecurringOnDate(s,dd)) targets.push(dd);} }
+    else targets.push(s.date);
+    targets.forEach(td=>{ if(addDaysStr(td,-off)===dateStr){ const m=getSchedMeta(td,'custom_'+s.id); if(m.status!=='Terminé') out.push({icon:s.icon||'🔔',label:s.action,when:td,offset:off}); } });
+  });
+  // créneaux de base avec rappel (overrides)
+  Object.keys(scheduleOverrides).forEach(key=>{
+    const ov=scheduleOverrides[key]; if(!ov.reminder||ov.reminder==='none') return;
+    const off=REMINDER_OFFSET[ov.reminder]; if(off===undefined) return;
+    const td=key.split('_').slice(0,3).join('-'); // key = YYYY-MM-DD_idx
+    const datePart=key.substring(0,10);
+    if(addDaysStr(datePart,-off)===dateStr && ov.status!=='Terminé') out.push({icon:ov.icon||'🔔',label:ov.action||'Créneau',when:datePart,offset:off});
+  });
+  return out;
 }
 
 function renderCalendar2(){
@@ -2250,6 +2361,7 @@ function objCardHtml(o,lvl){
       <button class="btn btn-xs btn-danger" onclick="deleteObjectif('${o.id}')">🗑️</button>
     </div>
   </div>`;
+  const linkedSched=scheduleCustom.filter(s=>s.objectifId===o.id);
   let body='';
   if(isOpen){
     body+='<div class="obj-children open">';
@@ -2258,7 +2370,11 @@ function objCardHtml(o,lvl){
       body+='<div style="font-size:11px;color:var(--muted);margin:8px 0 2px;font-weight:700">Tâches liées :</div>';
       tasks.forEach(({item,i})=>{ body+=taskLineHtml(item,i); });
     }
-    if(!kids.length&&!tasks.length){ body+='<div style="font-size:12px;color:var(--muted)">Aucun sous-objectif ni tâche. Cliquez ✏️ pour en rattacher.</div>'; }
+    if(linkedSched.length){
+      body+='<div style="font-size:11px;color:var(--muted);margin:8px 0 2px;font-weight:700">Créneaux / RDV rattachés :</div>';
+      linkedSched.forEach(s=>{const st=s.status||(s.done?'Terminé':'À faire');body+=`<div class="obj-week-item">${SCHED_SICON[st]||'⬜'}<span style="flex:1;${st==='Terminé'?'text-decoration:line-through;color:var(--muted)':''}">${esc(s.icon||'')} ${esc(s.action)}</span><span style="font-size:10px;color:var(--muted)">${frDateShort(s.date)}</span></div>`;});
+    }
+    if(!kids.length&&!tasks.length&&!linkedSched.length){ body+='<div style="font-size:12px;color:var(--muted)">Aucun sous-objectif ni tâche. Cliquez ✏️ pour en rattacher.</div>'; }
     if(LVL_CHILD[lvl]){
       body+=`<button class="btn btn-sm btn-outline" style="margin-top:10px" onclick="openObjectifModal(null,'${o.id}')">+ Objectif ${({mois:'mensuel',semaine:'hebdo'}[LVL_CHILD[lvl]])} rattaché</button>`;
     }
