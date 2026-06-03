@@ -2289,7 +2289,7 @@ function openObjectifModal(id,parentIdPreset){
   let parentOptions='';
   if(parentLvl){
     const cand=objectives.filter(x=>x.level===parentLvl&&x.id!==id);
-    parentOptions='<option value="">— Aucun (indépendant) —</option>'+cand.map(x=>`<option value="${x.id}" ${o.parentId===x.id?'selected':''}>${esc(x.title.slice(0,45))}</option>`).join('');
+    parentOptions='<option value="">✦ Aucun — objectif indépendant</option>'+cand.map(x=>`<option value="${x.id}" ${o.parentId===x.id?'selected':''}>${esc(x.title.slice(0,45))}</option>`).join('');
   }
   const planItemsHtml=PLAN_30J.slice(0,44).map((item,i)=>`<label style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px;cursor:pointer"><input type="checkbox" value="${i}" ${(o.planItems||[]).includes(i)?'checked':''} style="accent-color:var(--accent)"><span class="axe-badge axe-${item.axe}" style="font-size:9px;padding:1px 5px">${item.axe}</span>${esc(item.action.slice(0,46))}</label>`).join('');
   openModal(isEdit?"✏️ Modifier l'objectif":'🎯 Nouvel objectif',`
@@ -2311,8 +2311,9 @@ function openObjectifModal(id,parentIdPreset){
       <div style="font-size:10px;color:var(--muted);margin-top:3px" id="om-period-hint"></div>
     </div>
     <div id="om-parent-wrap" class="form-group" style="${parentLvl?'':'display:none'}">
-      <label class="form-label">Rattaché à (objectif <span id="om-parent-lvl">${parentLvl?LVL_LABEL[parentLvl]:''}</span>)</label>
+      <label class="form-label">Rattaché à un objectif <span id="om-parent-lvl">${parentLvl?LVL_LABEL[parentLvl]:''}</span> <span style="color:var(--muted);font-weight:400;text-transform:none">— optionnel</span></label>
       <select id="om-parent" class="form-select">${parentOptions}</select>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">💡 Laisse sur « Aucun » pour un objectif indépendant (non rattaché).</div>
     </div>
     <div class="grid-2">
       <div class="form-group"><label class="form-label">Statut</label><select id="om-status" class="form-select">${OBJ_STATUSES.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></div>
@@ -2339,7 +2340,7 @@ function om_levelChange(){
   if(pl){
     document.getElementById('om-parent-lvl').textContent=LVL_LABEL[pl];
     const cand=objectives.filter(x=>x.level===pl);
-    document.getElementById('om-parent').innerHTML='<option value="">— Aucun (indépendant) —</option>'+cand.map(x=>`<option value="${x.id}">${esc(x.title.slice(0,45))}</option>`).join('');
+    document.getElementById('om-parent').innerHTML='<option value="">✦ Aucun — objectif indépendant</option>'+cand.map(x=>`<option value="${x.id}">${esc(x.title.slice(0,45))}</option>`).join('');
   }
 }
 
