@@ -2012,13 +2012,16 @@ function openDayDetail(ds){
       else if(ev.type==='programme'&&ev.key) editFn=`closeModal();openScheduleItemModal('${ds}','${ev.key}')`;
       else if(ev.type==='schedule'&&ev.itemId!==undefined) editFn=`closeModal();openScheduleItemModal('${ds}','custom_${ev.itemId}')`;
       else if(ev.type==='task'&&ev.planIdx!==undefined) editFn=`closeModal();openPlanModal(${ev.planIdx})`;
-      const clickAttr=editFn?`onclick="${editFn}" style="cursor:pointer"`:'';
+      // Libellé du bouton selon le type
+      let btnLabel='✏️ Modifier';
+      if(ev.type==='objectif'&&!ev.isStart) btnLabel='🎯 Faire le point';
+      const editBtn=editFn?`<button class="btn btn-sm btn-primary" onclick="${editFn}" style="white-space:nowrap">${btnLabel}</button>`:'';
       // Sélecteur de statut (sauf objectif qui a son propre statut)
       const k=occKeyOf(ev,ds);
       let statusBtns='';
       if(k){
         const cur=ev.status;
-        statusBtns='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">'+OCC_STATUS.map(s=>{
+        statusBtns='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:8px">'+OCC_STATUS.map(s=>{
           const active=cur===s.v||(s.v==='À faire'&&(cur==='À faire'||cur==='RDV'||cur==='Nouveau'));
           return `<button onclick="event.stopPropagation();setEventStatus('${k}','${s.v}','${ds}')" style="font-size:10px;padding:3px 8px;border-radius:99px;cursor:pointer;border:1px solid ${active?s.color:'var(--border)'};background:${active?s.color:'#fff'};color:${active?'#fff':s.color};font-weight:700">${s.icon} ${s.v}</button>`;
         }).join('')+'</div>';
@@ -2027,10 +2030,11 @@ function openDayDetail(ds){
       return `<div style="padding:10px;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;border-left:4px solid ${ev.color};${ev.cancelled?'opacity:.5':ev.done?'opacity:.7':''}">
         <div style="display:flex;align-items:flex-start;gap:10px">
           ${t}
-          <div style="flex:1" ${clickAttr}>
+          <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600;${strike}">${ev.icon} ${esc(ev.label)}</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">${typeLabel[ev.type]||ev.type}${ev.axe?' · '+ev.axe:''} · <b style="color:${ev.color}">${ev.status}</b> · ✏️ modifier</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">${typeLabel[ev.type]||ev.type}${ev.axe?' · '+ev.axe:''} · <b style="color:${ev.color}">${ev.status}</b></div>
           </div>
+          ${editBtn}
         </div>
         ${statusBtns}
       </div>`;
