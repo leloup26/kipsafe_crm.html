@@ -12,6 +12,8 @@
 :root{color-scheme:light;--primary:#0A2E5C;--secondary:#16529E;--accent:#00AEEF;--orange:#F07D00;--green:#228B22;--red:#C00000;--purple:#5B2D8E;--light:#F2F5F8;--white:#FFFFFF;--text:#1a1a2e;--muted:#6b7280;--border:#e2e8f0;--shadow:0 2px 12px rgba(10,46,92,.10)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;background:var(--light);color:var(--text);min-height:100vh}
+html,body{max-width:100%;overflow-x:hidden}
+*{-webkit-tap-highlight-color:transparent}
 #pin-screen{position:fixed;inset:0;background:var(--primary);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:18px}
 .pin-box{background:#fff;border-radius:20px;padding:36px 32px;width:320px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.3)}
 .pin-logo{font-size:28px;font-weight:900;color:var(--primary);letter-spacing:2px;margin-bottom:4px}
@@ -270,9 +272,11 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
   .h-logo .badge{display:none}
   .h-date{display:none}
   .sync-pill{font-size:9px;padding:2px 6px}
-  /* Nav — scroll horizontal */
-  nav{padding:0 4px;gap:0}
-  .tab-btn{padding:10px 8px;font-size:11px;white-space:nowrap}
+  /* Nav — passe à la ligne pour éviter le débordement */
+  nav{padding:2px 4px;gap:0;flex-wrap:wrap;overflow:visible}
+  .tab-btn{padding:9px 10px;font-size:12px;white-space:nowrap;flex:1 0 auto;text-align:center}
+  .more-menu{flex:1 0 auto}
+  #more-btn{width:100%}
   /* Panels */
   .panels{padding:12px 10px}
   /* Grids */
@@ -316,9 +320,43 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
   .s-dur{display:none}
   .s-time{min-width:80px;font-size:11px}
   /* Calendrier 7 jours → liste verticale sur mobile */
-  .cal-grid.view7{grid-template-columns:1fr}
+  .cal-grid.view7{grid-template-columns:1fr;gap:8px}
   .cal-grid.view7 .cal-cell{min-height:auto}
+  .cal-grid.view7 .cal-line{font-size:13px}
+  .cal-grid.view7 .cal-num{font-size:15px}
   .cal-days-header{display:none}
+  /* Calendrier mois → reste 7 colonnes mais compact */
+  .cal-wrap{padding:10px}
+  .cal-grid .cal-cell{padding:4px;min-height:54px}
+  .cal-grid .cal-num{font-size:11px;margin-bottom:2px}
+  .cal-line .lt{font-size:10px}
+  .cal-header{gap:6px}
+  .cal-title{font-size:13px}
+  .cal-nav span{min-width:90px;font-size:12px}
+  #cal-status-filter{width:100%!important;order:5}
+  /* En-tête : alléger */
+  #lock-timer{display:none}
+  .lock-btn{padding:5px 8px;font-size:11px}
+  /* Onglet Objectifs */
+  .lvl-tabs{width:100%;justify-content:space-between}
+  .lvl-tab{flex:1;padding:9px 4px;font-size:12px;text-align:center}
+  .obj-head{flex-wrap:wrap}
+  .obj-title{font-size:14px}
+  .obj-children{padding-left:20px}
+  /* Sous-onglets (pitch / import) → scroll horizontal */
+  .import-tabs{overflow-x:auto;flex-wrap:nowrap}
+  .import-tab{white-space:nowrap;flex-shrink:0}
+  /* Menu Plus : dropdown plein écran lisible */
+  .more-dropdown{right:0;left:auto;min-width:200px}
+  /* Champs formulaire plus grands au doigt */
+  .form-input,.form-select,.form-textarea{font-size:16px}
+  /* Boutons d'actions dans les modals : pleine largeur empilée */
+  .modal-actions{flex-direction:column-reverse}
+  .modal-actions .btn{width:100%}
+}
+@media(max-width:1024px) and (min-width:769px){
+  .grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 </style>
 </head>
