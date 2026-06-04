@@ -2178,6 +2178,7 @@ function objCardHtml(o,lvl){
         <span class="axe-badge axe-${o.axe.replace(/\s/g,'')}">${o.axe}</span>
         ${statusPill(o.status)}
         ${o.hours?`<span>⏱ ${o.hours}h</span>`:''}
+        ${(o.history&&o.history.length)?`<span>🕘 ${o.history.length} note(s)</span>`:''}
         ${parent?`<span>↳ ${esc(parent.title.slice(0,30))}</span>`:''}
         ${kids.length?`<span>📎 ${kids.length} ${esc(LVL_LABEL[LVL_CHILD[lvl]]||'')}</span>`:''}
       </div>
@@ -2257,8 +2258,9 @@ function openObjectifModal(id,parentIdPreset){
   const isEdit=!!id;
   let o=isEdit?objById(id):null;
   let level=o?o.level:(parentIdPreset?(LVL_CHILD[(objById(parentIdPreset)||{}).level]||'mois'):currentObjLevel);
-  o=o||{title:'',level,axe:'Commercial',status:'À faire',parentId:parentIdPreset||null,planItems:[],notes:'',hours:''};
+  o=o||{title:'',level,axe:'Commercial',status:'À faire',parentId:parentIdPreset||null,planItems:[],notes:'',hours:'',history:[]};
   const AXES=['Commercial','Marketing','Communication','Technique','Supports','Admin'];
+  const histHtml=(o.history||[]).slice().reverse().map(h=>{const d=new Date(h.t);const ds=isNaN(d)?'':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});return `<div style="font-size:11px;padding:6px 8px;background:var(--light);border-radius:6px;margin-bottom:4px"><span style="color:var(--muted)">${ds}</span> — ${esc(h.text)}</div>`;}).join('')||'<div style="font-size:11px;color:var(--muted)">Aucune note pour l\'instant</div>';
   const parentLvl=LVL_PARENT[o.level];
   let parentOptions='';
   if(parentLvl){
@@ -2304,8 +2306,9 @@ function openObjectifModal(id,parentIdPreset){
       <div class="form-group"><label class="form-label">Statut</label><select id="om-status" class="form-select">${OBJ_STATUSES.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></div>
       <div class="form-group" id="om-hours-wrap" style="${o.level==='semaine'?'':'display:none'}"><label class="form-label">⏱ Heures prévues</label><input id="om-hours" type="number" class="form-input" value="${o.hours||''}" placeholder="2"></div>
     </div>
-    <div class="form-group"><label class="form-label">Notes</label><textarea id="om-notes" class="form-textarea" style="min-height:46px">${esc(o.notes||'')}</textarea></div>
-    <div class="form-group"><label class="form-label">Tâches du plan à rattacher (optionnel)</label><div style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px">${planItemsHtml}</div></div>
+    <div class="form-group"><label class="form-label">📝 Ajouter une note</label><textarea id="om-note" class="form-textarea" style="min-height:46px" placeholder="Avancement, compte-rendu, blocage..."></textarea></div>
+    <div class="form-group"><label class="form-label">🕘 Historique des notes</label><div style="max-height:150px;overflow-y:auto">${histHtml}</div></div>
+    <div class="form-group" id="om-planitems-wrap" style="${o.level==='annee'?'display:none':''}"><label class="form-label">Tâches du plan à rattacher (optionnel)</label><div style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px">${planItemsHtml||'<span style="font-size:11px;color:var(--muted)">Aucune tâche disponible</span>'}</div></div>
   `,[
     {label:'💾 Enregistrer',cls:'btn-primary',fn:`saveObjectif('${isEdit?id:''}')`},
     {label:'Annuler',cls:'btn-outline',fn:'closeModal()'}
@@ -2322,6 +2325,7 @@ function om_levelChange(){
   document.getElementById('om-month').style.display=lvl==='mois'?'block':'none';
   document.getElementById('om-week').style.display=lvl==='semaine'?'block':'none';
   document.getElementById('om-period-hint').textContent=lvl==='semaine'?'Choisissez un jour de la semaine (lun→dim sera calculé)':'';
+  const piw=document.getElementById('om-planitems-wrap'); if(piw) piw.style.display=lvl==='annee'?'none':'block';
   if(pl){
     document.getElementById('om-parent-lvl').textContent=LVL_LABEL[pl];
     const cand=objectives.filter(x=>x.level===pl);
@@ -2333,11 +2337,17 @@ function saveObjectif(id){
   const title=document.getElementById('om-title').value.trim();
   if(!title){alert('Titre requis');return;}
   const level=document.getElementById('om-level').value;
-  const planItems=[...document.querySelectorAll('#modal-body input[type=checkbox]:checked')].map(c=>parseInt(c.value));
+  // Pas de tâches du plan pour les objectifs Année
+  const planItems=level==='annee'?[]:[...document.querySelectorAll('#om-planitems-wrap input[type=checkbox]:checked')].map(c=>parseInt(c.value));
   let period='';
   if(level==='annee') period=document.getElementById('om-year').value;
   else if(level==='mois') period=document.getElementById('om-month').value;
   else if(level==='semaine') period=document.getElementById('om-week').value;
+  // Historique des notes
+  const existing=id?objById(id):null;
+  let history=(existing&&existing.history)?existing.history.slice():[];
+  const note=document.getElementById('om-note').value.trim();
+  if(note) history.push({t:Date.now(),text:note});
   const data={
     id:id||('obj_'+Date.now()),
     level,
@@ -2349,7 +2359,8 @@ function saveObjectif(id){
     status:document.getElementById('om-status').value,
     parentId:LVL_PARENT[level]?(document.getElementById('om-parent').value||null):null,
     hours:document.getElementById('om-hours')?document.getElementById('om-hours').value:'',
-    notes:document.getElementById('om-notes').value.trim(),
+    history,
+    notes:note||(existing?existing.notes:''),
     planItems
   };
   if(id) objectives=objectives.map(o=>o.id===id?{...o,...data}:o);
