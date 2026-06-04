@@ -466,6 +466,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 
     <!-- OBJECTIFS (Année → Mois → Semaine) -->
     <div id="panel-planning" class="panel">
+      <div id="obj-overview"></div>
       <div class="lvl-tabs">
         <button class="lvl-tab active" data-lvl="annee" onclick="setObjLevel('annee')">📅 Année</button>
         <button class="lvl-tab" data-lvl="mois" onclick="setObjLevel('mois')">🗓️ Mois</button>
@@ -1011,7 +1012,8 @@ function renderRemindersBanner(){
 function renderSoirBanner(){const now=new Date();const dow=now.getDay();const h=now.getHours(),m=now.getMinutes();const isToday01=localDate(now)==='2026-06-01';let html='';if(isToday01&&h<18){html='<div class="soir-banner"><div><div class="soir-title">📅 Session KIPSAFE — Lundi 01 juin 2026</div><div class="soir-sub">Planning actif jusqu\'à 18h00 · Session soir 17h30–21h30</div></div><span class="soir-badge">J1 du Plan 30J</span></div>';}else if(dow>=1&&dow<=4&&h>=17&&(h<21||(h===21&&m<30))){html='<div class="soir-banner"><div><div class="soir-title">🌙 Session soir KIPSAFE — 17h30 → 21h30</div><div class="soir-sub">Relances · Support · LinkedIn · Prospection · MAJ CRM</div></div><span class="soir-badge">EN COURS</span></div>';}
 else if(dow===0&&h>=10&&h<13){html='<div class="soir-banner"><div><div class="soir-title">☀️ Session dimanche KIPSAFE — 10h → 13h</div><div class="soir-sub">Formation · CRM · Marchés · Planification semaine</div></div><span class="soir-badge">EN COURS</span></div>';}document.getElementById('soir-banner').innerHTML=html;}
 function onlyProspects(){return prospects.filter(p=>(p.categorie||'Prospect')==='Prospect');}
-function renderKPIs(){const pp=onlyProspects();const total=pp.length,rdv=pp.filter(p=>p.statut==='RDV'||p.statut==='Proposition').length,signes=pp.filter(p=>p.statut==='Signé').length,done=planDone.length;document.getElementById('kpis').innerHTML=`<div class="card"><span class="kpi-icon">👥</span><div class="card-title">Prospects</div><div class="kpi-value">${total}</div><div class="kpi-sub">dans le pipeline</div></div><div class="card"><span class="kpi-icon">📞</span><div class="card-title">RDV/Propos.</div><div class="kpi-value">${rdv}</div><div class="kpi-sub">en cours</div></div><div class="card"><span class="kpi-icon">✅</span><div class="card-title">Signés</div><div class="kpi-value" style="color:var(--green)">${signes}</div><div class="kpi-sub">objectif : 1 fin juin</div></div><div class="card"><span class="kpi-icon">📅</span><div class="card-title">Plan 30J</div><div class="kpi-value">${done}/22</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill" style="width:${Math.round(done/22*100)}%"></div></div></div>`;}
+function projectProgress(){const all=objectives||[];if(!all.length)return 0;const annee=all.filter(o=>(o.level||'annee')==='annee');const arr=annee.length?annee:all;return Math.round(arr.reduce((a,o)=>a+objProgress(o),0)/arr.length);}
+function renderKPIs(){const pp=onlyProspects();const total=pp.length,rdv=pp.filter(p=>p.statut==='RDV'||p.statut==='Proposition').length,signes=pp.filter(p=>p.statut==='Signé').length;const proj=projectProgress();const objDone=(objectives||[]).filter(o=>o.status==='Terminé').length;document.getElementById('kpis').innerHTML=`<div class="card"><span class="kpi-icon">👥</span><div class="card-title">Prospects</div><div class="kpi-value">${total}</div><div class="kpi-sub">dans le pipeline</div></div><div class="card"><span class="kpi-icon">📞</span><div class="card-title">RDV/Propos.</div><div class="kpi-value">${rdv}</div><div class="kpi-sub">en cours</div></div><div class="card"><span class="kpi-icon">✅</span><div class="card-title">Signés</div><div class="kpi-value" style="color:var(--green)">${signes}</div><div class="kpi-sub">contrats</div></div><div class="card" style="cursor:pointer" onclick="showTab('planning')"><span class="kpi-icon">🎯</span><div class="card-title">Avancement projet</div><div class="kpi-value">${proj}%</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill" style="width:${proj}%"></div></div><div class="kpi-sub">${objDone} objectif(s) atteint(s)</div></div>`;}
 function getBaseSchedule(today,dow){
   if(today==='2026-06-01') return {sched:SCHEDULE_TODAY,label:'Lundi 01/06 — J1'};
   if(SCHEDULES_PAR_DATE[today]) return {sched:SCHEDULES_PAR_DATE[today],label:''};
@@ -2109,9 +2111,43 @@ function statusPill(status){
   return `<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px;background:${OBJ_SBG[status]||'#f1f5f9'};color:${OBJ_SC[status]||'#475569'}">${OBJ_SICON[status]||''} ${status}</span>`;
 }
 
+function renderObjOverview(){
+  const el=document.getElementById('obj-overview'); if(!el) return;
+  const all=objectives||[];
+  if(!all.length){el.innerHTML='';return;}
+  const byLvl=l=>all.filter(o=>(o.level||'annee')===l);
+  const avg=arr=>arr.length?Math.round(arr.reduce((a,o)=>a+objProgress(o),0)/arr.length):0;
+  const annee=byLvl('annee'),mois=byLvl('mois'),sem=byLvl('semaine');
+  // Avancement global = moyenne des objectifs annuels (qui agrègent mois+semaine), sinon moyenne de tous
+  const globalPct=annee.length?avg(annee):avg(all);
+  const done=all.filter(o=>o.status==='Terminé').length;
+  const enCours=all.filter(o=>o.status==='En cours').length;
+  const bar=(label,pct,count,color)=>`
+    <div style="flex:1;min-width:120px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px"><span>${label} <span style="color:#94a3b8">(${count})</span></span><b style="color:${color}">${pct}%</b></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`;
+  el.innerHTML=`
+    <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,#0A2E5C,#16529E);color:#fff;border:none">
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div style="text-align:center">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.8">Avancement projet</div>
+          <div style="font-size:42px;font-weight:900;line-height:1">${globalPct}<span style="font-size:22px">%</span></div>
+          <div style="font-size:11px;opacity:.85">${done} atteint(s) · ${enCours} en cours · ${all.length} au total</div>
+        </div>
+        <div style="flex:1;display:flex;gap:16px;flex-wrap:wrap;background:rgba(255,255,255,.12);padding:14px;border-radius:10px">
+          ${bar('📅 Année',avg(annee),annee.length,'#7dd3fc')}
+          ${bar('🗓️ Mois',avg(mois),mois.length,'#a7f3d0')}
+          ${bar('📋 Semaine',avg(sem),sem.length,'#fde68a')}
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderObjectifs(){
   const list=document.getElementById('obj-list');
   if(!list) return;
+  renderObjOverview();
   const axeF=document.getElementById('obj-f-axe')?.value||'';
   const lvl=currentObjLevel;
   const hint={annee:"🎯 Vos grands objectifs de l'année. Dépliez pour voir les objectifs mensuels et hebdo rattachés, et toutes les tâches faites pour les atteindre.",mois:'🗓️ Objectifs du mois, rattachés à un objectif annuel.',semaine:"📋 Objectifs de la semaine, rattachés à un objectif mensuel. C'est ici que vous planifiez vos heures."}[lvl];
@@ -2322,7 +2358,7 @@ function saveObjectif(id){
   closeModal();
   currentObjLevel=level;
   document.querySelectorAll('.lvl-tab').forEach(b=>b.classList.toggle('active',b.dataset.lvl===level));
-  renderObjectifs();
+  renderObjectifs();renderDashboard();
   toast('✅ Objectif enregistré');
 }
 
@@ -2370,7 +2406,7 @@ function openObjReview(id){
     </div>
   `,[{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
 }
-function _objAfterReview(){save('objectives',objectives);closeModal();renderObjectifs();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();}
+function _objAfterReview(){save('objectives',objectives);closeModal();renderObjectifs();renderDashboard();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();}
 function objReviewValidate(id){const o=objById(id);if(o){o.status='Terminé';}_objAfterReview();toast('✅ Objectif validé !');}
 function objReviewExtend(id,days){const o=objById(id);if(o){o.echeance=addDaysStr(o.echeance||o.deadline||localDate(),days);o.status='En cours';}_objAfterReview();toast('📅 Échéance repoussée au '+frDate(objById(id).echeance));}
 function objReviewStatus(id,status){const o=objById(id);if(o){o.status=status;}_objAfterReview();toast('Objectif : '+status);}
