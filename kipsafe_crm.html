@@ -2166,7 +2166,7 @@ function objCardHtml(o,lvl){
   const parent=o.parentId?objById(o.parentId):null;
   const isOpen=objOpen.has(o.id);
   const tasks=objLinkedTasks(o);
-  const hasDetail=kids.length>0||tasks.length>0;
+  const hasDetail=kids.length>0||tasks.length>0||!!o.description;
   let head=`<div class="obj-head" onclick="toggleObjOpen('${o.id}')">
     <span class="obj-arrow ${isOpen?'open':''}">${hasDetail?'▶':'•'}</span>
     ${ring(pct,color)}
@@ -2192,6 +2192,7 @@ function objCardHtml(o,lvl){
   let body='';
   if(isOpen){
     body+='<div class="obj-children open">';
+    if(o.description) body+=`<div style="font-size:12px;color:var(--text);background:var(--light);border-radius:8px;padding:10px 12px;margin-bottom:10px;line-height:1.5">${esc(o.description)}</div>`;
     kids.forEach(k=>{ body+=objSubHtml(k); });
     if(tasks.length){
       body+='<div style="font-size:11px;color:var(--muted);margin:8px 0 2px;font-weight:700">Tâches liées :</div>';
@@ -2258,7 +2259,7 @@ function openObjectifModal(id,parentIdPreset){
   const isEdit=!!id;
   let o=isEdit?objById(id):null;
   let level=o?o.level:(parentIdPreset?(LVL_CHILD[(objById(parentIdPreset)||{}).level]||'mois'):currentObjLevel);
-  o=o||{title:'',level,axe:'Commercial',status:'À faire',parentId:parentIdPreset||null,planItems:[],notes:'',hours:'',history:[]};
+  o=o||{title:'',description:'',level,axe:'Commercial',status:'À faire',parentId:parentIdPreset||null,planItems:[],notes:'',hours:'',history:[]};
   const AXES=['Commercial','Marketing','Communication','Technique','Supports','Admin'];
   const histHtml=(o.history||[]).slice().reverse().map(h=>{const d=new Date(h.t);const ds=isNaN(d)?'':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});return `<div style="font-size:11px;padding:6px 8px;background:var(--light);border-radius:6px;margin-bottom:4px"><span style="color:var(--muted)">${ds}</span> — ${esc(h.text)}</div>`;}).join('')||'<div style="font-size:11px;color:var(--muted)">Aucune note pour l\'instant</div>';
   const parentLvl=LVL_PARENT[o.level];
@@ -2279,6 +2280,7 @@ function openObjectifModal(id,parentIdPreset){
       <div class="form-group"><label class="form-label">Axe</label><select id="om-axe" class="form-select">${AXES.map(a=>`<option ${a===o.axe?'selected':''}>${a}</option>`).join('')}</select></div>
     </div>
     <div class="form-group"><label class="form-label">Titre *</label><input id="om-title" class="form-input" value="${esc(o.title)}" placeholder="Ex: Refondre la page d'accueil"></div>
+    <div class="form-group"><label class="form-label">Description</label><textarea id="om-description" class="form-textarea" style="min-height:60px" placeholder="Décrivez l'objectif : le but, le contexte, ce qu'il faut accomplir...">${esc(o.description||'')}</textarea></div>
     <div class="form-group" id="om-period-wrap">
       <label class="form-label">📆 Période</label>
       <input id="om-year" type="number" class="form-input" value="${o.level==='annee'?(o.period||'2026'):'2026'}" placeholder="2026" style="${o.level==='annee'?'':'display:none'}">
@@ -2352,6 +2354,7 @@ function saveObjectif(id){
     id:id||('obj_'+Date.now()),
     level,
     title,
+    description:document.getElementById('om-description').value.trim(),
     period,
     debut:document.getElementById('om-debut').value||defaultDebut(level,period),
     echeance:document.getElementById('om-echeance').value||defaultEcheance(level,period),
