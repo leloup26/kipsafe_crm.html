@@ -94,6 +94,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .axe-Commercial{background:#dcfce7;color:#15803d}.axe-Web{background:#fef3c7;color:#b45309}
 .axe-Marchés{background:#fce7f3;color:#be185d}.axe-Bilan{background:#ede9fe;color:#7c3aed}
 .axe-Pause{background:#fef9c3;color:#a16207}.axe-Admin{background:#f1f5f9;color:#475569}.axe-Formation{background:#f3e8ff;color:#7c3aed}
+.axe-Communication{background:#fef3c7;color:#b45309}.axe-Technique{background:#e0e7ff;color:#4338ca}
 .toolbar{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
 .search-box{flex:1;padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;min-width:180px}
 .search-box:focus{outline:none;border-color:var(--accent)}
@@ -475,8 +476,8 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
         <div style="display:flex;gap:8px;align-items:center">
           <select id="obj-f-axe" class="form-select" style="width:140px" onchange="renderObjectifs()">
             <option value="">Tous les axes</option>
-            <option>Commercial</option><option>Marketing</option><option>Web</option>
-            <option>Supports</option><option>Marchés</option><option>Admin</option>
+            <option>Commercial</option><option>Marketing</option><option>Communication</option>
+            <option>Technique</option><option>Supports</option><option>Admin</option>
           </select>
           <button class="btn btn-primary" id="obj-add-btn" onclick="openObjectifModal(null)">+ Nouvel objectif</button>
         </div>
@@ -2221,7 +2222,7 @@ function openObjectifModal(id,parentIdPreset){
   let o=isEdit?objById(id):null;
   let level=o?o.level:(parentIdPreset?(LVL_CHILD[(objById(parentIdPreset)||{}).level]||'mois'):currentObjLevel);
   o=o||{title:'',level,axe:'Commercial',status:'À faire',parentId:parentIdPreset||null,planItems:[],notes:'',hours:''};
-  const AXES=['Commercial','Marketing','Web','Supports','Marchés','Admin'];
+  const AXES=['Commercial','Marketing','Communication','Technique','Supports','Admin'];
   const parentLvl=LVL_PARENT[o.level];
   let parentOptions='';
   if(parentLvl){
