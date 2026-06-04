@@ -2102,19 +2102,22 @@ function objChildren(id){return objectives.filter(o=>o.parentId===id);}
 function objById(id){return objectives.find(o=>o.id===id);}
 
 function objProgress(o){
+  // Un objectif terminé = 100%, abandonné = 0%
   if(o.status==='Terminé') return 100;
   if(o.status==='Annulé') return 0;
+  // L'avancement provient UNIQUEMENT des objectifs enfants rattachés (Année←Mois, Mois←Semaine)
   const kids=objChildren(o.id);
   if(kids.length){
     const vals=kids.filter(k=>k.status!=='Annulé').map(objProgress);
     if(!vals.length) return 0;
     return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
   }
+  // Objectif "feuille" (sans enfant) : avancement = ses tâches faites, sinon 0 tant qu'il n'est pas Terminé
   if(o.planItems&&o.planItems.length){
     const done=o.planItems.filter(i=>{const it=PLAN_30J[i];return it&&getItemStatus(it,i)==='Fait';}).length;
     return Math.round(done/o.planItems.length*100);
   }
-  return o.status==='En cours'?50:0;
+  return 0; // plus de 50% arbitraire pour "En cours"
 }
 
 function objLinkedTasks(o){return (o.planItems||[]).map(i=>({item:PLAN_30J[i],i})).filter(x=>x.item);}
@@ -2195,7 +2198,7 @@ function objCardHtml(o,lvl){
         ${o.hours?`<span>⏱ ${o.hours}h</span>`:''}
         ${(o.history&&o.history.length)?`<span>🕘 ${o.history.length} note(s)</span>`:''}
         ${parent?`<span>↳ ${esc(parent.title.slice(0,30))}</span>`:''}
-        ${kids.length?`<span>📎 ${kids.length} ${esc(LVL_LABEL[LVL_CHILD[lvl]]||'')}</span>`:''}
+        ${kids.length?`<span>📎 ${kids.filter(k=>k.status==='Terminé').length}/${kids.length} ${esc(LVL_LABEL[LVL_CHILD[lvl]]||'')} terminé(s)</span>`:''}
       </div>
     </div>
     <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
