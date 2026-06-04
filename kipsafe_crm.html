@@ -859,6 +859,14 @@ if(!members||!members.length){members=[{id:'admin',name:'Samuel',role:'admin',co
 let currentUser=members.find(m=>m.role==='admin')||members[0];
 function isAdmin(){return currentUser&&currentUser.role==='admin';}
 function memberById(id){return members.find(m=>m.id===id);}
+// Petit badge montrant le propriétaire / partage (visible par l'admin)
+function ownerBadge(item){
+  if(!isAdmin()||!item) return '';
+  if(item.shared) return '<span style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:4px">🔓 Partagé</span>';
+  const ow=item.owner;
+  if(!ow||ow==='admin') return '';
+  return `<span style="font-size:9px;background:${memberColor(ow)}22;color:${memberColor(ow)};padding:1px 6px;border-radius:99px;font-weight:700;margin-left:4px">👤 ${esc(memberName(ow))}</span>`;
+}
 function memberName(id){const m=memberById(id);return m?m.name:(id==='admin'?'Admin':'—');}
 function memberColor(id){const m=memberById(id);return m?m.color:'#64748b';}
 // Un élément est visible si : on est admin (avec filtre éventuel), OU il est partagé, OU il nous appartient
@@ -1425,6 +1433,7 @@ function renderKanban(fp){
         <span class="kc-offre ${oClass}">${esc(p.offre)}</span>
         ${p.source?`<span class="source-badge" style="color:${srcColor};border-color:${srcColor}30">${p.source}</span>`:''}
         <div class="kc-meta"><span>📅 ${p.date||'—'}</span><span>${p.valeur?p.valeur+'€':''}</span></div>
+        ${ownerBadge(p)?`<div style="margin-bottom:4px">${ownerBadge(p)}</div>`:''}
         <div class="kc-links">${searchLinks(p)}</div>
         <div style="margin-top:6px;display:flex;gap:4px">
           <button class="btn btn-outline btn-xs" onclick="event.stopPropagation();editProspect(${p.id})">✏️</button>
@@ -1678,7 +1687,7 @@ function getAllEventsForDate(dateStr){
     const recurTag=isRec?` (${RECUR_LABEL[s.recurring]||'🔁'})` :'';
     const meta=getSchedMeta(dateStr,'custom_'+s.id);
     const st=effSchedStatus(meta.status,dateStr);
-    events.push({type:'schedule',label:s.action+recurTag,axe:s.axe,status:st,color:SCHED_SC[st]||'var(--secondary)',icon:s.icon||'⏰',done:st==='Terminé',time:s.time,itemId:s.id,isRecurring:isRec,objectifId:meta.objectifId,reminder:meta.reminder});
+    events.push({type:'schedule',label:s.action+recurTag,axe:s.axe,status:st,color:SCHED_SC[st]||'var(--secondary)',icon:s.icon||'⏰',done:st==='Terminé',time:s.time,itemId:s.id,isRecurring:isRec,objectifId:meta.objectifId,reminder:meta.reminder,owner:s.owner,shared:s.shared});
   });
   // 3. RDV contacts (par date RDV) — coloré selon la catégorie
   prospects.forEach(p=>{
@@ -1690,18 +1699,18 @@ function getAllEventsForDate(dateStr){
     const cat=p.categorie||'Prospect';
     const cc=CAT_CONFIG[cat]||CAT_CONFIG.Prospect;
     const label=`${cc.icon} ${cat} — ${p.nom}${p.societe?' ('+p.societe+')':''}`;
-    events.push({type:'rdv',category:cat,label,axe:p.offre,status:p.statut,color:cc.color,icon:cc.icon,done:p.statut==='Signé',time:p.rdv_time||'',prospectId:p.id});
+    events.push({type:'rdv',category:cat,label,axe:p.offre,status:p.statut,color:cc.color,icon:cc.icon,done:p.statut==='Signé',time:p.rdv_time||'',prospectId:p.id,owner:p.owner,shared:p.shared});
   });
   // 4. Objectifs : marqueur de début + échéance
   if(objectives) objectives.forEach(o=>{
     if(!inScope(o)) return;
     const lvlTxt={annee:'Année',mois:'Mois',semaine:'Semaine'}[o.level]||'';
     if(o.debut===dateStr){
-      events.push({type:'objectif',isStart:true,label:`🚀 Début ${lvlTxt} : ${o.title}`,axe:o.axe,status:o.status,color:'#0e7490',icon:'🚀',done:false,objectifId:o.id});
+      events.push({type:'objectif',isStart:true,label:`🚀 Début ${lvlTxt} : ${o.title}`,axe:o.axe,status:o.status,color:'#0e7490',icon:'🚀',done:false,objectifId:o.id,owner:o.owner,shared:o.shared});
     }
     const ech=o.echeance||o.deadline;
     if(ech===dateStr){
-      events.push({type:'objectif',label:`🎯 Échéance ${lvlTxt} : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Terminé'?'var(--green)':o.status==='Annulé'?'var(--muted)':'var(--purple)',icon:'🎯',done:o.status==='Terminé',objectifId:o.id});
+      events.push({type:'objectif',label:`🎯 Échéance ${lvlTxt} : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Terminé'?'var(--green)':o.status==='Annulé'?'var(--muted)':'var(--purple)',icon:'🎯',done:o.status==='Terminé',objectifId:o.id,owner:o.owner,shared:o.shared});
     }
   });
   // Appliquer le statut manuel (occStatus) qui prime sur tout
@@ -1857,7 +1866,7 @@ function renderCalendrierTab(){
       <span style="font-size:20px">${ev.icon}</span>
       <div style="flex:1">
         <div style="font-size:13px;font-weight:600;${ev.done?'text-decoration:line-through;color:var(--muted)':''}">${esc(ev.label)}</div>
-        <div style="font-size:10px;color:var(--muted)">${typeLabel[ev.type]||ev.type}${ev.time?' · '+ev.time:''}${ev.axe?' · '+ev.axe:''}</div>
+        <div style="font-size:10px;color:var(--muted)">${typeLabel[ev.type]||ev.type}${ev.time?' · '+ev.time:''}${ev.axe?' · '+ev.axe:''}${ownerBadge(ev)}</div>
       </div>
       <span style="font-size:11px;font-weight:700;color:${ev.color}">${ev.status}</span>
     </div>`).join(''):'<div style="color:var(--muted);font-size:13px;padding:10px 0">Rien de prévu aujourd\'hui</div>';
@@ -1973,7 +1982,7 @@ function openDayDetail(ds){
           ${t}
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600;${strike}">${ev.icon} ${esc(ev.label)}</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">${typeLabel[ev.type]||ev.type}${ev.axe?' · '+ev.axe:''} · <b style="color:${ev.color}">${ev.status}</b></div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">${typeLabel[ev.type]||ev.type}${ev.axe?' · '+ev.axe:''} · <b style="color:${ev.color}">${ev.status}</b>${ownerBadge(ev)}</div>
           </div>
           ${editBtn}
         </div>
@@ -2284,7 +2293,7 @@ function objSubHtml(k){
       <div style="width:30px;height:30px;border-radius:50%;background:conic-gradient(${color} ${pct*3.6}deg,#e2e8f0 0deg);position:relative;flex-shrink:0"><div style="position:absolute;inset:3px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${color}">${pct}</div></div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:700">${esc(k.title)}</div>
-        <div style="font-size:10px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px">${periodLabel(k)?`<span style="background:#eef2f7;color:var(--secondary);padding:1px 7px;border-radius:99px;font-weight:700">📆 ${periodLabel(k)}</span>`:''}${statusPill(k.status)}${k.hours?`<span>⏱ ${k.hours}h</span>`:''}</div>
+        <div style="font-size:10px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px">${periodLabel(k)?`<span style="background:#eef2f7;color:var(--secondary);padding:1px 7px;border-radius:99px;font-weight:700">📆 ${periodLabel(k)}</span>`:''}${statusPill(k.status)}${k.hours?`<span>⏱ ${k.hours}h</span>`:''}${ownerBadge(k)}</div>
       </div>
       <div onclick="event.stopPropagation()" style="display:flex;gap:3px">
         <button class="btn btn-xs btn-outline" onclick="openObjectifModal('${k.id}')">✏️</button>
