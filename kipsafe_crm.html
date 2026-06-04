@@ -414,6 +414,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     <div id="panel-dashboard" class="panel active">
       <div id="soir-banner"></div>
       <div id="reminders-banner"></div>
+      <div id="obj-review-banner"></div>
       <div class="grid-4" style="margin-bottom:16px" id="kpis"></div>
       <div class="grid-2">
         <div>
@@ -998,7 +999,21 @@ document.addEventListener('click',function(e){if(!e.target.closest('.more-menu')
 let objStatus=load('obj_status',{});
 
 // ═══ DASHBOARD ══════════════════════════════════════════════
-function renderDashboard(){renderSoirBanner();renderRemindersBanner();renderKPIs();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
+function renderDashboard(){renderSoirBanner();renderRemindersBanner();renderObjReviewBanner();renderKPIs();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
+function objToReview(){const today=localDate();return (objectives||[]).filter(o=>(o.level==='annee'||o.level==='mois')&&(o.echeance||o.deadline)&&(o.echeance||o.deadline)<=today&&o.status!=='Terminé'&&o.status!=='Annulé');}
+function renderObjReviewBanner(){
+  const el=document.getElementById('obj-review-banner'); if(!el) return;
+  const due=objToReview();
+  if(!due.length){el.innerHTML='';return;}
+  const today=localDate();
+  el.innerHTML='<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:14px 16px;margin-bottom:16px">'+
+    '<div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:8px">🎯 Objectif(s) à faire le point ('+due.length+')</div>'+
+    due.map(o=>{const ech=o.echeance||o.deadline;const over=ech<today;const lvl={annee:'Année',mois:'Mois'}[o.level]||'';return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #fde68a;flex-wrap:wrap">
+      <div style="flex:1;min-width:160px"><div style="font-size:13px;font-weight:700;color:#7c2d12">${esc(o.title)}</div><div style="font-size:11px;color:#b45309">${lvl} · échéance ${frDate(ech)}${over?' (dépassée)':" (aujourd'hui)"}</div></div>
+      <button class="btn btn-sm btn-primary" onclick="openObjReview('${o.id}')">Faire le point</button>
+    </div>`;}).join('')+
+    '</div>';
+}
 function renderRemindersBanner(){
   const el=document.getElementById('reminders-banner'); if(!el) return;
   const today=localDate();
@@ -2409,21 +2424,49 @@ function openObjReview(id){
       <div style="font-size:12px;margin-top:4px;color:var(--muted)">🚀 Début : ${frDate(o.debut)}</div>
       <div style="font-size:12px;margin-top:2px;color:${isOver?'var(--red)':'var(--muted)'}">⏳ Échéance : ${frDate(ech)}${isOver?' (dépassée)':''}</div>
     </div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Que voulez-vous faire ?</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Cet objectif est-il atteint ?</div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-success" style="justify-content:flex-start" onclick="objReviewValidate('${id}')">✅ Valider — objectif atteint</button>
-      <button class="btn btn-outline" style="justify-content:flex-start" onclick="objReviewExtend('${id}',7)">📅 Allonger d'1 semaine (→ ${frDate(addDaysStr(ech,7))})</button>
-      <button class="btn btn-outline" style="justify-content:flex-start" onclick="objReviewExtend('${id}',30)">📅 Allonger d'1 mois (→ ${frDate(addDaysStr(ech,30))})</button>
-      <button class="btn btn-outline" style="justify-content:flex-start" onclick="objReviewStatus('${id}','Reporté')">⏩ Marquer comme reporté</button>
+      <button class="btn btn-success" style="justify-content:flex-start" onclick="objReviewValidate('${id}')">✅ Oui — valider l'objectif comme atteint</button>
+      <button class="btn btn-primary" style="justify-content:flex-start" onclick="openObjPostpone('${id}')">⏩ Non — reporter (nouvelle date + motif)</button>
       <button class="btn btn-danger" style="justify-content:flex-start" onclick="objReviewStatus('${id}','Annulé')">❌ Abandonner l'objectif</button>
       <button class="btn btn-outline" style="justify-content:flex-start" onclick="closeModal();openObjectifModal('${id}')">✏️ Modifier en détail</button>
     </div>
   `,[{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
 }
+
+function openObjPostpone(id){
+  const o=objById(id); if(!o) return;
+  const cur=o.echeance||o.deadline||localDate();
+  const suggest=addDaysStr(cur,14);
+  openModal('⏩ Reporter l\'objectif',`
+    <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:12px">${esc(o.title)}</div>
+    <div class="form-group"><label class="form-label">📅 Nouvelle date d'échéance *</label><input id="op-date" type="date" class="form-input" value="${suggest}"></div>
+    <div class="form-group"><label class="form-label">📝 Motif du report * <span style="color:var(--muted);font-weight:400;text-transform:none">— pourquoi et pour quand</span></label><textarea id="op-reason" class="form-textarea" style="min-height:60px" placeholder="Ex: Manque de temps cette semaine, repoussé au... / En attente du retour client..."></textarea></div>
+    <div style="font-size:11px;color:var(--muted)">La nouvelle date + le motif seront enregistrés dans l'historique et synchronisés sur le planning.</div>
+  `,[
+    {label:'⏩ Reporter',cls:'btn-primary',fn:`confirmObjPostpone('${id}')`},
+    {label:'Annuler',cls:'btn-outline',fn:`openObjReview('${id}')`}
+  ]);
+}
+
+function confirmObjPostpone(id){
+  const o=objById(id); if(!o) return;
+  const newDate=document.getElementById('op-date').value;
+  const reason=document.getElementById('op-reason').value.trim();
+  if(!newDate){alert('Choisis une nouvelle date');return;}
+  if(!reason){alert('Indique le motif du report');return;}
+  const old=o.echeance||o.deadline;
+  o.echeance=newDate;
+  o.status='En cours';
+  o.history=(o.history||[]);
+  o.history.push({t:Date.now(),text:`⏩ Reporté du ${frDate(old)} au ${frDate(newDate)} — ${reason}`});
+  _objAfterReview();
+  toast('⏩ Objectif reporté au '+frDate(newDate));
+}
 function _objAfterReview(){save('objectives',objectives);closeModal();renderObjectifs();renderDashboard();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();}
-function objReviewValidate(id){const o=objById(id);if(o){o.status='Terminé';}_objAfterReview();toast('✅ Objectif validé !');}
+function objReviewValidate(id){const o=objById(id);if(o){o.status='Terminé';o.history=(o.history||[]);o.history.push({t:Date.now(),text:'✅ Validé comme atteint'});}_objAfterReview();toast('✅ Objectif validé !');}
 function objReviewExtend(id,days){const o=objById(id);if(o){o.echeance=addDaysStr(o.echeance||o.deadline||localDate(),days);o.status='En cours';}_objAfterReview();toast('📅 Échéance repoussée au '+frDate(objById(id).echeance));}
-function objReviewStatus(id,status){const o=objById(id);if(o){o.status=status;}_objAfterReview();toast('Objectif : '+status);}
+function objReviewStatus(id,status){const o=objById(id);if(o){o.status=status;o.history=(o.history||[]);o.history.push({t:Date.now(),text:(status==='Annulé'?'❌ Abandonné':status)});}_objAfterReview();toast('Objectif : '+status);}
 
 // ═══ PITCH COMMERCIAL ═══════════════════════════════════════
 const PITCH_DATA={
