@@ -816,249 +816,11 @@ const DEFAULT_PIN_HASH='883ffe0c';
 let sbClient=null;
 
 // ═══ DATA ═══════════════════════════════════════════════════════
-const PLAN_30J=[
-  {date:'2026-06-01',day:'Lun 01/06',axe:'Supports',action:'Finaliser plaquette Debal Cyber v2 (accroche + CTA)'},
-  {date:'2026-06-02',day:'Mar 02/06',axe:'Marketing',action:'Optimiser profil LinkedIn perso + page entreprise KIPSAFE'},
-  {date:'2026-06-03',day:'Mer 03/06',axe:'Commercial',action:'Constituer liste 50 prospects PME (Pappers/LinkedIn)'},
-  {date:'2026-06-04',day:'Jeu 04/06',axe:'Web',action:'Réécrire les titres H1/H2 et méta-descriptions de la page d\'accueil'},
-  {date:'2026-06-05',day:'Ven 05/06',axe:'Supports',action:'Finaliser plaquette Infogérance v2'},
-  {date:'2026-06-08',day:'Lun 08/06',axe:'Commercial',action:'Envoyer 10 premiers messages LinkedIn à prospects ciblés'},
-  {date:'2026-06-09',day:'Mar 09/06',axe:'Marketing',action:'Publier post LinkedIn : "Top 5 risques cyber PME 2026"'},
-  {date:'2026-06-10',day:'Mer 10/06',axe:'Supports',action:'Finaliser plaquette PEM Promisec v2'},
-  {date:'2026-06-11',day:'Jeu 11/06',axe:'Web',action:'Ajouter page Témoignages + badges certifications'},
-  {date:'2026-06-12',day:'Ven 12/06',axe:'Commercial',action:'Relances téléphoniques J+3 (prospects contactés le 08/06)'},
-  {date:'2026-06-15',day:'Lun 15/06',axe:'Marchés',action:'Créer alertes BOAMP / Maximilien : mots-clés cyber + infogérance'},
-  {date:'2026-06-16',day:'Mar 16/06',axe:'Marketing',action:'Publier post LinkedIn : offre Debal Cyber + CTA audit gratuit'},
-  {date:'2026-06-17',day:'Mer 17/06',axe:'Commercial',action:'Objectif : 3 RDV qualifiés confirmés — relances actives'},
-  {date:'2026-06-18',day:'Jeu 18/06',axe:'Web',action:'Publier article blog : "NIS2 : ce qui change pour les PME"'},
-  {date:'2026-06-19',day:'Ven 19/06',axe:'Marketing',action:'Lancer sondage LinkedIn + contacter 5 cabinets comptables'},
-  {date:'2026-06-22',day:'Lun 22/06',axe:'Web',action:'Installer formulaire lead magnet (téléchargement plaquette)'},
-  {date:'2026-06-23',day:'Mar 23/06',axe:'Marketing',action:'Publier post LinkedIn : témoignage client (anonymisé)'},
-  {date:'2026-06-24',day:'Mer 24/06',axe:'Commercial',action:'Déposer 1 dossier appel d\'offres identifié (BOAMP)'},
-  {date:'2026-06-25',day:'Jeu 25/06',axe:'Marchés',action:'Contacter UGAP pour référencement prestataire IT/cyber'},
-  {date:'2026-06-26',day:'Ven 26/06',axe:'Commercial',action:'Point hebdo : pipeline RDV, relances, avancement contrats'},
-  {date:'2026-06-29',day:'Lun 29/06',axe:'Marketing',action:'Envoyer Newsletter Cyber Flash n°1 (liste emails collectés)'},
-  {date:'2026-06-30',day:'Mar 30/06',axe:'Bilan',action:'Revue 30 jours : RDV réalisés, deals en cours, ajustements'},
-  // ── Tâches complémentaires ──────────────────────────────────────
-  // Semaine 1 — Fondations
-  {date:'2026-06-01',day:'Lun 01/06',axe:'Admin',action:'Créer lien Calendly KIPSAFE (réservation RDV 30min/60min) — à mettre dans email + LinkedIn'},
-  {date:'2026-06-02',day:'Mar 02/06',axe:'Commercial',action:'Rédiger template email de prospection Debal Cyber (version PME, 5 lignes max, CTA audit gratuit)'},
-  {date:'2026-06-03',day:'Mer 03/06',axe:'Commercial',action:'Identifier 20 EHPAD + 10 lycées IDF à cibler (Pappers + Maximilien) — liste dans CRM'},
-  {date:'2026-06-04',day:'Jeu 04/06',axe:'Web',action:'Installer Google Analytics 4 + Google Search Console sur kipsafe.fr (suivi trafic + SEO)'},
-  {date:'2026-06-05',day:'Ven 05/06',axe:'Supports',action:'Créer pitch deck 10 slides KIPSAFE (problème → solution → offres → tarifs → CTA) pour RDV clients'},
-  // Semaine 2 — Prospection sectorielle
-  {date:'2026-06-08',day:'Lun 08/06',axe:'Commercial',action:'Contacter 5 EHPAD IDF par email personnalisé + LinkedIn (accroche : conformité NIS2 + protection données résidents)'},
-  {date:'2026-06-09',day:'Mar 09/06',axe:'Marketing',action:'Créer fiche Google My Business KIPSAFE (adresse, horaires, offres, photos) — visibilité locale IDF'},
-  {date:'2026-06-10',day:'Mer 10/06',axe:'Supports',action:'Rédiger use case 1 page : PME victime ransomware → intervention KIPSAFE → résultat (anonymisé)'},
-  {date:'2026-06-11',day:'Jeu 11/06',axe:'Commercial',action:'Contacter 5 lycées IDF (DSI ou chef d\'établissement) via Maximilien ou email direct proviseur'},
-  {date:'2026-06-12',day:'Ven 12/06',axe:'Commercial',action:'Préparer template relance J+7 (email court, ton direct, nouvelle accroche) pour non-répondants'},
-  // Semaine 3 — Accélération
-  {date:'2026-06-15',day:'Lun 15/06',axe:'Marchés',action:'Configurer alertes Achatpublic.com + inscription prestataire (mots-clés : cybersécurité, SOC, infogérance)'},
-  {date:'2026-06-16',day:'Mar 16/06',axe:'Web',action:'Créer landing page dédiée "Audit Debal Cyber offert 48h" sur kipsafe.fr (formulaire + bénéfices + CTA)'},
-  {date:'2026-06-17',day:'Mer 17/06',axe:'Supports',action:'Assembler kit RDV complet : plaquettes PDF + pitch deck + grille tarifaire + contrat type 1 page'},
-  {date:'2026-06-18',day:'Jeu 18/06',axe:'Commercial',action:'Contacter 5 cabinets comptables IDF (apporteurs d\'affaires potentiels — leurs clients PME sont nos cibles)'},
-  {date:'2026-06-19',day:'Ven 19/06',axe:'Supports',action:'Créer modèle proposition commerciale KIPSAFE (Word/PDF personnalisable : contexte + solution + tarif + CGV)'},
-  // Semaine 4 — Closing & amplification
-  {date:'2026-06-22',day:'Lun 22/06',axe:'Commercial',action:'Relancer TOUS les prospects sans réponse J+7 (email + appel) — objectif : décrocher 2 RDV supplémentaires'},
-  {date:'2026-06-23',day:'Mar 23/06',axe:'Web',action:'Créer page FAQ "Cybersécurité PME" sur kipsafe.fr (10 questions SEO longue traîne : coût audit, NIS2, ransomware...)'},
-  {date:'2026-06-24',day:'Mer 24/06',axe:'Marchés',action:'Relancer les acheteurs BOAMP/Maximilien identifiés semaine du 15/06 — demander retour ou rendez-vous'},
-  {date:'2026-06-25',day:'Jeu 25/06',axe:'Marchés',action:'Finaliser inscription Achatpublic.com comme prestataire référencé (dossier administratif + certifications)'},
-  {date:'2026-06-26',day:'Ven 26/06',axe:'Admin',action:'Préparer objectifs juillet : offres à pousser, nouveaux secteurs, budget pub, 2e vague prospection (50 contacts)'},
-  // Semaine 5 — Bilan et lancement juillet
-  {date:'2026-06-29',day:'Lun 29/06',axe:'Marketing',action:'Lancer campagne Google Ads test (budget 100€, mots-clés : "audit cybersécurité PME", "infogérance IDF", "NIS2")'},
-  {date:'2026-06-30',day:'Mar 30/06',axe:'Admin',action:'MAJ complète CRM : statuts prospects, valeurs pipeline, next steps — base propre pour juillet'}
-];
-const SCHEDULE_TODAY=[
-  {time:'09:36',end:'10:00',dur:'24min',axe:'Admin',icon:'🚀',action:'Lancement — Revue plan d\'action 30J + ouverture CRM'},
-  {time:'10:00',end:'11:30',dur:'90min',axe:'Supports',icon:'📄',action:'Plaquette Debal Cyber v2 (révision accroche, CTA, visuels)'},
-  {time:'11:30',end:'12:00',dur:'30min',axe:'Marketing',icon:'💼',action:'LinkedIn profil perso : photo, titre, résumé, bannière'},
-  {time:'12:00',end:'13:00',dur:'60min',axe:'Pause',icon:'🍽️',action:'PAUSE DÉJEUNER'},
-  {time:'13:00',end:'14:00',dur:'60min',axe:'Marketing',icon:'🏢',action:'Page Entreprise KIPSAFE LinkedIn : visuels, description, 1er post'},
-  {time:'14:00',end:'15:30',dur:'90min',axe:'Commercial',icon:'🎯',action:'Constituer liste 50 prospects PME (Pappers.fr + LinkedIn)'},
-  {time:'15:30',end:'16:00',dur:'30min',axe:'Web',icon:'🌐',action:'Site web — Réécriture H1 + méta-descriptions homepage'},
-  {time:'16:00',end:'17:00',dur:'60min',axe:'Commercial',icon:'📨',action:'Envoyer 5 premiers messages LinkedIn (prospects identifiés)'},
-  {time:'17:00',end:'17:45',dur:'45min',axe:'Admin',icon:'📊',action:'Mise à jour CRM + bilan J1 + relances à planifier'},
-  {time:'17:45',end:'18:00',dur:'15min',axe:'Admin',icon:'✅',action:'Clôture journée + préparation J2'}
-];
-const SCHEDULE_SOIR=[
-  {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'🔄',action:'Transition / bilan rapide journée'},
-  {time:'17:45',end:'18:30',dur:'45min',axe:'Commercial',icon:'📧',action:'Relances prospects + réponses LinkedIn/email'},
-  {time:'18:30',end:'19:30',dur:'60min',axe:'Supports',icon:'🛠️',action:'Travail support (plaquette / site / contenu)'},
-  {time:'19:30',end:'20:00',dur:'30min',axe:'Marketing',icon:'✍️',action:'Rédaction post LinkedIn du lendemain'},
-  {time:'20:00',end:'21:00',dur:'60min',axe:'Commercial',icon:'🎯',action:'Prospection (messages personnalisés, liste prospects)'},
-  {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM + planification J+1'}
-];
-const SCHEDULE_DIMANCHE=[
-  {time:'10:00',end:'10:15',dur:'15min',axe:'Admin',icon:'☀️',action:'Bilan semaine + liste priorités du jour'},
-  {time:'10:15',end:'11:15',dur:'60min',axe:'Formation',icon:'📚',action:'Formation Promisec (1h) — approfondissement autonome'},
-  {time:'11:15',end:'12:00',dur:'45min',axe:'Commercial',icon:'🎯',action:'Relances légères / prospection non urgente'},
-  {time:'12:00',end:'13:00',dur:'60min',axe:'Admin',icon:'📊',action:'MAJ CRM + planification semaine suivante'}
-];
-
-// ═══ PLANNING SOIR PAR DATE (Lun–Jeu 17h30–21h30) ═══════════════
-const SCHEDULES_PAR_DATE={
-  '2026-06-02':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Transition — vérifier emails + LinkedIn + réponses prospects'},
-    {time:'17:45',end:'18:45',dur:'60min',axe:'Marketing',icon:'💼',action:'Optimiser profil LinkedIn : photo pro, titre "Fondateur KIPSAFE | Cybersécurité PME", bannière'},
-    {time:'18:45',end:'19:15',dur:'30min',axe:'Marketing',icon:'🏢',action:'Créer page entreprise KIPSAFE LinkedIn (logo, description, 1er post de bienvenue)'},
-    {time:'19:15',end:'19:45',dur:'30min',axe:'Marketing',icon:'✍️',action:'Rédiger post LinkedIn #1 : "3 signes que votre PME est vulnérable" (format texte + émojis)'},
-    {time:'19:45',end:'21:00',dur:'75min',axe:'Commercial',icon:'🎯',action:'Envoyer 15 messages LinkedIn personnalisés aux 25 prospects CRM (créer contact, ne pas pitcher direct)'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM (statut "Contacté") + planification mercredi'}
-  ],
-  '2026-06-03':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Vérifier premières réponses LinkedIn — répondre IMMÉDIATEMENT aux messages positifs'},
-    {time:'17:45',end:'18:30',dur:'45min',axe:'Commercial',icon:'🔍',action:'Compléter liste prospects : 25 supplémentaires via Pappers + LinkedIn = 50 total dans CRM'},
-    {time:'18:30',end:'19:15',dur:'45min',axe:'Commercial',icon:'🎯',action:'Envoyer 15 nouveaux messages LinkedIn personnalisés (2e vague prospects)'},
-    {time:'19:15',end:'19:45',dur:'30min',axe:'Web',icon:'🌐',action:'Réécrire H1/H2 homepage kipsafe.fr (mots-clés : cybersécurité PME IDF, infogérance, NIS2)'},
-    {time:'19:45',end:'20:30',dur:'45min',axe:'Commercial',icon:'📞',action:'Appeler 3-5 prospects ayant répondu (pitch 2min → audit gratuit → lien Calendly)'},
-    {time:'20:30',end:'21:00',dur:'30min',axe:'Marketing',icon:'📲',action:'Publier post LinkedIn rédigé mardi soir'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM + bilan : X contactés, Y réponses, Z RDV pris'}
-  ],
-  '2026-06-04':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check réponses + Calendly (RDV pris ?)'},
-    {time:'17:45',end:'18:30',dur:'45min',axe:'Web',icon:'📊',action:'Installer Google Analytics 4 + Search Console sur kipsafe.fr (mesurer trafic dès maintenant)'},
-    {time:'18:30',end:'19:15',dur:'45min',axe:'Supports',icon:'📄',action:'Finaliser plaquette Infogérance v2 : comparatif DSI vs infogérance + grille 30€/user/mois + formulaire contact'},
-    {time:'19:15',end:'19:45',dur:'30min',axe:'Commercial',icon:'📞',action:'Relance J+3 : appeler prospects contactés lundi (pitch 45sec : "Avez-vous eu l\'occasion de regarder ?")'},
-    {time:'19:45',end:'20:30',dur:'45min',axe:'Supports',icon:'🎨',action:'Commencer pitch deck 10 slides (slides 1-5 : problème, chiffres clés cyber, solution, 3 offres, tarifs)'},
-    {time:'20:30',end:'21:00',dur:'30min',axe:'Marketing',icon:'✍️',action:'Rédiger post LinkedIn #2 : partage article ANSSI + commentaire expert KIPSAFE'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'Bilan S1 : X prospects contactés, Y réponses, Z RDV — ajuster stratégie S2'}
-  ],
-  '2026-06-08':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check weekend : réponses LinkedIn, emails, Google Analytics S1 (trafic ?)'},
-    {time:'17:45',end:'18:30',dur:'45min',axe:'Commercial',icon:'📞',action:'Relancer par téléphone les prospects S1 sans réponse (10 appels max, pitch 45 secondes)'},
-    {time:'18:30',end:'19:15',dur:'45min',axe:'Commercial',icon:'📩',action:'Envoyer valeur ajoutée J+5 : article/cas d\'usage pertinent par email aux prospects ayant répondu S1'},
-    {time:'19:15',end:'19:45',dur:'30min',axe:'Supports',icon:'📄',action:'Finaliser plaquette PEM Promisec v2 (logo Promisec + badges NIS2/RGPD + FAQ réglementaire)'},
-    {time:'19:45',end:'20:30',dur:'45min',axe:'Commercial',icon:'🎯',action:'Envoyer 15 nouveaux messages LinkedIn (2e vague : ETI 100-500 salariés, secteur industrie/logistique)'},
-    {time:'20:30',end:'21:00',dur:'30min',axe:'Marketing',icon:'🏢',action:'Configurer Google My Business KIPSAFE (adresse IDF, offres, horaires, 1ère photo)'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM + planification semaine 2'}
-  ],
-  '2026-06-09':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check réponses + Calendly (RDV pris ?)'},
-    {time:'17:45',end:'18:15',dur:'30min',axe:'Commercial',icon:'📞',action:'Appeler prospects chauds S1 (relance J+7 #2 : proposer 20min visio/démo) — objectif 2 RDV cette semaine'},
-    {time:'18:15',end:'19:15',dur:'60min',axe:'Supports',icon:'📄',action:'Rédiger use case 1 page : PME victime ransomware → intervention KIPSAFE → résolution 48h (anonymisé)'},
-    {time:'19:15',end:'19:45',dur:'30min',axe:'Marketing',icon:'📲',action:'Publier post LinkedIn : "Top 5 risques cyber PME 2026" (contenu expert, 0 pitch, fort engagement)'},
-    {time:'19:45',end:'21:00',dur:'75min',axe:'Commercial',icon:'🎯',action:'15 nouveaux messages LinkedIn + envoyer use case par email aux prospects les plus réactifs S1'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM + préparer les RDV confirmés (contexte prospect, questions à poser, objectif appel)'}
-  ],
-  '2026-06-10':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check réponses + confirmer RDV du jour'},
-    {time:'17:45',end:'19:15',dur:'90min',axe:'Commercial',icon:'📞',action:'RDV clients (visio/appel) : présenter offre Debal Cyber, qualifier besoin, proposer audit gratuit → objectif : closing'},
-    {time:'19:15',end:'19:45',dur:'30min',axe:'Web',icon:'🌐',action:'Ajouter page Témoignages sur kipsafe.fr + badges certifications cyber + section "Nos clients"'},
-    {time:'19:45',end:'20:15',dur:'30min',axe:'Commercial',icon:'✉️',action:'Envoyer proposition commerciale aux prospects ayant eu un RDV aujourd\'hui (délai max 2h après appel)'},
-    {time:'20:15',end:'21:00',dur:'45min',axe:'Commercial',icon:'🎯',action:'15 nouveaux messages LinkedIn (maintenir le flux entrant — ne jamais laisser le pipeline se vider)'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM + tracker propositions envoyées (date, montant, statut, relance prévue)'}
-  ],
-  '2026-06-11':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check réponses propositions + Calendly'},
-    {time:'17:45',end:'18:15',dur:'30min',axe:'Marchés',icon:'🏛️',action:'Créer alertes BOAMP + Maximilien (mots-clés : cybersécurité, infogérance, SI, NIS2, RSSI)'},
-    {time:'18:15',end:'19:00',dur:'45min',axe:'Commercial',icon:'📞',action:'Relancer prospects ayant reçu proposition J+3 (appel : "Avez-vous pu consulter ?" + répondre aux objections)'},
-    {time:'19:00',end:'19:30',dur:'30min',axe:'Commercial',icon:'📩',action:'Contacter 5 lycées IDF par email (DSI/proviseur : conformité ENT + protection données élèves)'},
-    {time:'19:30',end:'20:00',dur:'30min',axe:'Marketing',icon:'✍️',action:'Rédiger post LinkedIn semaine 3 + planifier calendrier éditorial (Lun:éduc / Mar:actu / Mer:offre / Jeu:cas)'},
-    {time:'20:00',end:'21:00',dur:'60min',axe:'Commercial',icon:'🎯',action:'15 nouveaux messages LinkedIn + relance J+5 (envoi article/cas d\'usage) pour prospects S1 réactifs'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'Bilan S2 : pipeline total, RDV réalisés, propositions en cours, montant estimé, objectifs S3'}
-  ],
-  '2026-06-15':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check weekend — réponses, alertes BOAMP, Google Analytics, Calendly'},
-    {time:'17:45',end:'18:30',dur:'45min',axe:'Marchés',icon:'🏛️',action:'Analyser alertes BOAMP + Maximilien : identifier 2-3 AOs pertinents (cyber + infogérance)'},
-    {time:'18:30',end:'19:00',dur:'30min',axe:'Commercial',icon:'📞',action:'Relances téléphoniques prioritaires : prospects avec proposition depuis +5 jours sans réponse'},
-    {time:'19:00',end:'19:30',dur:'30min',axe:'Web',icon:'🌐',action:'Créer landing page "Audit Debal Cyber offert 48h" sur kipsafe.fr (formulaire + bénéfices + urgence)'},
-    {time:'19:30',end:'21:00',dur:'90min',axe:'Commercial',icon:'🎯',action:'Prospection intensive : 20 nouveaux LinkedIn (collectivités IDF) + 5 emails EHPAD IDF (conformité HDS)'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM + statuts pipeline S3 — objectif semaine : signer 1er contrat'}
-  ],
-  '2026-06-16':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check réponses + Calendly — RDV aujourd\'hui ?'},
-    {time:'17:45',end:'19:15',dur:'90min',axe:'Commercial',icon:'📞',action:'RDV clients : objectif S3 = signer 1er contrat. Présenter proposition + répondre objections + closing'},
-    {time:'19:15',end:'19:45',dur:'30min',axe:'Marketing',icon:'📲',action:'Publier post LinkedIn : "Audit Debal Cyber offert — 10 premières PME seulement" + lien landing page'},
-    {time:'19:45',end:'20:30',dur:'45min',axe:'Commercial',icon:'✉️',action:'Envoyer propositions commerciales + relances J+7 (email court + appel dans les 24h)'},
-    {time:'20:30',end:'21:00',dur:'30min',axe:'Commercial',icon:'🎯',action:'10 nouveaux messages LinkedIn (maintenir pipeline entrant même en phase closing)'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM + tracker propositions (date envoi, montant, prochaine relance)'}
-  ],
-  '2026-06-17':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check réponses + propositions en attente — relance si +48h sans réponse'},
-    {time:'17:45',end:'19:30',dur:'105min',axe:'Commercial',icon:'📞',action:'RDV qualifiés (objectif : 3 RDV cette semaine, 1 closing) — présenter proposition + répondre objections'},
-    {time:'19:30',end:'20:00',dur:'30min',axe:'Supports',icon:'📁',action:'Assembler kit RDV complet : plaquettes PDF + pitch deck + grille tarifaire + contrat type 1 page'},
-    {time:'20:00',end:'20:30',dur:'30min',axe:'Commercial',icon:'✉️',action:'Suivi post-RDV : envoyer compte-rendu + proposition dans les 2h après chaque appel'},
-    {time:'20:30',end:'21:00',dur:'30min',axe:'Web',icon:'🌐',action:'Publier article blog "NIS2 : ce qui change pour les PME" (SEO + crédibilité expert)'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM + préparer closing appels jeudi — qui peut signer cette semaine ?'}
-  ],
-  '2026-06-18':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check URGENT : propositions acceptées ? Contrats signés ? Réponses en attente ?'},
-    {time:'17:45',end:'18:30',dur:'45min',axe:'Commercial',icon:'🤝',action:'CLOSING : appeler TOUS prospects avec proposition en attente — lever dernières objections, demander la signature'},
-    {time:'18:30',end:'19:00',dur:'30min',axe:'Commercial',icon:'📩',action:'Contacter 5 cabinets comptables IDF (email + LinkedIn) : partenariat apporteur d\'affaires (% sur signature)'},
-    {time:'19:00',end:'19:30',dur:'30min',axe:'Marketing',icon:'📲',action:'Lancer sondage LinkedIn "Votre priorité cyber en 2026 ?" (fort engagement + identification prospects)'},
-    {time:'19:30',end:'21:00',dur:'90min',axe:'Commercial',icon:'🎯',action:'20 nouveaux messages LinkedIn (3e vague) + relance J+7 #2 non-répondants (email ultra-court + appel)'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'Bilan S3 : 1er client signé ? CA signé, pipeline estimé, montant propositions en attente, ajustements S4'}
-  ],
-  '2026-06-22':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check weekend + pipeline S3 + Google Analytics'},
-    {time:'17:45',end:'18:30',dur:'45min',axe:'Commercial',icon:'📞',action:'Relancer TOUS prospects sans réponse J+7+ : email ultra-court (3 lignes) + appel dans les 2h'},
-    {time:'18:30',end:'19:00',dur:'30min',axe:'Web',icon:'🌐',action:'Installer formulaire lead magnet kipsafe.fr (téléchargement plaquette Debal Cyber contre email)'},
-    {time:'19:00',end:'19:30',dur:'30min',axe:'Marchés',icon:'🏛️',action:'Finaliser dossier AO BOAMP identifié — deadline avant 24/06'},
-    {time:'19:30',end:'21:00',dur:'90min',axe:'Commercial',icon:'🎯',action:'2e vague prospection : 25 nouveaux contacts (collectivités locales IDF + mairies 5000+ habitants)'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM + pipeline S4 — qui peut signer avant le 30/06 ?'}
-  ],
-  '2026-06-23':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check réponses + Calendly'},
-    {time:'17:45',end:'19:00',dur:'75min',axe:'Commercial',icon:'📞',action:'RDV + calls : objectif 2 contrats supplémentaires signés cette semaine (avant bilan 30J)'},
-    {time:'19:00',end:'19:30',dur:'30min',axe:'Marketing',icon:'📲',action:'Publier post LinkedIn : témoignage client (anonymisé) + résultat concret + chiffre clé'},
-    {time:'19:30',end:'20:00',dur:'30min',axe:'Web',icon:'🌐',action:'Créer page FAQ cybersécurité PME kipsafe.fr (10 questions SEO : coût audit, NIS2, ransomware...)'},
-    {time:'20:00',end:'21:00',dur:'60min',axe:'Commercial',icon:'🎯',action:'15 messages LinkedIn nouveaux prospects + suivi propositions en attente (relance si +48h)'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM + tracker deals : signés vs en attente vs à relancer'}
-  ],
-  '2026-06-24':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check réponses + propositions urgentes (fin juin approche)'},
-    {time:'17:45',end:'18:30',dur:'45min',axe:'Marchés',icon:'🏛️',action:'Déposer dossier AO BOAMP + contacter UGAP pour référencement prestataire IT/cyber'},
-    {time:'18:30',end:'19:30',dur:'60min',axe:'Commercial',icon:'🤝',action:'CLOSING S4 : appeler TOUS prospects avec proposition — objectif 2 contrats signés avant 30/06'},
-    {time:'19:30',end:'20:00',dur:'30min',axe:'Commercial',icon:'📩',action:'Contacter 5 nouveaux cabinets comptables IDF (réseau apporteurs d\'affaires — commission 10%)'},
-    {time:'20:00',end:'21:00',dur:'60min',axe:'Marketing',icon:'🎯',action:'Lancer campagne Google Ads test (100€ : mots-clés "audit cybersécurité PME IDF", "infogérance IDF")'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM + préparer bilan 30 jours + calculer CA signé'}
-  ],
-  '2026-06-25':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check URGENT : contrats signés ? Paiements reçus ? Nouvelles réponses ?'},
-    {time:'17:45',end:'18:30',dur:'45min',axe:'Commercial',icon:'🤝',action:'Dernières relances closing + onboarding clients signés (contrat, facture, prochaines étapes)'},
-    {time:'18:30',end:'19:00',dur:'30min',axe:'Marchés',icon:'🏛️',action:'Finaliser inscription Achatpublic.com comme prestataire référencé (dossier administratif)'},
-    {time:'19:00',end:'19:30',dur:'30min',axe:'Marketing',icon:'📩',action:'Envoyer Newsletter Cyber Flash n°1 (tous prospects + réseau LinkedIn + emails collectés)'},
-    {time:'19:30',end:'20:30',dur:'60min',axe:'Admin',icon:'📋',action:'Préparer plan juillet : nouvelles cibles, budget pub 300€/mois, 3e vague prospection 100 contacts'},
-    {time:'20:30',end:'21:30',dur:'60min',axe:'Bilan',icon:'🏆',action:'REVUE 30 JOURS : CA signé, pipeline actif, RDV réalisés, taux conversion, top 3 learnings, objectifs juillet'}
-  ],
-  '2026-06-07':[
-    {time:'10:00',end:'11:30',dur:'90min',axe:'Formation',icon:'📞',action:'RDV Moche — Formation Promisec partie technique (90min)'},
-    {time:'11:30',end:'12:15',dur:'45min',axe:'Formation',icon:'📚',action:'Prise de notes + tests autonomes sur Promisec'},
-    {time:'12:15',end:'13:00',dur:'45min',axe:'Admin',icon:'📊',action:'Bilan formation + MAJ CRM + planification S2'}
-  ],
-  '2026-06-14':[
-    {time:'10:00',end:'10:15',dur:'15min',axe:'Admin',icon:'☀️',action:'Bilan semaine 2 + priorités du jour'},
-    {time:'10:15',end:'11:15',dur:'60min',axe:'Formation',icon:'📚',action:'Formation Promisec (1h) — révision et approfondissement'},
-    {time:'11:15',end:'12:00',dur:'45min',axe:'Commercial',icon:'🎯',action:'Relances prospects semaine 2 — non urgentes'},
-    {time:'12:00',end:'13:00',dur:'60min',axe:'Admin',icon:'📊',action:'MAJ CRM + planification semaine 3'}
-  ],
-  '2026-06-21':[
-    {time:'10:00',end:'10:15',dur:'15min',axe:'Admin',icon:'☀️',action:'Bilan semaine 3'},
-    {time:'10:15',end:'11:00',dur:'45min',axe:'Marchés',icon:'🏛️',action:'Veille BOAMP/Maximilien + AOs à traiter cette semaine'},
-    {time:'11:00',end:'12:00',dur:'60min',axe:'Commercial',icon:'📞',action:'Relances prospects + suivi propositions en attente'},
-    {time:'12:00',end:'13:00',dur:'60min',axe:'Admin',icon:'📊',action:'MAJ CRM + planification semaine 4'}
-  ],
-  '2026-06-28':[
-    {time:'10:00',end:'10:15',dur:'15min',axe:'Admin',icon:'☀️',action:'Bilan semaine 4'},
-    {time:'10:15',end:'11:30',dur:'75min',axe:'Bilan',icon:'🏆',action:'Revue 30 jours : CA signé, pipeline, RDV, apprentissages'},
-    {time:'11:30',end:'13:00',dur:'90min',axe:'Admin',icon:'📋',action:'Préparer plan juillet : nouvelles cibles, objectifs, budget'}
-  ],
-  '2026-06-29':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check réponses finales + pipeline restant'},
-    {time:'17:45',end:'18:30',dur:'45min',axe:'Marketing',icon:'📩',action:'Envoyer Newsletter Cyber Flash n°1 si pas fait + suivre taux d\'ouverture'},
-    {time:'18:30',end:'19:30',dur:'60min',axe:'Marketing',icon:'🎯',action:'Lancer/optimiser Google Ads : vérifier clics, CPC, ajuster mots-clés si CTR < 2%'},
-    {time:'19:30',end:'20:30',dur:'60min',axe:'Commercial',icon:'📞',action:'Finaliser propositions en cours + relances last minute (fin de mois = urgence décisionnelle)'},
-    {time:'20:30',end:'21:00',dur:'30min',axe:'Marketing',icon:'📲',action:'Post LinkedIn clôture juin : bilan mois, 1 apprentissage clé, teaser juillet'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Admin',icon:'📊',action:'MAJ CRM complète + archiver prospects perdus + préparer pipeline juillet'}
-  ],
-  '2026-06-30':[
-    {time:'17:30',end:'17:45',dur:'15min',axe:'Admin',icon:'⚡',action:'Check pipeline complet + réponses last minute'},
-    {time:'17:45',end:'19:00',dur:'75min',axe:'Bilan',icon:'🏆',action:'REVUE 30 JOURS : CA total signé, nb clients, nb RDV, taux conversion, meilleurs canaux (LinkedIn vs email vs phone)'},
-    {time:'19:00',end:'20:00',dur:'60min',axe:'Admin',icon:'📋',action:'Définir objectifs juillet : CA cible, nouvelles cibles (santé / industrie), budget, 3e vague 100 contacts'},
-    {time:'20:00',end:'21:00',dur:'60min',axe:'Admin',icon:'🔄',action:'MAJ CRM complète : archiver perdus, mettre à jour pipeline, confirmer prochaines étapes pour chaque prospect chaud'},
-    {time:'21:00',end:'21:30',dur:'30min',axe:'Bilan',icon:'🎉',action:'Célébrer J30 KIPSAFE — noter les 3 actions qui ont généré le plus de résultats + planifier J31'}
-  ]
-};
+const PLAN_30J=[];
+const SCHEDULE_TODAY=[];
+const SCHEDULE_SOIR=[];
+const SCHEDULE_DIMANCHE=[];
+const SCHEDULES_PAR_DATE={};
 const STATUTS=['Nouveau','Contacté','RDV','Proposition','Signé','Perdu'];
 const OFFRES=['Debal Cyber','Infogérance','PEM Promisec','Multi'];
 const SOURCES=['Manuel','LinkedIn','Lusha','Apollo','Pappers','Référence','Autre'];
@@ -1073,16 +835,16 @@ const CAT_CONFIG={
 // ═══ STORAGE ════════════════════════════════════════════════
 function load(k,d){try{const v=localStorage.getItem('kipsafe_'+k);return v?JSON.parse(v):d;}catch{return d;}}
 function save(k,v){localStorage.setItem('kipsafe_'+k,JSON.stringify(v));if(sbClient){sbClient.from('kipsafe_data').upsert({key:k,value:v,updated_at:new Date().toISOString()}).then(({error})=>{if(error)console.warn('Supabase save:',error.message);});}}
+// ── Effacement automatique des anciennes données (CRM remis à blanc) ──
+const DATA_VERSION='blank-2026-06';
+if(localStorage.getItem('kipsafe_data_version')!==DATA_VERSION){
+  Object.keys(localStorage).filter(k=>k.startsWith('kipsafe_')).forEach(k=>localStorage.removeItem(k));
+  localStorage.setItem('kipsafe_data_version',DATA_VERSION);
+}
 let prospects=load('prospects',[]);
 let marches=load('marches',[]);
 let planDone=load('plan_done',[]);
-let quickTasks=load('quick_tasks',[
-  {id:1,text:'Finaliser plaquette Debal Cyber',done:false},
-  {id:2,text:'Optimiser profil LinkedIn',done:false},
-  {id:3,text:'Constituer liste 50 prospects',done:false},
-  {id:4,text:'Envoyer 5 messages LinkedIn',done:false},
-  {id:5,text:'Mettre à jour le site web H1',done:false}
-]);
+let quickTasks=load('quick_tasks',[]);
 let nextId=load('next_id',100);
 let planOverrides=load('plan_overrides',{});
 let objectives=load('objectives',null);
@@ -1164,26 +926,7 @@ function updateLockTimerDisplay(){
 
 // ═══ APP ════════════════════════════════════════════════════
 let currentView='kanban';
-function seedDefaultEvents(){
-  if(localStorage.getItem('kipsafe_events_seeded')==='v2') return;
-  // Nettoyer l'ancien RDV Moche du 02/06 (remplacé par le RDV technique dimanche 07/06)
-  scheduleCustom=scheduleCustom.filter(s=>s.id!=='rdv_moche');
-  // Formation Promisec quotidienne du 02/06 au 09/06
-  if(!scheduleCustom.find(s=>s.id==='formation_promisec')){
-    scheduleCustom.push({id:'formation_promisec',date:'2026-06-02',time:'10:00',end:'11:00',dur:'1h',axe:'Formation',icon:'📚',action:'Formation Promisec (1h) — Objectif : être opérationnel sur le logiciel mardi 09/06',done:false,recurring:'daily',recurringUntil:'2026-06-09'});
-  }
-  // Moche = partenaire technique Promisec (RDV technique dimanche 07/06)
-  const moche=prospects.find(p=>p.nom==='Moche');
-  if(!moche){
-    prospects.push({id:nextId++,nom:'Moche',categorie:'Partenaire',poste:'Référent technique Promisec',societe:'Promisec',email:'',tel:'',linkedin:'',source:'Manuel',offre:'PEM Promisec',statut:'RDV',valeur:'',date:'2026-06-01',rdv_date:'2026-06-07',rdv_time:'10:00',notes:'Formation technique PEM Promisec — partenaire référent. RDV technique dimanche 07/06 10h.'});
-    save('next_id',nextId);
-  } else {
-    moche.categorie='Partenaire';moche.societe=moche.societe||'Promisec';moche.poste=moche.poste||'Référent technique Promisec';moche.rdv_date='2026-06-07';moche.rdv_time='10:00';
-  }
-  save('prospects',prospects);
-  save('schedule_custom',scheduleCustom);
-  localStorage.setItem('kipsafe_events_seeded','v2');
-}
+function seedDefaultEvents(){ /* CRM vierge : aucun seed */ }
 
 function initApp(){updateHeaderDate();setInterval(updateHeaderDate,60000);seedDefaultEvents();renderDashboard();renderProspects();renderPlanning();renderOffres();renderMarches();initSupabase();}
 
@@ -2275,26 +2018,7 @@ const LVL_LABEL={annee:'Année',mois:'Mois',semaine:'Semaine'};
 const LVL_PARENT={mois:'annee',semaine:'mois'};
 const LVL_CHILD={annee:'mois',mois:'semaine'};
 
-const DEFAULT_OBJECTIVES_DATA=[
-  // ANNÉE
-  {id:'a_comm',level:'annee',title:'Signer 10 clients en 2026',axe:'Commercial',status:'En cours',parentId:null,planItems:[],notes:'Objectif business principal'},
-  {id:'a_web',level:'annee',title:'Site kipsafe.fr professionnel & optimisé',axe:'Web',status:'En cours',parentId:null,planItems:[],notes:''},
-  {id:'a_mkt',level:'annee',title:'Notoriété & présence LinkedIn',axe:'Marketing',status:'En cours',parentId:null,planItems:[],notes:''},
-  {id:'a_marche',level:'annee',title:'Référencement marchés publics',axe:'Marchés',status:'En cours',parentId:null,planItems:[],notes:''},
-  // MOIS (Juin)
-  {id:'m_contrat',level:'mois',title:'Signer le 1er contrat pilote',axe:'Commercial',status:'En cours',parentId:'a_comm',deadline:'2026-06-30',planItems:[6,8,11,13,15,17,19],notes:'Juin 2026'},
-  {id:'m_pipeline',level:'mois',title:'Constituer un pipeline de 50 prospects',axe:'Commercial',status:'En cours',parentId:'a_comm',deadline:'2026-06-12',planItems:[2],notes:''},
-  {id:'m_plaq',level:'mois',title:'3 plaquettes commerciales finalisées',axe:'Supports',status:'En cours',parentId:'a_comm',deadline:'2026-06-10',planItems:[0,4,9],notes:''},
-  {id:'m_acc',level:'mois',title:"Refondre la page d'accueil + SEO",axe:'Web',status:'En cours',parentId:'a_web',deadline:'2026-06-22',planItems:[3,10,17,21],notes:''},
-  {id:'m_li',level:'mois',title:'Profil + page entreprise LinkedIn actifs',axe:'Marketing',status:'En cours',parentId:'a_mkt',deadline:'2026-06-30',planItems:[1,7],notes:''},
-  {id:'m_ao',level:'mois',title:'Déposer 2 appels d\'offres',axe:'Marchés',status:'En cours',parentId:'a_marche',deadline:'2026-06-25',planItems:[14,20,23],notes:''},
-  // SEMAINE
-  {id:'s_design',level:'semaine',title:"2h sur le design de la page d'accueil",axe:'Web',status:'À faire',parentId:'m_acc',hours:2,planItems:[],notes:''},
-  {id:'s_textes',level:'semaine',title:'1h relecture des textes + offres',axe:'Web',status:'À faire',parentId:'m_acc',hours:1,planItems:[],notes:''},
-  {id:'s_liste',level:'semaine',title:'Lister 50 prospects (Pappers + LinkedIn)',axe:'Commercial',status:'À faire',parentId:'m_pipeline',hours:2,planItems:[2],notes:''},
-  {id:'s_msg',level:'semaine',title:'Envoyer 15 messages LinkedIn',axe:'Commercial',status:'À faire',parentId:'m_pipeline',hours:1,planItems:[],notes:''},
-  {id:'s_debal',level:'semaine',title:'Finaliser la plaquette Debal Cyber',axe:'Supports',status:'À faire',parentId:'m_plaq',hours:2,planItems:[0],notes:''}
-];
+const DEFAULT_OBJECTIVES_DATA=[];
 
 // Migration / seed : si pas de niveau défini, on (ré)initialise la structure hiérarchique
 if(!objectives || !Array.isArray(objectives) || !objectives.length || !objectives[0].level){
@@ -3133,7 +2857,7 @@ function importCSV(source){
 
 // ═══ SETTINGS ═══════════════════════════════════════════════
 function changePin(){const np=document.getElementById('new-pin').value,cp=document.getElementById('confirm-pin').value,msg=document.getElementById('pin-change-msg');if(!/^\d{4}$/.test(np)){msg.style.color='var(--red)';msg.textContent='PIN = 4 chiffres exactement.';return;}if(np!==cp){msg.style.color='var(--red)';msg.textContent='PINs différents.';return;}localStorage.setItem('kipsafe_pin',simpleHash(np));document.getElementById('new-pin').value='';document.getElementById('confirm-pin').value='';msg.style.color='var(--green)';msg.textContent='✅ PIN mis à jour !';setTimeout(()=>msg.textContent='',3000);}
-function resetData(){if(!confirm('⚠️ Effacer TOUTES les données ? Irréversible.'))return;['prospects','marches','plan_done','quick_tasks','next_id','plan_overrides','objectives','obj_status'].forEach(k=>{localStorage.removeItem('kipsafe_'+k);if(sbClient)sbClient.from('kipsafe_data').delete().eq('key',k).then(()=>{});});prospects=[];marches=[];planDone=[];quickTasks=[];nextId=100;planOverrides={};objectives=DEFAULT_OBJECTIVES_DATA.map(o=>({...o}));save('objectives',objectives);initApp();alert('Réinitialisé.');}
+function resetData(){if(!confirm('⚠️ Effacer TOUTES les données ? Irréversible.'))return;['prospects','marches','plan_done','quick_tasks','next_id','plan_overrides','objectives','obj_status','schedule_custom','schedule_overrides','schedule_hidden','schedule_recurring_done','occ_status'].forEach(k=>{localStorage.removeItem('kipsafe_'+k);if(sbClient)sbClient.from('kipsafe_data').delete().eq('key',k).then(()=>{});});prospects=[];marches=[];planDone=[];quickTasks=[];nextId=100;planOverrides={};objectives=[];scheduleCustom=[];scheduleOverrides={};scheduleHidden=[];scheduleRecurringDone={};occStatus={};initApp();alert('CRM remis à blanc.');}
 
 // ═══ MODAL ══════════════════════════════════════════════════
 function openModal(title,body,buttons){document.getElementById('modal-title-text').textContent=title;document.getElementById('modal-body').innerHTML=body;document.getElementById('modal-actions').innerHTML=buttons.map(b=>`<button class="btn ${b.cls}" onclick="${b.fn}">${b.label}</button>`).join('');document.getElementById('modal').style.display='flex';}
