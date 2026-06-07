@@ -2208,6 +2208,8 @@ const objOpen=new Set();
 
 function renderPlanning(){renderObjectifs();}
 function renderObjectifDashboard(){renderObjectifs();}
+let objSecOpen={mine:true,others:true};
+function toggleObjSec(id){objSecOpen[id]=objSecOpen[id]===false?true:false;renderObjectifs();}
 
 function setObjLevel(lvl){
   currentObjLevel=lvl;
@@ -2297,12 +2299,14 @@ function renderObjectifs(){
     const mine=items.filter(o=>!o.owner||o.owner==='admin'||o.owner===currentUser.id);
     const others=items.filter(o=>o.owner&&o.owner!=='admin'&&o.owner!==currentUser.id);
     if(others.length){
-      const sep=(t,c)=>`<div style="display:flex;align-items:center;gap:8px;margin:6px 0 10px"><span style="font-size:13px;font-weight:800;color:${c}">${t}</span><div style="flex:1;height:1px;background:var(--border)"></div></div>`;
-      let html=sep('👤 Mes objectifs ('+mine.length+')','var(--primary)');
-      html+= mine.length?mine.map(o=>objCardHtml(o,lvl)).join(''):'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Aucun objectif personnel à ce niveau.</div>';
-      html+=sep('👥 Objectifs des collaborateurs ('+others.length+')','var(--secondary)');
-      html+=others.map(o=>objCardHtml(o,lvl)).join('');
-      list.innerHTML=html;
+      const sec=(id,t,c,cards,emptyTxt)=>{
+        const open=objSecOpen[id]!==false;
+        const head=`<div onclick="toggleObjSec('${id}')" style="display:flex;align-items:center;gap:8px;margin:6px 0 10px;cursor:pointer;user-select:none"><span style="font-size:12px;color:${c};transition:.2s;transform:rotate(${open?'90':'0'}deg)">▶</span><span style="font-size:13px;font-weight:800;color:${c}">${t}</span><div style="flex:1;height:1px;background:var(--border)"></div></div>`;
+        const body=open?(cards.length?cards.map(o=>objCardHtml(o,lvl)).join(''):`<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${emptyTxt}</div>`):'';
+        return head+body;
+      };
+      list.innerHTML=sec('mine','👤 Mes objectifs ('+mine.length+')','var(--primary)',mine,'Aucun objectif personnel à ce niveau.')
+        + sec('others','👥 Objectifs des collaborateurs ('+others.length+')','var(--secondary)',others,'');
       return;
     }
   }
