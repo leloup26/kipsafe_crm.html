@@ -1186,7 +1186,7 @@ function getScheduleItemByKey(dateStr,key){
     if(!s) return null;
     const isRec=s.recurring&&s.recurring!=='none';
     const done=isRec?(scheduleRecurringDone[s.id+'_'+dateStr]||false):(s.done||false);
-    return {time:s.time,end:s.end,dur:s.dur,axe:s.axe||'',icon:s.icon||'',action:s.action,done,isCustom:true,isRec};
+    return {date:s.date,time:s.time,end:s.end,dur:s.dur,axe:s.axe||'',icon:s.icon||'',action:s.action,done,isCustom:true,isRec};
   }
   const dow=new Date(dateStr+'T12:00:00').getDay();
   const base=getBaseSchedule(dateStr,dow);
@@ -1228,6 +1228,7 @@ function openScheduleItemModal(today,key){
   const objOpts='<option value="">— Aucun objectif —</option>'+objectives.map(o=>`<option value="${o.id}" ${m.objectifId===o.id?'selected':''}>${({annee:'📅',mois:'🗓️',semaine:'📋'}[o.level]||'')} ${esc(o.title.slice(0,40))}</option>`).join('');
   const histHtml=(m.history||[]).slice().reverse().map(h=>{const d=new Date(h.t);const ds=isNaN(d)?'':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});return `<div style="font-size:11px;padding:5px 8px;background:var(--light);border-radius:6px;margin-bottom:4px"><span style="color:var(--muted)">${ds}</span> — ${esc(h.text)}</div>`;}).join('')||'<div style="font-size:11px;color:var(--muted)">Aucune note pour l\'instant</div>';
   openModal('✏️ Modifier',`
+    ${item.isCustom&&!item.isRec?`<div class="form-group"><label class="form-label">📅 Date <span style="color:var(--muted);font-weight:400;text-transform:none">— déplace le créneau à ce jour</span></label><input id="si-date" type="date" class="form-input" value="${item.date||today}"></div>`:''}
     <div class="grid-2">
       <div class="form-group"><label class="form-label">Heure début</label><input id="si-time" type="time" class="form-input" value="${item.time}"></div>
       <div class="form-group"><label class="form-label">Heure fin</label><input id="si-end" type="time" class="form-input" value="${item.end}"></div>
@@ -1295,18 +1296,22 @@ function saveScheduleItem(today,key){
   let history=(prev.history||[]).slice();
   if(note) history.push({t:Date.now(),text:note});
   const rich={status,estFinish,reportDate,reportReason,objectifId,reminder,history};
+  const newDate=document.getElementById('si-date')?document.getElementById('si-date').value:null;
+  let movedTo=null;
   if(key.startsWith('custom_')){
     const rawId=key.slice(7);
     const s=scheduleCustom.find(x=>String(x.id)===rawId);
     const isRec=s&&s.recurring&&s.recurring!=='none';
-    scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,time,end,dur,axe,icon,action,...rich,...(isRec?{}:{done})}:x);
+    const dateUpdate=(newDate&&!isRec&&newDate!==(s&&s.date))?{date:newDate}:{};
+    if(dateUpdate.date) movedTo=newDate;
+    scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,time,end,dur,axe,icon,action,...dateUpdate,...rich,...(isRec?{}:{done})}:x);
     save('schedule_custom',scheduleCustom);
     if(isRec){ if(done) scheduleRecurringDone[rawId+'_'+today]=true; else delete scheduleRecurringDone[rawId+'_'+today]; save('schedule_recurring_done',scheduleRecurringDone); }
   } else {
     scheduleOverrides[key]={...scheduleOverrides[key]||{},time,end,dur,axe,icon,action,done,...rich};
     save('schedule_overrides',scheduleOverrides);
   }
-  closeModal();refreshScheduleViews();renderDashboard();toast('✅ Enregistré');
+  closeModal();refreshScheduleViews();renderDashboard();toast(movedTo?('📅 Déplacé au '+frDate(movedTo)+' à '+time):'✅ Enregistré');
 }
 function deleteScheduleItem(today,key){
   if(!confirm('Supprimer ce créneau ?')) return;
