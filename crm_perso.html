@@ -985,6 +985,8 @@ function occKeyOf(ev,ds){
 let pinBuffer='',pinMode='check',pinSetup1='';
 function simpleHash(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return(h>>>0).toString(16);}
 function initPin(){
+  // Déverrouillage direct par lien (#u=CODE) — ouverture sans retaper le code
+  try{const um=(location.hash+' '+location.search).match(/(?:unlock|code|u)=([0-9]{3,})/);if(um){const mem=members.find(x=>x.code===um[1]);if(mem){currentUser=mem;sessionStorage.setItem('perso_user',mem.id);history.replaceState(null,'',location.pathname);unlockApp();return;}}}catch(e){}
   // Session active (refresh page) → restaurer l'utilisateur
   const sess=parseInt(sessionStorage.getItem('perso_session')||'0');
   if(sess&&Date.now()-sess<AUTO_LOCK_MS){const uid=sessionStorage.getItem('perso_user');if(uid){const m=memberById(uid);if(m)currentUser=m;}unlockApp();return;}
@@ -1136,14 +1138,16 @@ let objStatus=load('obj_status',{});
 // ═══ LIENS (accès CRM / sites / outils) ═════════════════════════
 let links=load('links',null);
 if(!links){links=[
-  {id:'l1',cat:'CRM',icon:'🛡️',label:'CRM KIPSAFE',url:'https://leloup26.github.io/kipsafe_crm.html/kipsafe_crm.html'},
-  {id:'l2',cat:'CRM',icon:'👤',label:'CRM Perso (celui-ci)',url:'https://leloup26.github.io/kipsafe_crm.html/crm_perso.html'},
-  {id:'l3',cat:'CRM',icon:'📖',label:'CRM LMDK',url:''},
+  {id:'l1',cat:'CRM',icon:'🛡️',label:'CRM KIPSAFE',url:'https://leloup26.github.io/kipsafe_crm.html/kipsafe_crm.html#u=61349178',pin:'61349178'},
+  {id:'l2',cat:'CRM',icon:'👤',label:'CRM Perso (celui-ci)',url:'https://leloup26.github.io/kipsafe_crm.html/crm_perso.html',pin:'6138'},
+  {id:'l3',cat:'CRM',icon:'📖',label:'CRM LMDK',url:'',pin:''},
   {id:'l4',cat:'Site web',icon:'🌐',label:'Site Kipsafe',url:'https://kipsafe.fr'},
   {id:'l5',cat:'Site web',icon:'📖',label:'Site LMDK',url:''},
   {id:'l6',cat:'Outil',icon:'🗄️',label:'Supabase (base CRM)',url:'https://supabase.com/dashboard/project/graujqkrxxceskgnqfin'},
   {id:'l7',cat:'Outil',icon:'💻',label:'GitHub (code CRM)',url:'https://github.com/leloup26/kipsafe_crm.html'}
 ];save('links',links);}
+// Migration liens : accès direct KIPSAFE (#u=) + mots de passe notés (appareils déjà initialisés)
+(function(){let ch=false;links=(links||[]).map(l=>{if(l.id==='l1'||l.label==='CRM KIPSAFE'){if(l.url&&l.url.indexOf('kipsafe_crm.html')>=0&&l.url.indexOf('#u=')<0){l.url=l.url+'#u=61349178';ch=true;}if(!l.pin){l.pin='61349178';ch=true;}}if((l.id==='l2'||l.label==='CRM Perso (celui-ci)')&&!l.pin){l.pin='6138';ch=true;}return l;});if(ch)save('links',links);})();
 const LINK_CATS=['CRM','Site web','Outil','Autre'];
 function renderLiens(){
   const el=document.getElementById('liens-content'); if(!el)return;
@@ -1159,6 +1163,7 @@ function renderLiens(){
       h+='<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px">'
         +'<div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">'+(l.icon||'🔗')+'</span><span style="font-weight:700;font-size:14px">'+esc(l.label)+'</span></div>'
         +(has?'<div style="font-size:11px;color:var(--muted);word-break:break-all">'+esc(l.url)+'</div>':'<div style="font-size:11px;color:#b45309">⚠️ Lien à renseigner</div>')
+        +(l.pin?'<div style="font-size:12px;color:var(--primary);font-weight:700;background:var(--light);padding:5px 9px;border-radius:6px">🔑 Mot de passe : '+esc(l.pin)+'</div>':'')
         +'<div style="display:flex;gap:6px;margin-top:4px">'
         +(has?'<a href="'+encodeURI(l.url)+'" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="flex:1;text-align:center;text-decoration:none">Ouvrir →</a>':'')
         +'<button class="btn btn-outline btn-sm" onclick="openLinkModal(\''+l.id+'\')">✏️</button>'
@@ -1177,14 +1182,15 @@ function openLinkModal(id){
     +'<div class="form-group"><label class="form-label">Icône</label><input id="lk-icon" class="form-input" value="'+esc(l.icon||'🔗')+'" placeholder="🔗"></div>'
     +'</div>'
     +'<div class="form-group"><label class="form-label">Nom *</label><input id="lk-label" class="form-input" value="'+esc(l.label||'')+'" placeholder="Ex: Site Kipsafe"></div>'
-    +'<div class="form-group"><label class="form-label">URL</label><input id="lk-url" class="form-input" value="'+esc(l.url||'')+'" placeholder="https://..."></div>',
+    +'<div class="form-group"><label class="form-label">URL</label><input id="lk-url" class="form-input" value="'+esc(l.url||'')+'" placeholder="https://..."></div>'
+    +'<div class="form-group"><label class="form-label">🔑 Mot de passe / code (noté ici)</label><input id="lk-pin" class="form-input" value="'+esc(l.pin||'')+'" placeholder="Ex: 61349178"></div>',
     [{label:id?'Enregistrer':'Ajouter',cls:'btn-primary',fn:"saveLink('"+id+"')"},{label:'Annuler',cls:'btn-outline',fn:'closeModal()'}]);
 }
 function saveLink(id){
   const label=document.getElementById('lk-label').value.trim(); if(!label){alert('Nom requis');return;}
   let url=document.getElementById('lk-url').value.trim();
   if(url&&!/^https?:\/\//i.test(url)) url='https://'+url;
-  const data={cat:document.getElementById('lk-cat').value,icon:document.getElementById('lk-icon').value.trim()||'🔗',label:label,url:url};
+  const data={cat:document.getElementById('lk-cat').value,icon:document.getElementById('lk-icon').value.trim()||'🔗',label:label,url:url,pin:(document.getElementById('lk-pin')?document.getElementById('lk-pin').value.trim():'')};
   if(id){links=links.map(l=>l.id===id?{...l,...data}:l);} else {data.id='l'+Date.now();links.push(data);}
   save('links',links);closeModal();renderLiens();
 }

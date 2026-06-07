@@ -905,6 +905,8 @@ function occKeyOf(ev,ds){
 let pinBuffer='',pinMode='check',pinSetup1='';
 function simpleHash(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return(h>>>0).toString(16);}
 function initPin(){
+  // Déverrouillage direct par lien (#u=CODE) — ouverture sans retaper le code
+  try{const um=(location.hash+' '+location.search).match(/(?:unlock|code|u)=([0-9]{3,})/);if(um){const mem=members.find(x=>x.code===um[1]);if(mem){currentUser=mem;sessionStorage.setItem('kipsafe_user',mem.id);history.replaceState(null,'',location.pathname);unlockApp();return;}}}catch(e){}
   // Session active (refresh page) → restaurer l'utilisateur
   const sess=parseInt(sessionStorage.getItem('kipsafe_session')||'0');
   if(sess&&Date.now()-sess<AUTO_LOCK_MS){const uid=sessionStorage.getItem('kipsafe_user');if(uid){const m=memberById(uid);if(m)currentUser=m;}unlockApp();return;}
