@@ -2893,8 +2893,8 @@ function renderDocList(){
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         <a href="${urlData?.publicUrl||'#'}" target="_blank" download="${esc(cleanName)}" class="btn btn-sm btn-primary" onclick="toast('⬇️ Téléchargement...')">⬇️ Télécharger</a>
-        <button class="btn btn-sm btn-outline" onclick="previewDoc('${urlData?.publicUrl||''}','${esc(cleanName)}')">👁</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteDocument('${path}','${esc(cleanName)}')">🗑️</button>
+        <button class="btn btn-sm btn-outline" onclick="previewDoc('${escJs(urlData?.publicUrl||'')}','${escJs(cleanName)}')">👁</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteDocument('${escJs(path)}','${escJs(cleanName)}')">🗑️</button>
       </div>
     </div>`;
   }).join('');
@@ -3105,6 +3105,8 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 
 // ═══ UTILS ══════════════════════════════════════════════════
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Échappement pour une chaîne JS passée dans un onclick inline (gère apostrophes, backslash, guillemets)
+function escJs(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 // ═══ START ══════════════════════════════════════════════════
 async function boot(){
