@@ -2043,7 +2043,8 @@ function openDayDetail(ds){
         const cur=ev.status;
         statusBtns='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:8px">'+SCHED_STATUSES.map(v=>{
           const active=cur===v;const col=SCHED_SC[v];
-          return `<button onclick="event.stopPropagation();setScheduleStatusQuick('${ds}','${schedKey}','${v}')" style="font-size:10px;padding:3px 8px;border-radius:99px;cursor:pointer;border:1px solid ${active?col:'var(--border)'};background:${active?col:'#fff'};color:${active?'#fff':col};font-weight:700">${SCHED_SICON[v]} ${v}</button>`;
+          const fn=(v==='Reporté')?`openSchedPostpone('${ds}','${schedKey}')`:`setScheduleStatusQuick('${ds}','${schedKey}','${v}')`;
+          return `<button onclick="event.stopPropagation();${fn}" style="font-size:10px;padding:3px 8px;border-radius:99px;cursor:pointer;border:1px solid ${active?col:'var(--border)'};background:${active?col:'#fff'};color:${active?'#fff':col};font-weight:700">${SCHED_SICON[v]} ${v}</button>`;
         }).join('')+'</div>';
       } else {
         const k=occKeyOf(ev,ds);
@@ -2102,6 +2103,38 @@ function setScheduleStatusQuick(ds,key,status){
     scheduleOverrides[key]={...scheduleOverrides[key]||{},status,done}; save('schedule_overrides',scheduleOverrides);
   }
   refreshScheduleViews();renderDashboard();closeModal();setTimeout(()=>openDayDetail(ds),60);
+}
+
+// Reporter (déplacer) un créneau à une nouvelle date depuis le détail du jour
+function openSchedPostpone(ds,key){
+  if(!key.startsWith('custom_')){ setScheduleStatusQuick(ds,key,'Reporté'); return; }
+  const rawId=key.slice(7); const s=scheduleCustom.find(x=>String(x.id)===rawId); if(!s){toast('Créneau introuvable');return;}
+  if(s.recurring&&s.recurring!=='none'){ setScheduleStatusQuick(ds,key,'Reporté'); return; }
+  const suggest=addDaysStr(s.date||ds,1);
+  openModal('⏩ Reporter le créneau',`
+    <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:10px">${esc(s.icon||'')} ${esc(s.action)}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Actuellement : ${frDate(s.date)} à ${s.time}</div>
+    <div class="form-group"><label class="form-label">📅 Reporter au</label><input id="sp-date" type="date" class="form-input" value="${suggest}"></div>
+    <div class="grid-2"><div class="form-group"><label class="form-label">Heure début</label><input id="sp-time" type="time" class="form-input" value="${s.time}"></div><div class="form-group"><label class="form-label">Heure fin</label><input id="sp-end" type="time" class="form-input" value="${s.end}"></div></div>
+    <div class="form-group"><label class="form-label">Motif (optionnel)</label><input id="sp-reason" class="form-input" placeholder="Pourquoi ce report ?"></div>
+  `,[
+    {label:'⏩ Reporter',cls:'btn-primary',fn:`doSchedPostpone('${ds}','${key}')`},
+    {label:'Annuler',cls:'btn-outline',fn:`closeModal();setTimeout(()=>openDayDetail('${ds}'),50)`}
+  ]);
+}
+function doSchedPostpone(ds,key){
+  const rawId=key.slice(7); const s=scheduleCustom.find(x=>String(x.id)===rawId); if(!s) return;
+  const nd=document.getElementById('sp-date').value; if(!nd){alert('Choisis une date');return;}
+  const time=document.getElementById('sp-time').value||s.time;
+  const end=document.getElementById('sp-end').value||s.end;
+  const reason=document.getElementById('sp-reason').value.trim();
+  const hist=(s.history||[]).slice();
+  hist.push({t:Date.now(),text:`⏩ Reporté du ${frDate(s.date)} ${s.time} au ${frDate(nd)} ${time}${reason?' — '+reason:''}`});
+  scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,date:nd,time,end,dur:calcDur(time,end),status:'À faire',done:false,history:hist}:x);
+  save('schedule_custom',scheduleCustom);
+  closeModal();refreshScheduleViews();renderDashboard();
+  toast('📅 Reporté au '+frDate(nd)+' à '+time);
+  setTimeout(()=>openDayDetail(nd),80); // ouvre le nouveau jour pour voir le créneau déplacé
 }
 
 // ── Rappels : calcule les rappels déclenchés à une date donnée ──
