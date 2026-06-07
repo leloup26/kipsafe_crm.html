@@ -1140,14 +1140,14 @@ let links=load('links',null);
 if(!links){links=[
   {id:'l1',cat:'CRM',icon:'🛡️',label:'CRM KIPSAFE',url:'https://leloup26.github.io/kipsafe_crm.html/kipsafe_crm.html#u=61349178',pin:'61349178'},
   {id:'l2',cat:'CRM',icon:'👤',label:'CRM Perso (celui-ci)',url:'https://leloup26.github.io/kipsafe_crm.html/crm_perso.html',pin:'6138'},
-  {id:'l3',cat:'CRM',icon:'📖',label:'CRM LMDK',url:'',pin:''},
+  {id:'l3',cat:'CRM',icon:'📖',label:'CRM LMDK',url:'https://lmdk-crm.vercel.app/',pin:''},
   {id:'l4',cat:'Site web',icon:'🌐',label:'Site Kipsafe',url:'https://kipsafe.fr'},
   {id:'l5',cat:'Site web',icon:'📖',label:'Site LMDK',url:''},
   {id:'l6',cat:'Outil',icon:'🗄️',label:'Supabase (base CRM)',url:'https://supabase.com/dashboard/project/graujqkrxxceskgnqfin'},
   {id:'l7',cat:'Outil',icon:'💻',label:'GitHub (code CRM)',url:'https://github.com/leloup26/kipsafe_crm.html'}
 ];save('links',links);}
 // Migration liens : accès direct KIPSAFE (#u=) + mots de passe notés (appareils déjà initialisés)
-(function(){let ch=false;links=(links||[]).map(l=>{if(l.id==='l1'||l.label==='CRM KIPSAFE'){if(l.url&&l.url.indexOf('kipsafe_crm.html')>=0&&l.url.indexOf('#u=')<0){l.url=l.url+'#u=61349178';ch=true;}if(!l.pin){l.pin='61349178';ch=true;}}if((l.id==='l2'||l.label==='CRM Perso (celui-ci)')&&!l.pin){l.pin='6138';ch=true;}return l;});if(ch)save('links',links);})();
+(function(){let ch=false;links=(links||[]).map(l=>{if(l.id==='l1'||l.label==='CRM KIPSAFE'){if(l.url&&l.url.indexOf('kipsafe_crm.html')>=0&&l.url.indexOf('#u=')<0){l.url=l.url+'#u=61349178';ch=true;}if(!l.pin){l.pin='61349178';ch=true;}}if((l.id==='l2'||l.label==='CRM Perso (celui-ci)')&&!l.pin){l.pin='6138';ch=true;}if((l.id==='l3'||l.label==='CRM LMDK')&&!l.url){l.url='https://lmdk-crm.vercel.app/';ch=true;}return l;});if(ch)save('links',links);})();
 const LINK_CATS=['CRM','Site web','Outil','Autre'];
 function renderLiens(){
   const el=document.getElementById('liens-content'); if(!el)return;
@@ -1723,7 +1723,7 @@ function renderKanban(fp){
 
 function renderList(fp){
   if(!fp.length){document.getElementById('prospects-container').innerHTML='<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Aucun contact</div></div>';return;}
-  let html=`<div class="card" style="overflow-x:auto"><table class="prospects-table"><thead><tr><th>Nom / Poste</th><th>Entreprise</th><th>Contact</th><th>Pourquoi appeler</th><th>Statut</th><th></th></tr></thead><tbody>`;
+  let html=`<div class="card" style="overflow-x:auto"><table class="prospects-table"><thead><tr><th>Nom / Poste</th><th>Entreprise</th><th>Contact</th><th>Pourquoi appeler</th><th>📅 Date</th><th>Statut</th><th></th></tr></thead><tbody>`;
   fp.forEach(p=>{
     const stCls='st-'+(p.statut||'').toLowerCase().replace(/[éèê]/g,'e').replace(/\s/g,'');
     const e=entById(entOf(p))||{};
@@ -1733,6 +1733,7 @@ function renderList(fp){
       <td><span style="font-size:11px;font-weight:700;background:${(e.color||'#888')}22;color:${e.color||'#555'};padding:3px 9px;border-radius:99px;white-space:nowrap">${e.icon||''} ${esc(e.name||entOf(p))}</span></td>
       <td style="font-size:11px">${p.email?`<a href="mailto:${esc(p.email)}">✉️ ${esc(p.email)}</a><br>`:''}${p.tel?`${esc(p.tel)} <a href="https://wa.me/${wa}" target="_blank" rel="noopener" title="WhatsApp" style="text-decoration:none">🟢</a> <a href="sms:${encodeURIComponent(p.tel)}" title="SMS" style="text-decoration:none">💬</a> <a href="tel:${encodeURIComponent(p.tel)}" title="Appeler" style="text-decoration:none">📞</a>`:'<span style="color:var(--muted)">—</span>'}</td>
       <td style="font-size:12px;max-width:280px">${p.objectif?esc(p.objectif):'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="font-size:11px;white-space:nowrap">${(p.rdv_date||p.date)?('📅 '+frDateShort(p.rdv_date||p.date)+(p.rdv_time?'<br>'+p.rdv_time:'')):'<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="status-badge ${stCls}">${p.statut}</span></td>
       <td><div style="display:flex;gap:4px"><button class="btn btn-sm btn-outline" onclick="viewProspect(${p.id})">👁️</button><button class="btn btn-sm btn-outline" onclick="editProspect(${p.id})">✏️</button><button class="btn btn-sm btn-danger" onclick="deleteProspect(${p.id})">🗑️</button></div></td>
     </tr>`;
@@ -1772,7 +1773,7 @@ function openProspectModal(p){
     <div class="form-group"><label class="form-label">URL LinkedIn</label><input id="f-linkedin" class="form-input" placeholder="https://linkedin.com/in/..." value="${p?esc(p.linkedin||''):''}"></div>
     <div class="grid-2"><div class="form-group"><label class="form-label">Offre *</label><select id="f-offre" class="form-select">${OFFRES.map(o=>`<option ${p&&p.offre===o?'selected':''}>${o}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Statut</label><select id="f-statut" class="form-select">${STATUTS.map(s=>`<option ${p&&p.statut===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
     <div class="grid-2"><div class="form-group"><label class="form-label">Valeur estimée (€)</label><input id="f-valeur" class="form-input" type="number" value="${p?p.valeur||'':''}"></div><div class="form-group"><label class="form-label">Date 1er contact</label><input id="f-date" class="form-input" type="date" value="${p?p.date||'':''}"></div></div>
-    <div class="grid-2"><div class="form-group"><label class="form-label">📅 Date RDV</label><input id="f-rdv-date" class="form-input" type="date" value="${p?p.rdv_date||'':''}"></div><div class="form-group"><label class="form-label">⏰ Heure RDV</label><input id="f-rdv-time" class="form-input" type="time" value="${p?p.rdv_time||'':''}"></div></div>
+    <div class="grid-2"><div class="form-group"><label class="form-label">📅 Date à rappeler / RDV</label><input id="f-rdv-date" class="form-input" type="date" value="${p?p.rdv_date||'':''}"></div><div class="form-group"><label class="form-label">⏰ Heure</label><input id="f-rdv-time" class="form-input" type="time" value="${p?p.rdv_time||'':''}"></div></div>
     <div class="form-group"><label class="form-label">Notes</label><textarea id="f-notes" class="form-textarea">${p?esc(p.notes||''):''}</textarea></div>
     ${isEdit?`<div class="form-group" style="background:var(--light);border-radius:8px;padding:10px"><label class="form-label">📨 Contacter directement</label>${contactActions(p)}</div>`:''}`,
     [{label:isEdit?'Enregistrer':'Ajouter',cls:'btn-primary',fn:`saveProspect(${isEdit?p.id:'null'})`},{label:'Annuler',cls:'btn-outline',fn:'closeModal()'}]);
