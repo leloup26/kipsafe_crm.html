@@ -499,6 +499,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
               <button id="cal2-btn-30" onclick="setCal2View(30)">1 mois</button>
             </div>
             <button class="btn btn-accent btn-sm" onclick="openAddScheduleItem(localDate())">➕ Ajouter</button>
+            <button class="btn btn-outline btn-sm" onclick="openImportPlanning()">📥 Importer</button>
             <select id="cal-status-filter" class="form-select" style="width:auto;font-size:12px;padding:5px 8px" onchange="renderCalendar2()">
               <option value="">Tous les statuts</option>
               <option value="todo">⬜ À faire</option>
@@ -1376,6 +1377,59 @@ const TYPE_AXE={tache:'Admin',rdv:'Commercial',reunion:'Admin',formation:'Format
 function applyEventType(){
   const t=document.getElementById('na-type').value;
   document.getElementById('na-axe').value=TYPE_AXE[t]||'Admin';
+}
+
+function openImportPlanning(){
+  const exemple=`2026-06-09 | 17:30-19:30 | Commercial | Appels : 15 avocats IDF, audit gratuit 48h\n2026-06-09 | 19:30-20:30 | Admin | Saisir résultats appels + relances email J+2\n2026-06-10 | 17:30-19:30 | Commercial | Appels : 15 experts-comptables IDF\n2026-06-11 | 19:30-20:30 | Web | Publier article blog NIS2 PME`;
+  openModal('📥 Importer un planning',`
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Colle ton planning, <b>une ligne = un créneau</b>, au format :</div>
+    <div style="font-size:11px;background:var(--light);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-family:monospace">DATE | HH:MM-HH:MM | Axe | Intitulé</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">• DATE : <code>2026-06-09</code> ou <code>09/06</code> (année 2026 par défaut)<br>• Axe : Commercial, Marketing, Communication, Technique, Web, Supports, Admin (sinon « Admin »)<br>• Les lignes vides et les titres sont ignorés.</div>
+    <textarea id="imp-text" class="form-textarea" style="min-height:200px;font-family:monospace;font-size:12px" placeholder="${esc(exemple)}"></textarea>
+    <div class="form-group" style="margin-top:10px"><label class="form-label">Rattacher tout à un objectif (optionnel)</label>
+      <select id="imp-obj" class="form-select"><option value="">— Aucun —</option>${objectives.filter(o=>inScope(o)).map(o=>`<option value="${o.id}">${({annee:'📅',mois:'🗓️',semaine:'📋'}[o.level]||'')} ${esc(o.title.slice(0,45))}</option>`).join('')}</select>
+    </div>
+    <div id="imp-preview" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+  `,[
+    {label:'👁 Aperçu',cls:'btn-outline',fn:'previewImportPlanning()'},
+    {label:'✅ Importer',cls:'btn-primary',fn:'doImportPlanning()'},
+    {label:'Annuler',cls:'btn-outline',fn:'closeModal()'}
+  ]);
+}
+function parseImportLines(){
+  const AXES=['Commercial','Marketing','Communication','Technique','Web','Supports','Marchés','Formation','Admin','Pause'];
+  const ICON={Commercial:'📞',Marketing:'💼',Communication:'📢',Technique:'📚',Web:'🌐',Supports:'📄',Marchés:'🏛️',Formation:'📚',Admin:'📊',Pause:'☕'};
+  const txt=document.getElementById('imp-text').value;
+  const out=[];
+  txt.split('\n').forEach(line=>{
+    const parts=line.split('|').map(s=>s.trim());
+    if(parts.length<4) return; // ignore titres / lignes vides
+    let[d,horaire,axe,...rest]=parts; const action=rest.join(' | ').trim();
+    // date
+    if(/^\d{2}\/\d{2}$/.test(d)){const[j,m]=d.split('/');d='2026-'+m+'-'+j;}
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||!action) return;
+    const mh=horaire.match(/(\d{1,2})[:hH](\d{2})\s*[-–à]\s*(\d{1,2})[:hH](\d{2})/);
+    if(!mh) return;
+    const time=mh[1].padStart(2,'0')+':'+mh[2], end=mh[3].padStart(2,'0')+':'+mh[4];
+    axe=AXES.find(a=>a.toLowerCase()===axe.toLowerCase())||'Admin';
+    out.push({date:d,time,end,axe,icon:ICON[axe]||'📌',action});
+  });
+  return out;
+}
+function previewImportPlanning(){
+  const items=parseImportLines();
+  document.getElementById('imp-preview').innerHTML=items.length?`✅ ${items.length} créneau(x) détecté(s) : ${items.slice(0,3).map(i=>i.date+' '+i.time).join(', ')}${items.length>3?'…':''}`:'⚠️ Aucune ligne valide détectée — vérifie le format.';
+}
+function doImportPlanning(){
+  const items=parseImportLines();
+  if(!items.length){toast('⚠️ Aucune ligne valide');return;}
+  const objId=document.getElementById('imp-obj').value||'';
+  let base=Date.now();
+  items.forEach((it,i)=>{
+    scheduleCustom.push({id:base+i,date:it.date,time:it.time,end:it.end,dur:calcDur(it.time,it.end),axe:it.axe,icon:it.icon,action:it.action,status:'À faire',done:false,recurring:'none',recurringUntil:'',owner:defaultOwner(),shared:false,objectifId:objId});
+  });
+  save('schedule_custom',scheduleCustom);
+  closeModal();refreshScheduleViews();renderDashboard();toast('✅ '+items.length+' créneaux importés');
 }
 
 function calcDur(time,end){
