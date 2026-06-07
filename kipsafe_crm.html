@@ -414,6 +414,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     <div id="panel-dashboard" class="panel active">
       <div id="soir-banner"></div>
       <div id="reminders-banner"></div>
+      <div id="relance-banner"></div>
       <div id="obj-review-banner"></div>
       <div class="grid-4" style="margin-bottom:16px" id="kpis"></div>
       <div class="grid-2">
@@ -1053,7 +1054,7 @@ document.addEventListener('click',function(e){if(!e.target.closest('.more-menu')
 let objStatus=load('obj_status',{});
 
 // ═══ DASHBOARD ══════════════════════════════════════════════
-function renderDashboard(){renderSoirBanner();renderRemindersBanner();renderObjReviewBanner();renderKPIs();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
+function renderDashboard(){renderSoirBanner();renderRemindersBanner();renderRelanceBanner();renderObjReviewBanner();renderKPIs();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
 function objToReview(){const today=localDate();return (objectives||[]).filter(o=>inScope(o)&&(o.level==='annee'||o.level==='mois')&&(o.echeance||o.deadline)&&(o.echeance||o.deadline)<=today&&o.status!=='Terminé'&&o.status!=='Annulé');}
 function renderObjReviewBanner(){
   const el=document.getElementById('obj-review-banner'); if(!el) return;
@@ -1077,6 +1078,39 @@ function renderRemindersBanner(){
     '<div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:6px">🔔 Rappels du jour ('+rem.length+')</div>'+
     rem.map(r=>{const j=r.offset===0?"aujourd'hui":r.offset===1?'demain':'dans '+r.offset+' jours';return `<div style="font-size:13px;color:#92400e;padding:3px 0">${r.icon} <strong>${esc(r.label)}</strong> — ${j} (${frDateShort(r.when)})</div>`;}).join('')+
     '</div>';
+}
+function om_statusChange(){
+  const v=(document.getElementById('om-status')||{}).value;
+  const w=document.getElementById('om-relance-wrap'); if(w) w.style.display=v==='Livré'?'block':'none';
+}
+// ── Relance automatique des éléments « Livré / en attente de retour » ──
+function relanceItems(){
+  const today=localDate(); const out=[];
+  scheduleCustom.forEach(s=>{ if(!inScope(s))return; if((s.status||'')!=='Livré'||s.done)return; out.push({kind:'sched',id:s.id,label:s.action||'Créneau',relanceDate:s.relanceDate||today,every:s.relanceEvery||2}); });
+  (objectives||[]).forEach(o=>{ if(!inScope(o))return; if((o.status||'')!=='Livré')return; out.push({kind:'obj',id:o.id,label:o.title||'Objectif',relanceDate:o.relanceDate||today,every:o.relanceEvery||2}); });
+  return out;
+}
+function renderRelanceBanner(){
+  const el=document.getElementById('relance-banner'); if(!el)return;
+  const today=localDate(); const items=relanceItems();
+  if(!items.length){el.innerHTML='';return;}
+  const due=items.filter(i=>(i.relanceDate||today)<=today);
+  const wait=items.filter(i=>(i.relanceDate||today)>today);
+  let h='<div style="background:#fff7ed;border:1px solid #fdba74;border-radius:12px;padding:12px 16px;margin-bottom:16px">';
+  h+='<div style="font-size:13px;font-weight:800;color:#9a3412;margin-bottom:8px">📦 En attente de retour ('+items.length+')</div>';
+  due.forEach(i=>{ h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid #fed7aa"><span style="font-size:13px;color:#7c2d12;font-weight:600">⏰ '+esc(i.label)+' — à vérifier</span><span style="display:flex;gap:6px"><button class="btn btn-sm btn-success" onclick="relanceDone(\''+i.kind+'\',\''+i.id+'\')">✅ Retour OK</button><button class="btn btn-sm btn-outline" onclick="relanceSnooze(\''+i.kind+'\',\''+i.id+'\')">🔁 Toujours en attente</button></span></div>'; });
+  wait.forEach(i=>{ h+='<div style="font-size:12px;color:#9a3412;padding:4px 0;border-top:1px solid #fed7aa">⏳ '+esc(i.label)+' — prochaine relance le '+frDateShort(i.relanceDate)+'</div>'; });
+  h+='</div>'; el.innerHTML=h;
+}
+function relanceDone(kind,id){
+  if(kind==='sched'){ scheduleCustom=scheduleCustom.map(x=>String(x.id)===String(id)?{...x,status:'Terminé',done:true,history:[...(x.history||[]),{t:Date.now(),text:'✅ Retour OK → Terminé'}]}:x); save('schedule_custom',scheduleCustom); }
+  else { objectives=objectives.map(o=>String(o.id)===String(id)?{...o,status:'Terminé',history:[...(o.history||[]),{t:Date.now(),text:'✅ Retour OK → Terminé'}]}:o); save('objectives',objectives); }
+  if(typeof refreshScheduleViews==='function')refreshScheduleViews(); if(typeof renderObjectifs==='function')renderObjectifs(); renderDashboard(); toast('✅ Terminé');
+}
+function relanceSnooze(kind,id){
+  if(kind==='sched'){ scheduleCustom=scheduleCustom.map(x=>{if(String(x.id)!==String(id))return x;const ev=x.relanceEvery||2;const nd=addDaysStr(localDate(),ev);return {...x,relanceDate:nd,history:[...(x.history||[]),{t:Date.now(),text:'🔁 Toujours en attente — relance repoussée au '+frDate(nd)}]};}); save('schedule_custom',scheduleCustom); }
+  else { objectives=objectives.map(o=>{if(String(o.id)!==String(id))return o;const ev=o.relanceEvery||2;const nd=addDaysStr(localDate(),ev);return {...o,relanceDate:nd,history:[...(o.history||[]),{t:Date.now(),text:'🔁 Toujours en attente — relance repoussée au '+frDate(nd)}]};}); save('objectives',objectives); }
+  renderDashboard(); toast('🔁 Relance repoussée');
 }
 function renderSoirBanner(){const now=new Date();const dow=now.getDay();const h=now.getHours(),m=now.getMinutes();const isToday01=localDate(now)==='2026-06-01';let html='';if(isToday01&&h<18){html='<div class="soir-banner"><div><div class="soir-title">📅 Session KIPSAFE — Lundi 01 juin 2026</div><div class="soir-sub">Planning actif jusqu\'à 18h00 · Session soir 17h30–21h30</div></div><span class="soir-badge">J1 du Plan 30J</span></div>';}else if(dow>=1&&dow<=4&&h>=17&&(h<21||(h===21&&m<30))){html='<div class="soir-banner"><div><div class="soir-title">🌙 Session soir KIPSAFE — 17h30 → 21h30</div><div class="soir-sub">Relances · Support · LinkedIn · Prospection · MAJ CRM</div></div><span class="soir-badge">EN COURS</span></div>';}
 else if(dow===0&&h>=10&&h<13){html='<div class="soir-banner"><div><div class="soir-title">☀️ Session dimanche KIPSAFE — 10h → 13h</div><div class="soir-sub">Formation · CRM · Marchés · Planification semaine</div></div><span class="soir-badge">EN COURS</span></div>';}document.getElementById('soir-banner').innerHTML=html;}
@@ -1199,9 +1233,9 @@ function getScheduleItemByKey(dateStr,key){
 }
 
 // ── Métadonnées riches d'un créneau (statut, objectif, rappel, historique) ──
-const SCHED_STATUSES=['À faire','En cours','Reporté','Terminé'];
-const SCHED_SC={'À faire':'#64748b','En cours':'#1d4ed8','Reporté':'#7c3aed','Terminé':'#15803d','Retard':'#b91c1c','Annulé':'#94a3b8'};
-const SCHED_SICON={'À faire':'⬜','En cours':'🔄','Reporté':'⏩','Terminé':'✅','Retard':'⚠️'};
+const SCHED_STATUSES=['À faire','En cours','Livré','Reporté','Terminé'];
+const SCHED_SC={'À faire':'#64748b','En cours':'#1d4ed8','Livré':'#c2410c','Reporté':'#7c3aed','Terminé':'#15803d','Retard':'#b91c1c','Annulé':'#94a3b8'};
+const SCHED_SICON={'À faire':'⬜','En cours':'🔄','Livré':'📦','Reporté':'⏩','Terminé':'✅','Retard':'⚠️'};
 const REMINDER_OPTS={none:'Aucun',jourJ:'🔔 Le jour J',j1:'🔔 1 jour avant',j2:'🔔 2 jours avant'};
 const REMINDER_OFFSET={jourJ:0,j1:1,j2:2};
 
@@ -1212,11 +1246,11 @@ function getSchedMeta(dateStr,key){
     let status=s.status||'À faire';
     if(isRec && scheduleRecurringDone[s.id+'_'+dateStr]) status='Terminé';
     else if(!isRec && s.done) status='Terminé';
-    return {status,estFinish:s.estFinish||'',reportDate:s.reportDate||'',reportReason:s.reportReason||'',objectifId:s.objectifId||'',reminder:s.reminder||'none',history:s.history||[],isRec,sid:s.id};
+    return {status,estFinish:s.estFinish||'',reportDate:s.reportDate||'',reportReason:s.reportReason||'',objectifId:s.objectifId||'',reminder:s.reminder||'none',relanceDate:s.relanceDate||'',relanceEvery:s.relanceEvery||2,history:s.history||[],isRec,sid:s.id};
   }
   const m=scheduleOverrides[key]||{};
   const status=m.status||(m.done?'Terminé':'À faire');
-  return {status,estFinish:m.estFinish||'',reportDate:m.reportDate||'',reportReason:m.reportReason||'',objectifId:m.objectifId||'',reminder:m.reminder||'none',history:m.history||[],isRec:false};
+  return {status,estFinish:m.estFinish||'',reportDate:m.reportDate||'',reportReason:m.reportReason||'',objectifId:m.objectifId||'',reminder:m.reminder||'none',relanceDate:m.relanceDate||'',relanceEvery:m.relanceEvery||2,history:m.history||[],isRec:false};
 }
 function effSchedStatus(status,dateStr){ if(status==='À faire' && dateStr && dateStr<localDate()) return 'Retard'; return status; }
 
@@ -1227,7 +1261,7 @@ function openScheduleItemModal(today,key){
   const AXES=['','Admin','Commercial','Marketing','Web','Supports','Marchés','Formation','Pause'];
   const objOpts='<option value="">— Aucun objectif —</option>'+objectives.map(o=>`<option value="${o.id}" ${m.objectifId===o.id?'selected':''}>${({annee:'📅',mois:'🗓️',semaine:'📋'}[o.level]||'')} ${esc(o.title.slice(0,40))}</option>`).join('');
   const histHtml=(m.history||[]).slice().reverse().map(h=>{const d=new Date(h.t);const ds=isNaN(d)?'':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});return `<div style="font-size:11px;padding:5px 8px;background:var(--light);border-radius:6px;margin-bottom:4px"><span style="color:var(--muted)">${ds}</span> — ${esc(h.text)}</div>`;}).join('')||'<div style="font-size:11px;color:var(--muted)">Aucune note pour l\'instant</div>';
-  const STATUTS_MODAL=['À faire','En cours','Terminé'];
+  const STATUTS_MODAL=['À faire','En cours','Livré','Terminé'];
   openModal('✏️ Modifier',`
     <div class="form-group" style="background:var(--light);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
       <div>
@@ -1248,6 +1282,14 @@ function openScheduleItemModal(today,key){
       <label class="form-label">📅 Date estimée de fin</label>
       <input id="si-estfinish" type="date" class="form-input" value="${m.estFinish||''}">
     </div>
+    <div id="si-relance-wrap" class="form-group" style="${m.status==='Livré'?'':'display:none'};background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px">
+      <label class="form-label">📦 Livré — relance automatique</label>
+      <div style="font-size:11px;color:#9a3412;margin-bottom:6px">Je te relancerai pour vérifier le retour, jusqu'à ce que tu passes en « Terminé ».</div>
+      <div class="grid-2">
+        <div><label class="form-label" style="font-size:11px">Me relancer tous les (jours)</label><input id="si-relance-every" type="number" min="1" class="form-input" value="${m.relanceEvery||2}"></div>
+        <div><label class="form-label" style="font-size:11px">Prochaine relance le</label><input id="si-relance-date" type="date" class="form-input" value="${m.relanceDate||''}"></div>
+      </div>
+    </div>
     <div class="grid-2">
       <div class="form-group"><label class="form-label">🎯 Rattaché à l'objectif</label><select id="si-objectif" class="form-select">${objOpts}</select></div>
       <div class="form-group"><label class="form-label">🔔 Rappel</label><select id="si-reminder" class="form-select">${Object.keys(REMINDER_OPTS).map(k=>`<option value="${k}" ${m.reminder===k?'selected':''}>${REMINDER_OPTS[k]}</option>`).join('')}</select></div>
@@ -1265,6 +1307,7 @@ function si_statusChange(){
   const v=document.getElementById('si-status').value.replace(/^[^\w\sÀ-ÿ]+\s*/,'').trim();
   const ec=document.getElementById('si-encours-wrap'); if(ec) ec.style.display=v==='En cours'?'block':'none';
   const rw=document.getElementById('si-report-wrap'); if(rw) rw.style.display=v==='Reporté'?'block':'none';
+  const lw=document.getElementById('si-relance-wrap'); if(lw) lw.style.display=v==='Livré'?'block':'none';
 }
 
 function refreshScheduleViews(){
@@ -1285,6 +1328,9 @@ function saveScheduleItem(today,key){
   const reportReason=document.getElementById('si-reportreason')?document.getElementById('si-reportreason').value.trim():'';
   const objectifId=document.getElementById('si-objectif').value;
   const reminder=document.getElementById('si-reminder').value;
+  const relanceEvery=document.getElementById('si-relance-every')?(parseInt(document.getElementById('si-relance-every').value)||2):2;
+  let relanceDate=document.getElementById('si-relance-date')?document.getElementById('si-relance-date').value:'';
+  if(status==='Livré'&&!relanceDate) relanceDate=addDaysStr(localDate(),relanceEvery);
   const note=document.getElementById('si-note').value.trim();
   const done=status==='Terminé';
   const [sh,sm]=time.split(':').map(Number),[eh,em]=end.split(':').map(Number);
@@ -1309,13 +1355,13 @@ function saveScheduleItem(today,key){
       // Si c'était un report, on journalise et le créneau redevient "À faire" sur le nouveau jour
       if(status==='Reporté'){ history.push({t:Date.now(),text:`⏩ Reporté du ${frDate(oldDate)} au ${frDate(effDate)}${reportReason?' — '+reportReason:''}`}); finalStatus='À faire'; finalDone=false; }
     }
-    const rich={status:finalStatus,estFinish,reportDate:'',reportReason:'',objectifId,reminder,history};
+    const rich={status:finalStatus,estFinish,reportDate:'',reportReason:'',objectifId,reminder,relanceDate:finalStatus==='Livré'?relanceDate:'',relanceEvery,history};
     const dateUpdate=movedTo?{date:movedTo}:{};
     scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,time,end,dur,axe,icon,action,...dateUpdate,...rich,...(isRec?{}:{done:finalDone})}:x);
     save('schedule_custom',scheduleCustom);
     if(isRec){ if(finalDone) scheduleRecurringDone[rawId+'_'+today]=true; else delete scheduleRecurringDone[rawId+'_'+today]; save('schedule_recurring_done',scheduleRecurringDone); }
   } else {
-    const rich={status,estFinish,reportDate,reportReason,objectifId,reminder,history};
+    const rich={status,estFinish,reportDate,reportReason,objectifId,reminder,relanceDate:status==='Livré'?relanceDate:'',relanceEvery,history};
     scheduleOverrides[key]={...scheduleOverrides[key]||{},time,end,dur,axe,icon,action,done,...rich};
     save('schedule_overrides',scheduleOverrides);
   }
@@ -2186,10 +2232,10 @@ function renderCalendar2(){
 }
 
 // ═══ OBJECTIFS HIÉRARCHIQUES (Année → Mois → Semaine) ═══════════
-const OBJ_STATUSES=['À faire','En cours','Terminé','Reporté','Annulé'];
-const OBJ_SC={'À faire':'#64748b','En cours':'#1d4ed8','Terminé':'#15803d','Reporté':'#7c3aed','Annulé':'#b91c1c'};
-const OBJ_SBG={'À faire':'#f1f5f9','En cours':'#dbeafe','Terminé':'#dcfce7','Reporté':'#ede9fe','Annulé':'#fef2f2'};
-const OBJ_SICON={'À faire':'⬜','En cours':'🔄','Terminé':'✅','Reporté':'⏩','Annulé':'❌'};
+const OBJ_STATUSES=['À faire','En cours','Livré','Terminé','Reporté','Annulé'];
+const OBJ_SC={'À faire':'#64748b','En cours':'#1d4ed8','Livré':'#c2410c','Terminé':'#15803d','Reporté':'#7c3aed','Annulé':'#b91c1c'};
+const OBJ_SBG={'À faire':'#f1f5f9','En cours':'#dbeafe','Livré':'#ffedd5','Terminé':'#dcfce7','Reporté':'#ede9fe','Annulé':'#fef2f2'};
+const OBJ_SICON={'À faire':'⬜','En cours':'🔄','Livré':'📦','Terminé':'✅','Reporté':'⏩','Annulé':'❌'};
 const LVL_LABEL={annee:'Année',mois:'Mois',semaine:'Semaine'};
 const LVL_PARENT={mois:'annee',semaine:'mois'};
 const LVL_CHILD={annee:'mois',mois:'semaine'};
@@ -2502,8 +2548,16 @@ function openObjectifModal(id,parentIdPreset){
       <div style="font-size:10px;color:var(--muted);margin-top:3px">💡 Laisse sur « Aucun » pour un objectif indépendant (non rattaché).</div>
     </div>
     <div class="grid-2">
-      <div class="form-group"><label class="form-label">Statut</label><select id="om-status" class="form-select">${OBJ_STATUSES.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Statut</label><select id="om-status" class="form-select" onchange="om_statusChange()">${OBJ_STATUSES.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></div>
       <div class="form-group" id="om-hours-wrap" style="${o.level==='semaine'?'':'display:none'}"><label class="form-label">⏱ Heures prévues</label><input id="om-hours" type="number" class="form-input" value="${o.hours||''}" placeholder="2"></div>
+    </div>
+    <div id="om-relance-wrap" class="form-group" style="${o.status==='Livré'?'':'display:none'};background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px">
+      <label class="form-label">📦 Livré — relance automatique</label>
+      <div style="font-size:11px;color:#9a3412;margin-bottom:6px">Je te relancerai jusqu'à ce que tu passes en « Terminé ».</div>
+      <div class="grid-2">
+        <div><label class="form-label" style="font-size:11px">Me relancer tous les (jours)</label><input id="om-relance-every" type="number" min="1" class="form-input" value="${o.relanceEvery||2}"></div>
+        <div><label class="form-label" style="font-size:11px">Prochaine relance le</label><input id="om-relance-date" type="date" class="form-input" value="${o.relanceDate||''}"></div>
+      </div>
     </div>
     <div class="form-group"><label class="form-label">📝 Ajouter une note</label><textarea id="om-note" class="form-textarea" style="min-height:46px" placeholder="Avancement, compte-rendu, blocage..."></textarea></div>
     <div class="form-group"><label class="form-label">🕘 Historique des notes</label><div style="max-height:150px;overflow-y:auto">${histHtml}</div></div>
@@ -2559,6 +2613,8 @@ function saveObjectif(id){
     echeance:document.getElementById('om-echeance').value||defaultEcheance(level,period),
     axe:document.getElementById('om-axe').value,
     status:document.getElementById('om-status').value,
+    relanceEvery:(document.getElementById('om-relance-every')?(parseInt(document.getElementById('om-relance-every').value)||2):2),
+    relanceDate:(function(){const st=document.getElementById('om-status').value;let rd=document.getElementById('om-relance-date')?document.getElementById('om-relance-date').value:'';const ev=document.getElementById('om-relance-every')?(parseInt(document.getElementById('om-relance-every').value)||2):2;if(st==='Livré'&&!rd)rd=addDaysStr(localDate(),ev);return st==='Livré'?rd:'';})(),
     parentId:LVL_PARENT[level]?(document.getElementById('om-parent').value||null):null,
     hours:document.getElementById('om-hours')?document.getElementById('om-hours').value:'',
     history,
