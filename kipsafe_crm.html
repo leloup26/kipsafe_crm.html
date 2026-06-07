@@ -1246,9 +1246,10 @@ function openScheduleItemModal(today,key){
     </div>
     <div id="si-report-wrap" style="${m.status==='Reporté'?'':'display:none'}">
       <div class="grid-2">
-        <div class="form-group"><label class="form-label">📅 Nouvelle date</label><input id="si-reportdate" type="date" class="form-input" value="${m.reportDate||''}"></div>
+        <div class="form-group"><label class="form-label">📅 Reporter au</label><input id="si-reportdate" type="date" class="form-input" value="${m.reportDate||item.date||today}"></div>
         <div class="form-group"><label class="form-label">Motif du report</label><input id="si-reportreason" class="form-input" value="${esc(m.reportReason||'')}" placeholder="Pourquoi ?"></div>
       </div>
+      <div style="font-size:10px;color:var(--muted);margin:-6px 0 8px">➡️ Le créneau sera déplacé à cette date et redeviendra « À faire ». Le report est consigné dans l'historique.</div>
     </div>
     <div class="grid-2">
       <div class="form-group"><label class="form-label">🎯 Rattaché à l'objectif</label><select id="si-objectif" class="form-select">${objOpts}</select></div>
@@ -1295,19 +1296,29 @@ function saveScheduleItem(today,key){
   const prev=getSchedMeta(today,key);
   let history=(prev.history||[]).slice();
   if(note) history.push({t:Date.now(),text:note});
-  const rich={status,estFinish,reportDate,reportReason,objectifId,reminder,history};
   const newDate=document.getElementById('si-date')?document.getElementById('si-date').value:null;
   let movedTo=null;
+  let finalStatus=status, finalDone=done;
   if(key.startsWith('custom_')){
     const rawId=key.slice(7);
     const s=scheduleCustom.find(x=>String(x.id)===rawId);
     const isRec=s&&s.recurring&&s.recurring!=='none';
-    const dateUpdate=(newDate&&!isRec&&newDate!==(s&&s.date))?{date:newDate}:{};
-    if(dateUpdate.date) movedTo=newDate;
-    scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,time,end,dur,axe,icon,action,...dateUpdate,...rich,...(isRec?{}:{done})}:x);
+    const oldDate=s&&s.date;
+    // Date effective de déplacement : si "Reporté" avec nouvelle date → on déplace réellement le créneau
+    let effDate=newDate;
+    if(status==='Reporté'&&reportDate) effDate=reportDate;
+    if(effDate&&!isRec&&effDate!==oldDate){
+      movedTo=effDate;
+      // Si c'était un report, on journalise et le créneau redevient "À faire" sur le nouveau jour
+      if(status==='Reporté'){ history.push({t:Date.now(),text:`⏩ Reporté du ${frDate(oldDate)} au ${frDate(effDate)}${reportReason?' — '+reportReason:''}`}); finalStatus='À faire'; finalDone=false; }
+    }
+    const rich={status:finalStatus,estFinish,reportDate:'',reportReason:'',objectifId,reminder,history};
+    const dateUpdate=movedTo?{date:movedTo}:{};
+    scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,time,end,dur,axe,icon,action,...dateUpdate,...rich,...(isRec?{}:{done:finalDone})}:x);
     save('schedule_custom',scheduleCustom);
-    if(isRec){ if(done) scheduleRecurringDone[rawId+'_'+today]=true; else delete scheduleRecurringDone[rawId+'_'+today]; save('schedule_recurring_done',scheduleRecurringDone); }
+    if(isRec){ if(finalDone) scheduleRecurringDone[rawId+'_'+today]=true; else delete scheduleRecurringDone[rawId+'_'+today]; save('schedule_recurring_done',scheduleRecurringDone); }
   } else {
+    const rich={status,estFinish,reportDate,reportReason,objectifId,reminder,history};
     scheduleOverrides[key]={...scheduleOverrides[key]||{},time,end,dur,axe,icon,action,done,...rich};
     save('schedule_overrides',scheduleOverrides);
   }
