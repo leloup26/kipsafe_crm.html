@@ -944,6 +944,23 @@ function persistScheduleCustom(){
   if(sbClient) sbClient.from('kipsafe_data').upsert({key:'perso_schedule_custom',value:perso,updated_at:new Date().toISOString()}).then(({error})=>{if(error)console.warn(error.message);});
   if(kipLoaded){ kipScheduleCustom=kip; cloudUpsertBare('schedule_custom',kip); }
 }
+// ── Synchro bidirectionnelle des OBJECTIFS KIPSAFE (clé partagée 'objectives') ──
+let kipObjectives=(function(){try{const v=localStorage.getItem('perso_kipsync_objectives');return v?JSON.parse(v):[];}catch(e){return [];}})();
+let kipObjLoaded=false;
+function mergeObjectives(){
+  let perso=[]; try{const v=localStorage.getItem('perso_objectives');perso=v?JSON.parse(v):[];}catch(e){perso=[];}
+  perso=perso.filter(o=>entOf(o)!=='KIPSAFE');
+  const kip=(kipObjectives||[]).map(o=>({...o,entreprise:'KIPSAFE'}));
+  objectives=[...perso,...kip];
+  try{ if(typeof renderObjectifDashboard==='function') renderObjectifDashboard(); if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
+}
+function persistObjectives(){
+  const kip=objectives.filter(o=>entOf(o)==='KIPSAFE').map(o=>{const c={...o};delete c.entreprise;return c;});
+  const perso=objectives.filter(o=>entOf(o)!=='KIPSAFE');
+  localStorage.setItem('perso_objectives',JSON.stringify(perso));
+  if(sbClient) sbClient.from('kipsafe_data').upsert({key:'perso_objectives',value:perso,updated_at:new Date().toISOString()}).then(({error})=>{if(error)console.warn(error.message);});
+  if(kipObjLoaded){ kipObjectives=kip; cloudUpsertBare('objectives',kip); }
+}
 
 
 // ═══ MEMBRES / MULTI-UTILISATEUR (Phase 1 — périmètre par assignation) ══
@@ -1070,7 +1087,7 @@ function updateLockTimerDisplay(){
 let currentView='list';
 function seedDefaultEvents(){ /* CRM vierge : aucun seed */ }
 
-function initApp(){updateHeaderDate();setInterval(updateHeaderDate,60000);seedDefaultEvents();mergeScheduleCustom();renderDashboard();renderProspects();renderPlanning();renderOffres();renderMarches();initSupabase();}
+function initApp(){updateHeaderDate();setInterval(updateHeaderDate,60000);seedDefaultEvents();mergeScheduleCustom();mergeObjectives();renderDashboard();renderProspects();renderPlanning();renderOffres();renderMarches();initSupabase();}
 
 // ═══ SUPABASE SYNC ══════════════════════════════════════════════
 async function initSupabase(){
@@ -1081,7 +1098,7 @@ async function initSupabase(){
     const {data,error}=await sbClient.from('kipsafe_data').select('*');
     if(error){console.warn('Supabase load:',error.message);setSyncPill('offline');return;}
     if(data&&data.length>0){
-      data.forEach(row=>{if(row.value===null||row.value===undefined)return;if(row.key&&row.key.indexOf('perso_')===0){localStorage.setItem(row.key,JSON.stringify(row.value));}else if(row.key==='schedule_custom'){kipScheduleCustom=Array.isArray(row.value)?row.value:[];localStorage.setItem('perso_kipsync_schedule_custom',JSON.stringify(kipScheduleCustom));}}); kipLoaded=true; mergeScheduleCustom();
+      data.forEach(row=>{if(row.value===null||row.value===undefined)return;if(row.key&&row.key.indexOf('perso_')===0){localStorage.setItem(row.key,JSON.stringify(row.value));}else if(row.key==='schedule_custom'){kipScheduleCustom=Array.isArray(row.value)?row.value:[];localStorage.setItem('perso_kipsync_schedule_custom',JSON.stringify(kipScheduleCustom));}else if(row.key==='objectives'){kipObjectives=Array.isArray(row.value)?row.value:[];localStorage.setItem('perso_kipsync_objectives',JSON.stringify(kipObjectives));}}); kipLoaded=true; mergeScheduleCustom(); kipObjLoaded=true; mergeObjectives();
       prospects=load('prospects',[]);
       marches=load('marches',[]);
       planDone=load('plan_done',[]);
@@ -1090,9 +1107,9 @@ async function initSupabase(){
       planOverrides=load('plan_overrides',{});
       const newMembers=load('members',null); if(newMembers&&newMembers.length){members=newMembers;currentUser=members.find(m=>m.id===currentUser.id)||currentUser;}
       scheduleCustom=load('schedule_custom',[]);mergeScheduleCustom();scheduleOverrides=load('schedule_overrides',{});scheduleHidden=load('schedule_hidden',[]);scheduleRecurringDone=load('schedule_recurring_done',{});occStatus=load('occ_status',{});
-      const newObj=load('objectives',null); if(newObj) objectives=newObj;
+      mergeObjectives();
       // Migration : si données anciennes sans niveau hiérarchique → réinitialiser structure
-      if(!objectives||!objectives.length||!objectives[0].level){objectives=DEFAULT_OBJECTIVES_DATA.map(o=>({...o}));save('objectives',objectives);}
+      if(!objectives||!objectives.length||!objectives[0].level){objectives=DEFAULT_OBJECTIVES_DATA.map(o=>({...o}));localStorage.setItem('perso_objectives',JSON.stringify(objectives));}
       renderDashboard();renderProspects();renderObjectifDashboard();renderMarches();
     }
     setSyncPill('online');
@@ -1100,14 +1117,14 @@ async function initSupabase(){
       .on('postgres_changes',{event:'*',schema:'public',table:'kipsafe_data'},payload=>{
         if(!payload.new) return;
         const {key,value}=payload.new;
-        if(value===null||value===undefined){}else if(key&&key.indexOf('perso_')===0){localStorage.setItem(key,JSON.stringify(value));}else if(key==='schedule_custom'){kipScheduleCustom=Array.isArray(value)?value:[];localStorage.setItem('perso_kipsync_schedule_custom',JSON.stringify(kipScheduleCustom));kipLoaded=true;mergeScheduleCustom();}
+        if(value===null||value===undefined){}else if(key&&key.indexOf('perso_')===0){localStorage.setItem(key,JSON.stringify(value));}else if(key==='schedule_custom'){kipScheduleCustom=Array.isArray(value)?value:[];localStorage.setItem('perso_kipsync_schedule_custom',JSON.stringify(kipScheduleCustom));kipLoaded=true;mergeScheduleCustom();}else if(key==='objectives'){kipObjectives=Array.isArray(value)?value:[];localStorage.setItem('perso_kipsync_objectives',JSON.stringify(kipObjectives));kipObjLoaded=true;mergeObjectives();}
         switch(key&&key.indexOf('perso_')===0?key.slice(6):key){
           case 'prospects':prospects=load('prospects',[]);renderProspects();renderDashboard();break;
           case 'marches':marches=load('marches',[]);renderMarches();break;
           case 'plan_done':planDone=load('plan_done',[]);renderPlanning();renderDashboard();break;
           case 'quick_tasks':quickTasks=load('quick_tasks',[]);renderQuickTasks();break;
           case 'members':members=load('members',members);currentUser=members.find(m=>m.id===currentUser.id)||currentUser;updateHeaderUser();break;
-          case 'objectives':objectives=load('objectives',objectives);renderObjectifDashboard();renderDashboard();break;
+          case 'objectives':mergeObjectives();renderObjectifDashboard();renderDashboard();break;
           case 'schedule_custom':mergeScheduleCustom();renderDashboard();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();break;
         }
         toast('🔄 Sync reçue depuis un autre appareil');
@@ -1257,13 +1274,13 @@ function renderRelanceBanner(){
 function relanceDone(kind,id){
   if(kind==='sched'){ scheduleCustom=scheduleCustom.map(x=>String(x.id)===String(id)?{...x,status:'Terminé',done:true,history:[...(x.history||[]),{t:Date.now(),text:'✅ Retour OK → Terminé'}]}:x); persistScheduleCustom(); }
   else if(kind==='contact'){ prospects=prospects.map(p=>String(p.id)===String(id)?{...p,statut:'Terminé',relanceDate:'',history:[...(p.history||[]),{t:Date.now(),text:'✅ Livraison confirmée → Terminé'}]}:p); save('prospects',prospects); if(typeof renderProspects==='function')renderProspects(); }
-  else { objectives=objectives.map(o=>String(o.id)===String(id)?{...o,status:'Terminé',history:[...(o.history||[]),{t:Date.now(),text:'✅ Retour OK → Terminé'}]}:o); save('objectives',objectives); }
+  else { objectives=objectives.map(o=>String(o.id)===String(id)?{...o,status:'Terminé',history:[...(o.history||[]),{t:Date.now(),text:'✅ Retour OK → Terminé'}]}:o); persistObjectives(); }
   if(typeof refreshScheduleViews==='function')refreshScheduleViews(); if(typeof renderObjectifs==='function')renderObjectifs(); renderDashboard(); toast('✅ Terminé');
 }
 function relanceSnooze(kind,id){
   if(kind==='sched'){ scheduleCustom=scheduleCustom.map(x=>{if(String(x.id)!==String(id))return x;const ev=x.relanceEvery||2;const nd=addDaysStr(localDate(),ev);return {...x,relanceDate:nd,history:[...(x.history||[]),{t:Date.now(),text:'🔁 Toujours en attente — relance repoussée au '+frDate(nd)}]};}); persistScheduleCustom(); }
   else if(kind==='contact'){ prospects=prospects.map(p=>{if(String(p.id)!==String(id))return p;const ev=p.relanceEvery||2;const nd=addDaysStr(localDate(),ev);return {...p,relanceDate:nd,history:[...(p.history||[]),{t:Date.now(),text:'🔁 Pas encore livré — relance repoussée au '+frDate(nd)}]};}); save('prospects',prospects); if(typeof renderProspects==='function')renderProspects(); }
-  else { objectives=objectives.map(o=>{if(String(o.id)!==String(id))return o;const ev=o.relanceEvery||2;const nd=addDaysStr(localDate(),ev);return {...o,relanceDate:nd,history:[...(o.history||[]),{t:Date.now(),text:'🔁 Toujours en attente — relance repoussée au '+frDate(nd)}]};}); save('objectives',objectives); }
+  else { objectives=objectives.map(o=>{if(String(o.id)!==String(id))return o;const ev=o.relanceEvery||2;const nd=addDaysStr(localDate(),ev);return {...o,relanceDate:nd,history:[...(o.history||[]),{t:Date.now(),text:'🔁 Toujours en attente — relance repoussée au '+frDate(nd)}]};}); persistObjectives(); }
   renderDashboard(); toast('🔁 Relance repoussée');
 }
 function renderSoirBanner(){const now=new Date();const dow=now.getDay();const h=now.getHours(),m=now.getMinutes();const isToday01=localDate(now)==='2026-06-01';let html='';if(isToday01&&h<18){html='<div class="soir-banner"><div><div class="soir-title">📅 Session KIPSAFE — Lundi 01 juin 2026</div><div class="soir-sub">Planning actif jusqu\'à 18h00 · Session soir 17h30–21h30</div></div><span class="soir-badge">J1 du Plan 30J</span></div>';}else if(dow>=1&&dow<=4&&h>=17&&(h<21||(h===21&&m<30))){html='<div class="soir-banner"><div><div class="soir-title">🌙 Session soir KIPSAFE — 17h30 → 21h30</div><div class="soir-sub">Relances · Support · LinkedIn · Prospection · MAJ CRM</div></div><span class="soir-badge">EN COURS</span></div>';}
@@ -2483,7 +2500,7 @@ const DEFAULT_OBJECTIVES_DATA=[];
 // Migration / seed : si pas de niveau défini, on (ré)initialise la structure hiérarchique
 if(!objectives || !Array.isArray(objectives) || !objectives.length || !objectives[0].level){
   objectives=DEFAULT_OBJECTIVES_DATA.map(o=>({...o}));
-  save('objectives',objectives);
+  persistObjectives();
 }
 
 // ── Périodes datées ──
@@ -2526,7 +2543,7 @@ objectives.forEach(o=>{
   if(!o.debut){o.debut=defaultDebut(o.level,o.period);_objMig=true;}
   if(!o.echeance){o.echeance=o.deadline||defaultEcheance(o.level,o.period);_objMig=true;}
 });
-if(_objMig) save('objectives',objectives);
+if(_objMig) persistObjectives();
 
 let currentObjLevel='annee';
 const objOpen=new Set();
@@ -2863,7 +2880,7 @@ function saveObjectif(id){
   };
   if(id) objectives=objectives.map(o=>o.id===id?{...o,...data}:o);
   else objectives.push(data);
-  save('objectives',objectives);
+  persistObjectives();
   closeModal();
   currentObjLevel=level;
   document.querySelectorAll('.lvl-tab').forEach(b=>b.classList.toggle('active',b.dataset.lvl===level));
@@ -2878,7 +2895,7 @@ function deleteObjectif(id){
   if(kids.length) msg+='\n('+kids.length+' sous-objectif(s) seront détachés, pas supprimés)';
   if(!confirm(msg)) return;
   objectives=objectives.filter(x=>x.id!==id).map(x=>x.parentId===id?{...x,parentId:null}:x);
-  save('objectives',objectives);renderObjectifs();toast('🗑️ Supprimé');
+  persistObjectives();renderObjectifs();toast('🗑️ Supprimé');
 }
 
 function viewObjectifDetail(id){
@@ -2943,7 +2960,7 @@ function confirmObjPostpone(id){
   _objAfterReview();
   toast('⏩ Objectif reporté au '+frDate(newDate));
 }
-function _objAfterReview(){save('objectives',objectives);closeModal();renderObjectifs();renderDashboard();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();}
+function _objAfterReview(){persistObjectives();closeModal();renderObjectifs();renderDashboard();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();}
 function objReviewValidate(id){const o=objById(id);if(o){o.status='Terminé';o.history=(o.history||[]);o.history.push({t:Date.now(),text:'✅ Validé comme atteint'});}_objAfterReview();toast('✅ Objectif validé !');}
 function objReviewExtend(id,days){const o=objById(id);if(o){o.echeance=addDaysStr(o.echeance||o.deadline||localDate(),days);o.status='En cours';}_objAfterReview();toast('📅 Échéance repoussée au '+frDate(objById(id).echeance));}
 function objReviewStatus(id,status){const o=objById(id);if(o){o.status=status;o.history=(o.history||[]);o.history.push({t:Date.now(),text:(status==='Annulé'?'❌ Abandonné':status)});}_objAfterReview();toast('Objectif : '+status);}
