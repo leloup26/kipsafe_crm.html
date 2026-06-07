@@ -427,7 +427,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
           <div class="schedule" id="schedule-today"></div>
         </div>
         <div>
-          <div class="section-title">🎯 Pipeline en cours</div>
+          <div class="section-title">👥 Contacts par statut</div>
           <div id="pipeline-summary"></div>
           <div style="margin-top:16px"><div class="section-title">📋 Action du jour (Plan 30J)</div><div id="plan-today-action"></div></div>
           <div style="margin-top:16px"><div class="section-title">✅ Tâches rapides</div><div id="quick-tasks"></div></div>
@@ -841,7 +841,8 @@ const SCHEDULE_TODAY=[];
 const SCHEDULE_SOIR=[];
 const SCHEDULE_DIMANCHE=[];
 const SCHEDULES_PAR_DATE={};
-const STATUTS=['Nouveau','Contacté','RDV','Proposition','Signé','Perdu'];
+const STATUTS=['À faire','En cours','Livré','Terminé'];
+const CONTACT_SC={'À faire':'#64748b','En cours':'#1d4ed8','Livré':'#c2410c','Terminé':'#15803d'};
 const OFFRES=['Debal Cyber','Infogérance','PEM Promisec','Multi'];
 const SOURCES=['Manuel','LinkedIn','Lusha','Apollo','Pappers','Référence','Autre'];
 const CATEGORIES=['Prospect','Partenaire','Collaborateur','Interne'];
@@ -1059,7 +1060,7 @@ function updateLockTimerDisplay(){
 }
 
 // ═══ APP ════════════════════════════════════════════════════
-let currentView='kanban';
+let currentView='list';
 function seedDefaultEvents(){ /* CRM vierge : aucun seed */ }
 
 function initApp(){updateHeaderDate();setInterval(updateHeaderDate,60000);seedDefaultEvents();mergeScheduleCustom();renderDashboard();renderProspects();renderPlanning();renderOffres();renderMarches();initSupabase();}
@@ -1231,6 +1232,7 @@ function relanceItems(){
   const today=localDate(); const out=[];
   scheduleCustom.forEach(s=>{ if(!inScope(s))return; if((s.status||'')!=='Livré'||s.done)return; out.push({kind:'sched',id:s.id,label:s.action||'Créneau',relanceDate:s.relanceDate||today,every:s.relanceEvery||2}); });
   (objectives||[]).forEach(o=>{ if(!inScope(o))return; if((o.status||'')!=='Livré')return; out.push({kind:'obj',id:o.id,label:o.title||'Objectif',relanceDate:o.relanceDate||today,every:o.relanceEvery||2}); });
+  (prospects||[]).forEach(p=>{ if(!inScope(p))return; if((p.statut||'')!=='Livré')return; out.push({kind:'contact',id:p.id,label:'👤 '+(p.nom||'Contact')+(p.objectif?' — '+p.objectif:''),relanceDate:p.relanceDate||today,every:p.relanceEvery||2}); });
   return out;
 }
 function renderRelanceBanner(){
@@ -1247,11 +1249,13 @@ function renderRelanceBanner(){
 }
 function relanceDone(kind,id){
   if(kind==='sched'){ scheduleCustom=scheduleCustom.map(x=>String(x.id)===String(id)?{...x,status:'Terminé',done:true,history:[...(x.history||[]),{t:Date.now(),text:'✅ Retour OK → Terminé'}]}:x); persistScheduleCustom(); }
+  else if(kind==='contact'){ prospects=prospects.map(p=>String(p.id)===String(id)?{...p,statut:'Terminé',relanceDate:'',history:[...(p.history||[]),{t:Date.now(),text:'✅ Livraison confirmée → Terminé'}]}:p); save('prospects',prospects); if(typeof renderProspects==='function')renderProspects(); }
   else { objectives=objectives.map(o=>String(o.id)===String(id)?{...o,status:'Terminé',history:[...(o.history||[]),{t:Date.now(),text:'✅ Retour OK → Terminé'}]}:o); save('objectives',objectives); }
   if(typeof refreshScheduleViews==='function')refreshScheduleViews(); if(typeof renderObjectifs==='function')renderObjectifs(); renderDashboard(); toast('✅ Terminé');
 }
 function relanceSnooze(kind,id){
   if(kind==='sched'){ scheduleCustom=scheduleCustom.map(x=>{if(String(x.id)!==String(id))return x;const ev=x.relanceEvery||2;const nd=addDaysStr(localDate(),ev);return {...x,relanceDate:nd,history:[...(x.history||[]),{t:Date.now(),text:'🔁 Toujours en attente — relance repoussée au '+frDate(nd)}]};}); persistScheduleCustom(); }
+  else if(kind==='contact'){ prospects=prospects.map(p=>{if(String(p.id)!==String(id))return p;const ev=p.relanceEvery||2;const nd=addDaysStr(localDate(),ev);return {...p,relanceDate:nd,history:[...(p.history||[]),{t:Date.now(),text:'🔁 Pas encore livré — relance repoussée au '+frDate(nd)}]};}); save('prospects',prospects); if(typeof renderProspects==='function')renderProspects(); }
   else { objectives=objectives.map(o=>{if(String(o.id)!==String(id))return o;const ev=o.relanceEvery||2;const nd=addDaysStr(localDate(),ev);return {...o,relanceDate:nd,history:[...(o.history||[]),{t:Date.now(),text:'🔁 Toujours en attente — relance repoussée au '+frDate(nd)}]};}); save('objectives',objectives); }
   renderDashboard(); toast('🔁 Relance repoussée');
 }
@@ -1259,7 +1263,7 @@ function renderSoirBanner(){const now=new Date();const dow=now.getDay();const h=
 else if(dow===0&&h>=10&&h<13){html='<div class="soir-banner"><div><div class="soir-title">☀️ Session dimanche KIPSAFE — 10h → 13h</div><div class="soir-sub">Formation · CRM · Marchés · Planification semaine</div></div><span class="soir-badge">EN COURS</span></div>';}document.getElementById('soir-banner').innerHTML='';}
 function onlyProspects(){return prospects.filter(p=>(p.categorie||'Prospect')==='Prospect'&&inScope(p)&&inEnt(p));}
 function projectProgress(){const all=(objectives||[]).filter(inScope);if(!all.length)return 0;const annee=all.filter(o=>(o.level||'annee')==='annee');const arr=annee.length?annee:all;return Math.round(arr.reduce((a,o)=>a+objProgress(o),0)/arr.length);}
-function renderKPIs(){const pp=onlyProspects();const total=pp.length,rdv=pp.filter(p=>p.statut==='RDV'||p.statut==='Proposition').length,signes=pp.filter(p=>p.statut==='Signé').length;const proj=projectProgress();const objDone=(objectives||[]).filter(o=>o.status==='Terminé'&&inEnt(o)).length;document.getElementById('kpis').innerHTML=`<div class="card"><span class="kpi-icon">👥</span><div class="card-title">Prospects</div><div class="kpi-value">${total}</div><div class="kpi-sub">dans le pipeline</div></div><div class="card"><span class="kpi-icon">📞</span><div class="card-title">RDV/Propos.</div><div class="kpi-value">${rdv}</div><div class="kpi-sub">en cours</div></div><div class="card"><span class="kpi-icon">✅</span><div class="card-title">Signés</div><div class="kpi-value" style="color:var(--green)">${signes}</div><div class="kpi-sub">contrats</div></div><div class="card" style="cursor:pointer" onclick="showTab('planning')"><span class="kpi-icon">🎯</span><div class="card-title">Avancement projet</div><div class="kpi-value">${proj}%</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill" style="width:${proj}%"></div></div><div class="kpi-sub">${objDone} objectif(s) atteint(s)</div></div>`;}
+function renderKPIs(){const pp=onlyProspects();const total=pp.length,enc=pp.filter(p=>p.statut==='En cours').length,attente=pp.filter(p=>p.statut==='Livré').length;const proj=projectProgress();const objDone=(objectives||[]).filter(o=>o.status==='Terminé'&&inEnt(o)).length;document.getElementById('kpis').innerHTML=`<div class="card"><span class="kpi-icon">👥</span><div class="card-title">Contacts</div><div class="kpi-value">${total}</div><div class="kpi-sub">au total</div></div><div class="card"><span class="kpi-icon">🔄</span><div class="card-title">En cours</div><div class="kpi-value">${enc}</div><div class="kpi-sub">à traiter</div></div><div class="card"><span class="kpi-icon">📦</span><div class="card-title">En attente retour</div><div class="kpi-value" style="color:#c2410c">${attente}</div><div class="kpi-sub">à relancer</div></div><div class="card" style="cursor:pointer" onclick="showTab('planning')"><span class="kpi-icon">🎯</span><div class="card-title">Avancement projet</div><div class="kpi-value">${proj}%</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill" style="width:${proj}%"></div></div><div class="kpi-sub">${objDone} objectif(s) atteint(s)</div></div>`;}
 function getBaseSchedule(today,dow){
   if(today==='2026-06-01') return {sched:SCHEDULE_TODAY,label:'Lundi 01/06 — J1'};
   if(SCHEDULES_PAR_DATE[today]) return {sched:SCHEDULES_PAR_DATE[today],label:''};
@@ -1664,7 +1668,7 @@ function addScheduleItem(){
   persistScheduleCustom();
   closeModal();refreshScheduleViews();toast('✅ Ajouté au planning'+(recurring!=='none'?' ('+RECUR_LABEL[recurring]+')':''));
 }
-function renderPipelineSummary(){const pp=onlyProspects();const counts={};STATUTS.forEach(s=>counts[s]=0);pp.forEach(p=>{if(counts[p.statut]!==undefined)counts[p.statut]++;});const colors={Nouveau:'#0369a1',Contacté:'#1d4ed8',RDV:'#059669',Proposition:'#d97706',Signé:'#228B22',Perdu:'#C00000'};let html='<div style="display:flex;flex-direction:column;gap:6px">';STATUTS.forEach(s=>{const pct=pp.length?Math.round(counts[s]/pp.length*100):0;html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:78px;color:${colors[s]};font-weight:700">${s}</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:${colors[s]}"></div></div><span style="width:20px;text-align:right;color:var(--muted)">${counts[s]}</span></div>`;});html+='</div>';document.getElementById('pipeline-summary').innerHTML=html;}
+function renderPipelineSummary(){const pp=onlyProspects();const counts={};STATUTS.forEach(s=>counts[s]=0);pp.forEach(p=>{if(counts[p.statut]!==undefined)counts[p.statut]++;});let html='<div style="display:flex;flex-direction:column;gap:6px">';STATUTS.forEach(s=>{const pct=pp.length?Math.round(counts[s]/pp.length*100):0;const c=CONTACT_SC[s]||'#64748b';html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:90px;color:${c};font-weight:700">${s}</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:${c}"></div></div><span style="width:20px;text-align:right;color:var(--muted)">${counts[s]}</span></div>`;});html+='</div>';document.getElementById('pipeline-summary').innerHTML=html;}
 function renderPlanTodayAction(){const today=localDate();const item=PLAN_30J.find(p=>p.date===today);if(!item){document.getElementById('plan-today-action').innerHTML='<div class="empty"><div class="empty-icon">🗓️</div><div class="empty-text">Pas d\'action planifiée aujourd\'hui</div></div>';return;}const done=planDone.includes(item.date);document.getElementById('plan-today-action').innerHTML=`<div style="background:var(--light);border-radius:10px;padding:14px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="axe-badge axe-${item.axe}">${item.axe}</span><button class="btn btn-sm ${done?'btn-success':'btn-outline'}" onclick="togglePlanDone('${item.date}')">${done?'✅ Fait':'Marquer fait'}</button></div><div style="font-size:13px;font-weight:600">${item.action}</div></div>`;}
 function renderQuickTasks(){let html='';quickTasks.forEach(t=>{html+=`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)"><input type="checkbox" ${t.done?'checked':''} onchange="toggleQuickTask(${t.id})" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer"><span style="font-size:13px;${t.done?'text-decoration:line-through;color:var(--muted)':''}">${t.text}</span></div>`;});html+=`<div style="margin-top:8px;display:flex;gap:8px"><input type="text" id="new-task-input" class="form-input" placeholder="Nouvelle tâche..." style="flex:1" onkeydown="if(event.key==='Enter')addQuickTask()"><button class="btn btn-accent btn-sm" onclick="addQuickTask()">+</button></div>`;document.getElementById('quick-tasks').innerHTML=html;}
 function toggleQuickTask(id){quickTasks=quickTasks.map(t=>t.id===id?{...t,done:!t.done}:t);save('quick_tasks',quickTasks);renderQuickTasks();}
@@ -1733,8 +1737,8 @@ function renderList(fp){
       <td><span style="font-size:11px;font-weight:700;background:${(e.color||'#888')}22;color:${e.color||'#555'};padding:3px 9px;border-radius:99px;white-space:nowrap">${e.icon||''} ${esc(e.name||entOf(p))}</span></td>
       <td style="font-size:11px">${p.email?`<a href="mailto:${esc(p.email)}">✉️ ${esc(p.email)}</a><br>`:''}${p.tel?`${esc(p.tel)} <a href="https://wa.me/${wa}" target="_blank" rel="noopener" title="WhatsApp" style="text-decoration:none">🟢</a> <a href="sms:${encodeURIComponent(p.tel)}" title="SMS" style="text-decoration:none">💬</a> <a href="tel:${encodeURIComponent(p.tel)}" title="Appeler" style="text-decoration:none">📞</a>`:'<span style="color:var(--muted)">—</span>'}</td>
       <td style="font-size:12px;max-width:280px">${p.objectif?esc(p.objectif):'<span style="color:var(--muted)">—</span>'}</td>
-      <td style="font-size:11px;white-space:nowrap">${(p.rdv_date||p.date)?('📅 '+frDateShort(p.rdv_date||p.date)+(p.rdv_time?'<br>'+p.rdv_time:'')):'<span style="color:var(--muted)">—</span>'}</td>
-      <td><span class="status-badge ${stCls}">${p.statut}</span></td>
+      <td style="font-size:11px;white-space:nowrap">${p.statut==='Livré'&&p.relanceDate?('🔔 '+frDateShort(p.relanceDate)):(p.created?('créé '+frDateShort(p.created)):'<span style="color:var(--muted)">—</span>')}</td>
+      <td><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;background:${(CONTACT_SC[p.statut]||'#64748b')}22;color:${CONTACT_SC[p.statut]||'#64748b'}">${esc(p.statut||'')}</span></td>
       <td><div style="display:flex;gap:4px"><button class="btn btn-sm btn-outline" onclick="viewProspect(${p.id})">👁️</button><button class="btn btn-sm btn-outline" onclick="editProspect(${p.id})">✏️</button><button class="btn btn-sm btn-danger" onclick="deleteProspect(${p.id})">🗑️</button></div></td>
     </tr>`;
   });
@@ -1743,7 +1747,7 @@ function renderList(fp){
 }
 
 function changeStatut(id,s){prospects=prospects.map(p=>p.id===id?{...p,statut:s}:p);save('prospects',prospects);renderProspects();renderDashboard();}
-function viewProspect(id){const p=prospects.find(x=>x.id===id);if(!p)return;openModal('Fiche prospect',`<div class="grid-2" style="gap:10px;margin-bottom:12px"><div><div class="form-label">Nom</div><strong>${esc(p.nom)}</strong></div><div><div class="form-label">Poste</div>${esc(p.poste||'—')}</div><div><div class="form-label">Société</div>${esc(p.societe||'—')}</div><div><div class="form-label">Email</div>${p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:'—'}</div><div><div class="form-label">Téléphone</div>${esc(p.tel||'—')}</div><div><div class="form-label">Offre</div>${esc(p.offre)}</div><div><div class="form-label">Statut</div><span class="status-badge">${p.statut}</span></div><div><div class="form-label">Source</div>${esc(p.source||'Manuel')}</div><div><div class="form-label">Valeur</div>${p.valeur?p.valeur+'€':'—'}</div><div><div class="form-label">1er contact</div>${p.date||'—'}</div></div><div class="form-label">LinkedIn</div><div style="margin-bottom:10px">${p.linkedin?`<a href="${p.linkedin}" target="_blank">${p.linkedin}</a>`:'—'}</div><div class="form-label">🎯 Objectif du contact</div><div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px;font-size:13px;margin-bottom:10px">${esc(p.objectif||'—')}</div><div class="form-label">Notes</div><div style="background:var(--light);border-radius:8px;padding:12px;font-size:13px;min-height:50px">${esc(p.notes||'Aucune note')}</div><div class="form-label" style="margin-top:12px">📨 Contacter</div>${contactActions(p)}<div style="margin-top:10px;display:flex;gap:6px">${searchLinks(p)}</div>`,[{label:'Modifier',cls:'btn-primary',fn:`editProspect(${p.id});closeModal()`},{label:'Supprimer',cls:'btn-danger',fn:`deleteProspect(${p.id});closeModal()`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);}
+function viewProspect(id){const p=prospects.find(x=>x.id===id);if(!p)return;const e=entById(entOf(p))||{};const histHtml=(p.history&&p.history.length)?p.history.slice().reverse().map(h=>{const d=new Date(h.t);const ds=isNaN(d)?'':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});return `<div style="font-size:11px;padding:5px 8px;background:var(--light);border-radius:6px;margin-bottom:4px"><span style="color:var(--muted)">${ds}</span> — ${esc(h.text)}</div>`;}).join(''):'<div style="font-size:11px;color:var(--muted)">Aucune note</div>';openModal('Fiche contact',`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap"><span style="font-size:11px;font-weight:700;background:${(e.color||'#888')}22;color:${e.color||'#555'};padding:3px 9px;border-radius:99px">${e.icon||''} ${esc(e.name||entOf(p))}</span><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:${(CONTACT_SC[p.statut]||'#64748b')}22;color:${CONTACT_SC[p.statut]||'#64748b'}">${esc(p.statut||'')}</span></div><div class="grid-2" style="gap:10px;margin-bottom:12px"><div><div class="form-label">Nom</div><strong>${esc(p.nom)}</strong></div><div><div class="form-label">Poste</div>${esc(p.poste||'—')}</div><div><div class="form-label">Société</div>${esc(p.societe||'—')}</div><div><div class="form-label">Créé le</div>${p.created?frDateShort(p.created):'—'}</div></div>${p.statut==='Livré'&&p.relanceDate?`<div style="font-size:12px;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px;margin-bottom:10px">📦 En attente de retour — prochaine relance le ${frDateShort(p.relanceDate)}</div>`:''}<div class="form-label">📞 Pourquoi appeler</div><div style="background:var(--light);border-radius:8px;padding:10px;font-size:13px;margin-bottom:10px">${esc(p.objectif||'—')}</div><div class="form-label">📨 Contacter</div>${contactActions(p)}<div class="form-label" style="margin-top:12px">🕘 Historique</div><div style="max-height:140px;overflow-y:auto">${histHtml}</div>`,[{label:'Modifier',cls:'btn-primary',fn:`editProspect(${p.id});closeModal()`},{label:'Supprimer',cls:'btn-danger',fn:`deleteProspect(${p.id});closeModal()`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);}
 function waNumber(tel){let n=(tel||'').replace(/[^0-9+]/g,'');n=n.replace(/^\+/,'');if(n.indexOf('0')===0)n='33'+n.slice(1);return n;}
 function contactActions(p){
   if(!p)return '';
@@ -1762,23 +1766,61 @@ function openAddProspect(){openProspectModal(null);}
 function editProspect(id){openProspectModal(prospects.find(p=>p.id===id));}
 function openProspectModal(p){
   const isEdit=!!p;
-  const defCat=(document.getElementById('filter-cat')?.value)||'Prospect';
+  const today=localDate();
+  const created=(p&&p.created)?p.created:today;
+  const ALLOWED=['KIPSAFE','LMDK','YSIOM','PERSO'];
+  const ent4=ENTREPRISES.filter(e=>ALLOWED.includes(e.id));
+  const curEnt=(p&&p.entreprise)||defaultEnt();
+  const entOpts=ent4.map(e=>`<option value="${e.id}" ${curEnt===e.id?'selected':''}>${e.icon} ${esc(e.name)}</option>`).join('');
+  const curSt=(p&&p.statut)||'À faire';
+  const statutOpts=STATUTS.map(st=>`<option ${curSt===st?'selected':''}>${st}</option>`).join('');
+  const histHtml=(p&&p.history&&p.history.length)?p.history.slice().reverse().map(h=>{const d=new Date(h.t);const ds=isNaN(d)?'':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});return `<div style="font-size:11px;padding:5px 8px;background:var(--light);border-radius:6px;margin-bottom:4px"><span style="color:var(--muted)">${ds}</span> — ${esc(h.text)}</div>`;}).join(''):'<div style="font-size:11px;color:var(--muted)">Aucune note pour l\'instant</div>';
   openModal(isEdit?'Modifier le contact':'Nouveau contact',`
-    <div class="form-group"><label class="form-label">🏢 Entreprise</label><select id="f-entreprise" class="form-select">${entSelectOptions(p?p.entreprise:null)}</select></div>
-    <div class="form-group"><label class="form-label">📞 Pourquoi appeler cette personne ? <span style="color:var(--muted);font-weight:400">(selon l'entreprise)</span></label><textarea id="f-objectif" class="form-textarea" style="min-height:54px" placeholder="Ex: relancer pour un don (LMDK) · proposer un audit (KIPSAFE) · visite appartement (immo)...">${p?esc(p.objectif||''):''}</textarea></div>
-    <div class="grid-2"><div class="form-group"><label class="form-label">Catégorie de contact</label><select id="f-categorie" class="form-select">${CATEGORIES.map(c=>`<option ${(p&&p.categorie===c)||(!p&&c===defCat)?'selected':''}>${CAT_CONFIG[c].icon} ${c}</option>`).join('')}</select></div>${memberSelectHtml('f-owner',p?p.owner:defaultOwner(),p?p.shared:false)}</div>
+    <div class="form-group"><label class="form-label">🏢 Entreprise</label><select id="f-entreprise" class="form-select">${entOpts}</select></div>
     <div class="grid-2"><div class="form-group"><label class="form-label">Nom complet *</label><input id="f-nom" class="form-input" value="${p?esc(p.nom):''}"></div><div class="form-group"><label class="form-label">Poste / Fonction</label><input id="f-poste" class="form-input" value="${p?esc(p.poste||''):''}"></div></div>
-    <div class="grid-2"><div class="form-group"><label class="form-label">Société</label><input id="f-societe" class="form-input" value="${p?esc(p.societe||''):''}"></div><div class="form-group"><label class="form-label">Source lead</label><select id="f-source" class="form-select">${SOURCES.map(s=>`<option ${p&&p.source===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
-    <div class="grid-2"><div class="form-group"><label class="form-label">Email</label><input id="f-email" class="form-input" type="email" value="${p?esc(p.email||''):''}"></div><div class="form-group"><label class="form-label">Téléphone</label><input id="f-tel" class="form-input" value="${p?esc(p.tel||''):''}"></div></div>
-    <div class="form-group"><label class="form-label">URL LinkedIn</label><input id="f-linkedin" class="form-input" placeholder="https://linkedin.com/in/..." value="${p?esc(p.linkedin||''):''}"></div>
-    <div class="grid-2"><div class="form-group"><label class="form-label">Offre *</label><select id="f-offre" class="form-select">${OFFRES.map(o=>`<option ${p&&p.offre===o?'selected':''}>${o}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Statut</label><select id="f-statut" class="form-select">${STATUTS.map(s=>`<option ${p&&p.statut===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
-    <div class="grid-2"><div class="form-group"><label class="form-label">Valeur estimée (€)</label><input id="f-valeur" class="form-input" type="number" value="${p?p.valeur||'':''}"></div><div class="form-group"><label class="form-label">Date 1er contact</label><input id="f-date" class="form-input" type="date" value="${p?p.date||'':''}"></div></div>
-    <div class="grid-2"><div class="form-group"><label class="form-label">📅 Date à rappeler / RDV</label><input id="f-rdv-date" class="form-input" type="date" value="${p?p.rdv_date||'':''}"></div><div class="form-group"><label class="form-label">⏰ Heure</label><input id="f-rdv-time" class="form-input" type="time" value="${p?p.rdv_time||'':''}"></div></div>
-    <div class="form-group"><label class="form-label">Notes</label><textarea id="f-notes" class="form-textarea">${p?esc(p.notes||''):''}</textarea></div>
+    <div class="form-group"><label class="form-label">Société</label><input id="f-societe" class="form-input" value="${p?esc(p.societe||''):''}"></div>
+    <div class="grid-2"><div class="form-group"><label class="form-label">📧 Email</label><input id="f-email" class="form-input" type="email" value="${p?esc(p.email||''):''}"></div><div class="form-group"><label class="form-label">📞 Téléphone</label><input id="f-tel" class="form-input" value="${p?esc(p.tel||''):''}"></div></div>
+    <div class="form-group"><label class="form-label">📞 Pourquoi appeler cette personne ?</label><textarea id="f-objectif" class="form-textarea" style="min-height:54px" placeholder="Ex: relancer pour un don (LMDK) · proposer un audit (KIPSAFE) · point projet (YSIOM)...">${p?esc(p.objectif||''):''}</textarea></div>
+    <div class="form-group"><label class="form-label">📊 Statut</label><select id="f-statut" class="form-select" onchange="contactStatutChange()">${statutOpts}</select></div>
+    <div id="f-relance-wrap" class="form-group" style="${curSt==='Livré'?'':'display:none'};background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px">
+      <label class="form-label">📦 Livré — relance automatique</label>
+      <div style="font-size:11px;color:#9a3412;margin-bottom:6px">Je te relancerai pour vérifier si la livraison a bien été faite (ou non), jusqu'à ce que tu passes en « Terminé ».</div>
+      <div class="grid-2">
+        <div><label class="form-label" style="font-size:11px">Me relancer tous les (jours)</label><input id="f-relance-every" type="number" min="1" class="form-input" value="${(p&&p.relanceEvery)||2}"></div>
+        <div><label class="form-label" style="font-size:11px">Prochaine relance le</label><input id="f-relance-date" type="date" class="form-input" value="${(p&&p.relanceDate)||''}"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">📅 Date de création <span style="color:var(--muted);font-weight:400">(verrouillée)</span></label><input class="form-input" type="date" value="${created}" disabled style="background:var(--light);color:var(--muted);cursor:not-allowed"><input type="hidden" id="f-created" value="${created}"></div>
+    <div class="form-group"><label class="form-label">📝 Ajouter une note</label><textarea id="f-note" class="form-textarea" style="min-height:46px" placeholder="Compte-rendu d'appel, info, prochaine étape..."></textarea></div>
+    <div class="form-group"><label class="form-label">🕘 Historique</label><div style="max-height:140px;overflow-y:auto">${histHtml}</div></div>
     ${isEdit?`<div class="form-group" style="background:var(--light);border-radius:8px;padding:10px"><label class="form-label">📨 Contacter directement</label>${contactActions(p)}</div>`:''}`,
     [{label:isEdit?'Enregistrer':'Ajouter',cls:'btn-primary',fn:`saveProspect(${isEdit?p.id:'null'})`},{label:'Annuler',cls:'btn-outline',fn:'closeModal()'}]);
 }
-function saveProspect(id){const nom=document.getElementById('f-nom').value.trim();if(!nom){alert('Nom requis');return;}const catRaw=document.getElementById('f-categorie').value;const categorie=catRaw.replace(/^[^\w]+\s*/,'').trim();const data={nom,categorie,entreprise:(document.getElementById('f-entreprise')?.value)||defaultEnt(),poste:document.getElementById('f-poste').value.trim(),societe:document.getElementById('f-societe').value.trim(),email:document.getElementById('f-email').value.trim(),tel:document.getElementById('f-tel').value.trim(),linkedin:document.getElementById('f-linkedin').value.trim(),source:document.getElementById('f-source').value,offre:document.getElementById('f-offre').value,statut:document.getElementById('f-statut').value,valeur:document.getElementById('f-valeur').value,date:document.getElementById('f-date').value,rdv_date:document.getElementById('f-rdv-date').value,rdv_time:document.getElementById('f-rdv-time').value,owner:(document.getElementById('f-owner')?.value)||defaultOwner(),shared:!!document.getElementById('f-owner-shared')?.checked,objectif:(document.getElementById('f-objectif')?document.getElementById('f-objectif').value.trim():''),notes:document.getElementById('f-notes').value.trim()};if(id){prospects=prospects.map(p=>p.id===id?{...p,...data}:p);}else{data.id=nextId++;save('next_id',nextId);prospects.push(data);}save('prospects',prospects);closeModal();renderProspects();renderDashboard();}
+function contactStatutChange(){const v=(document.getElementById('f-statut')||{}).value;const w=document.getElementById('f-relance-wrap');if(w)w.style.display=v==='Livré'?'block':'none';}
+function saveProspect(id){
+  const nom=document.getElementById('f-nom').value.trim(); if(!nom){alert('Nom requis');return;}
+  const statut=document.getElementById('f-statut').value;
+  const relanceEvery=document.getElementById('f-relance-every')?(parseInt(document.getElementById('f-relance-every').value)||2):2;
+  let relanceDate=document.getElementById('f-relance-date')?document.getElementById('f-relance-date').value:'';
+  if(statut==='Livré'&&!relanceDate) relanceDate=addDaysStr(localDate(),relanceEvery);
+  const existing=id?prospects.find(p=>p.id===id):null;
+  let history=(existing&&existing.history)?existing.history.slice():[];
+  const note=document.getElementById('f-note')?document.getElementById('f-note').value.trim():'';
+  if(note) history.push({t:Date.now(),text:note});
+  const created=(existing&&existing.created)?existing.created:(document.getElementById('f-created')?document.getElementById('f-created').value:localDate());
+  const data={nom,categorie:'Prospect',
+    entreprise:(document.getElementById('f-entreprise')&&document.getElementById('f-entreprise').value)||defaultEnt(),
+    poste:document.getElementById('f-poste').value.trim(),
+    societe:document.getElementById('f-societe').value.trim(),
+    email:document.getElementById('f-email').value.trim(),
+    tel:document.getElementById('f-tel').value.trim(),
+    objectif:document.getElementById('f-objectif').value.trim(),
+    statut, relanceDate:statut==='Livré'?relanceDate:'', relanceEvery, created, history,
+    owner:(existing&&existing.owner)||defaultOwner()
+  };
+  if(id){prospects=prospects.map(p=>p.id===id?{...p,...data}:p);}else{data.id=nextId++;save('next_id',nextId);prospects.push(data);}
+  save('prospects',prospects);closeModal();renderProspects();renderDashboard();
+}
 function deleteProspect(id){if(!confirm('Supprimer ce prospect ?'))return;prospects=prospects.filter(p=>p.id!==id);save('prospects',prospects);renderProspects();renderDashboard();}
 
 // ═══ PLANNING v3 ════════════════════════════════════════════
