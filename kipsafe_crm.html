@@ -767,6 +767,12 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
         <div id="members-admin-zone"></div>
       </div>
       <div class="settings-section">
+        <div class="settings-title">☁️ Synchronisation cloud</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Envoie toutes les données de cet appareil vers le cloud (utile après correction des droits, ou pour partager avec un autre PC).</div>
+        <button class="btn btn-primary" onclick="pushAllToCloud()">☁️⬆️ Envoyer mes données au cloud</button>
+        <div id="cloud-sync-msg" style="margin-top:8px;font-size:13px"></div>
+      </div>
+      <div class="settings-section">
         <div class="settings-title">📤 Export global</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-outline" onclick="exportDataJSON()">💾 Tout exporter (JSON)</button>
@@ -3007,6 +3013,25 @@ function importCSV(source){
   toast(`✅ ${added} prospects importés${skipped?' ('+skipped+' ignorés/enrichis)':''}`);}
 
 // ═══ SETTINGS ═══════════════════════════════════════════════
+// ═══ SYNCHRO CLOUD — envoi forcé des données locales ════════
+async function pushAllToCloud(){
+  const msg=document.getElementById('cloud-sync-msg');
+  const setMsg=(t,c)=>{if(msg){msg.style.color=c||'var(--muted)';msg.textContent=t;}};
+  if(!sbClient){setMsg('⚠️ Cloud non connecté.','var(--red)');return;}
+  const skip=['kipsafe_data_version','kipsafe_session','kipsafe_user'];
+  const keys=Object.keys(localStorage).filter(k=>k.startsWith('kipsafe_')&&!skip.includes(k));
+  setMsg('⏳ Envoi en cours...');
+  let ok=0,fail=0,lastErr='';
+  for(const lk of keys){
+    const k=lk.replace('kipsafe_','');
+    let v; try{v=JSON.parse(localStorage.getItem(lk));}catch{v=localStorage.getItem(lk);}
+    const {error}=await sbClient.from('kipsafe_data').upsert({key:k,value:v,updated_at:new Date().toISOString()});
+    if(error){fail++;lastErr=error.message;}else ok++;
+  }
+  if(fail===0){setMsg('✅ '+ok+' éléments envoyés au cloud. Tes données sont maintenant accessibles sur tes autres appareils.','var(--green)');toast('☁️ Synchro réussie');}
+  else{setMsg('⚠️ '+ok+' envoyés, '+fail+' échecs. Erreur : '+lastErr+' → lance le SQL de droits dans Supabase.','var(--red)');}
+}
+
 // ═══ MEMBRES — gestion (admin) ══════════════════════════════
 const MEMBER_COLORS=['#0A2E5C','#16529E','#00AEEF','#F07D00','#228B22','#C00000','#5B2D8E','#0e7490'];
 // Sélecteur "Assigné à" (modifiable par l'admin uniquement)
