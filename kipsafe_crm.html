@@ -1227,29 +1227,26 @@ function openScheduleItemModal(today,key){
   const AXES=['','Admin','Commercial','Marketing','Web','Supports','Marchés','Formation','Pause'];
   const objOpts='<option value="">— Aucun objectif —</option>'+objectives.map(o=>`<option value="${o.id}" ${m.objectifId===o.id?'selected':''}>${({annee:'📅',mois:'🗓️',semaine:'📋'}[o.level]||'')} ${esc(o.title.slice(0,40))}</option>`).join('');
   const histHtml=(m.history||[]).slice().reverse().map(h=>{const d=new Date(h.t);const ds=isNaN(d)?'':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});return `<div style="font-size:11px;padding:5px 8px;background:var(--light);border-radius:6px;margin-bottom:4px"><span style="color:var(--muted)">${ds}</span> — ${esc(h.text)}</div>`;}).join('')||'<div style="font-size:11px;color:var(--muted)">Aucune note pour l\'instant</div>';
+  const STATUTS_MODAL=['À faire','En cours','Terminé'];
   openModal('✏️ Modifier',`
-    ${item.isCustom&&!item.isRec?`<div class="form-group"><label class="form-label">📅 Date <span style="color:var(--muted);font-weight:400;text-transform:none">— déplace le créneau à ce jour</span></label><input id="si-date" type="date" class="form-input" value="${item.date||today}"></div>`:''}
-    <div class="grid-2">
-      <div class="form-group"><label class="form-label">Heure début</label><input id="si-time" type="time" class="form-input" value="${item.time}"></div>
-      <div class="form-group"><label class="form-label">Heure fin</label><input id="si-end" type="time" class="form-input" value="${item.end}"></div>
+    <div class="form-group" style="background:var(--light);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:.3px">🔒 Date & heure planifiées</div>
+        <div style="font-size:14px;font-weight:800;color:var(--primary);margin-top:2px">${item.isCustom&&item.date?frDate(item.date)+' · ':''}${item.time} – ${item.end}</div>
+      </div>
+      ${item.isCustom&&!item.isRec?`<button class="btn btn-sm btn-primary" onclick="closeModal();openSchedPostpone('${today}','${key}')">⏩ Reporter</button>`:''}
     </div>
+    <input type="hidden" id="si-time" value="${item.time}"><input type="hidden" id="si-end" value="${item.end}">
     <div class="form-group"><label class="form-label">Intitulé</label><textarea id="si-action" class="form-textarea" rows="2">${esc(item.action)}</textarea></div>
     <div class="form-group"><label class="form-label">Axe</label><select id="si-axe" class="form-select">${AXES.map(a=>`<option ${a===item.axe?'selected':''}>${a}</option>`).join('')}</select></div>
-    <div class="form-group"><label class="form-label">📊 Statut</label>
+    <div class="form-group"><label class="form-label">📊 Statut <span style="color:var(--muted);font-weight:400;text-transform:none">— pour reporter, utilise le bouton ⏩</span></label>
       <select id="si-status" class="form-select" onchange="si_statusChange()">
-        ${SCHED_STATUSES.map(s=>`<option ${s===m.status?'selected':''}>${SCHED_SICON[s]} ${s}</option>`).join('')}
+        ${STATUTS_MODAL.map(s=>`<option ${s===m.status?'selected':''}>${SCHED_SICON[s]} ${s}</option>`).join('')}
       </select>
     </div>
     <div id="si-encours-wrap" class="form-group" style="${m.status==='En cours'?'':'display:none'}">
       <label class="form-label">📅 Date estimée de fin</label>
       <input id="si-estfinish" type="date" class="form-input" value="${m.estFinish||''}">
-    </div>
-    <div id="si-report-wrap" style="${m.status==='Reporté'?'':'display:none'}">
-      <div class="grid-2">
-        <div class="form-group"><label class="form-label">📅 Reporter au</label><input id="si-reportdate" type="date" class="form-input" value="${m.reportDate||item.date||today}"></div>
-        <div class="form-group"><label class="form-label">Motif du report</label><input id="si-reportreason" class="form-input" value="${esc(m.reportReason||'')}" placeholder="Pourquoi ?"></div>
-      </div>
-      <div style="font-size:10px;color:var(--muted);margin:-6px 0 8px">➡️ Le créneau sera déplacé à cette date et redeviendra « À faire ». Le report est consigné dans l'historique.</div>
     </div>
     <div class="grid-2">
       <div class="form-group"><label class="form-label">🎯 Rattaché à l'objectif</label><select id="si-objectif" class="form-select">${objOpts}</select></div>
@@ -1266,8 +1263,8 @@ function openScheduleItemModal(today,key){
 
 function si_statusChange(){
   const v=document.getElementById('si-status').value.replace(/^[^\w\sÀ-ÿ]+\s*/,'').trim();
-  document.getElementById('si-encours-wrap').style.display=v==='En cours'?'block':'none';
-  document.getElementById('si-report-wrap').style.display=v==='Reporté'?'block':'none';
+  const ec=document.getElementById('si-encours-wrap'); if(ec) ec.style.display=v==='En cours'?'block':'none';
+  const rw=document.getElementById('si-report-wrap'); if(rw) rw.style.display=v==='Reporté'?'block':'none';
 }
 
 function refreshScheduleViews(){
