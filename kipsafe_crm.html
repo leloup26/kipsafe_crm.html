@@ -2287,6 +2287,20 @@ function renderObjectifs(){
   if(axeF) items=items.filter(o=>o.axe===axeF);
   if(window._memberFilter) items=items.filter(o=>(o.owner||'admin')===window._memberFilter);
   if(!items.length){ list.innerHTML='<div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">Aucun objectif à ce niveau. Cliquez sur "+ Objectif".</div></div>'; return; }
+  // Admin en vue globale : séparer "Mes objectifs" (haut) et "Objectifs des collaborateurs" (bas)
+  if(isAdmin()&&!window._memberFilter){
+    const mine=items.filter(o=>!o.owner||o.owner==='admin'||o.owner===currentUser.id);
+    const others=items.filter(o=>o.owner&&o.owner!=='admin'&&o.owner!==currentUser.id);
+    if(others.length){
+      const sep=(t,c)=>`<div style="display:flex;align-items:center;gap:8px;margin:6px 0 10px"><span style="font-size:13px;font-weight:800;color:${c}">${t}</span><div style="flex:1;height:1px;background:var(--border)"></div></div>`;
+      let html=sep('👤 Mes objectifs ('+mine.length+')','var(--primary)');
+      html+= mine.length?mine.map(o=>objCardHtml(o,lvl)).join(''):'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Aucun objectif personnel à ce niveau.</div>';
+      html+=sep('👥 Objectifs des collaborateurs ('+others.length+')','var(--secondary)');
+      html+=others.map(o=>objCardHtml(o,lvl)).join('');
+      list.innerHTML=html;
+      return;
+    }
+  }
   list.innerHTML=items.map(o=>objCardHtml(o,lvl)).join('');
 }
 
