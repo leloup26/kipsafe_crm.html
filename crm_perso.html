@@ -1156,7 +1156,9 @@ function showTab(tab){
   const moreBtn=document.getElementById('more-btn');
   if(moreBtn) moreBtn.classList.toggle('has-active',!MAIN_TABS.includes(tab));
   closeMoreMenu();
-  if(tab==='dashboard')renderDashboard();if(tab==='planning')renderObjectifDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='pitch')renderPitch();if(tab==='documents')loadDocuments();if(tab==='settings')renderMembers();if(tab==='liens')renderLiens();
+  // Rafraîchit systématiquement l'onglet ouvert (évite les données figées entre onglets)
+  const _R={dashboard:renderDashboard,planning:renderObjectifDashboard,calendrier:renderCalendrierTab,prospects:renderProspects,liens:renderLiens,pitch:renderPitch,documents:loadDocuments,offres:(typeof renderOffres==='function'?renderOffres:null),marches:(typeof renderMarches==='function'?renderMarches:null),settings:renderMembers};
+  if(_R[tab]) try{_R[tab]();}catch(e){console.warn('render '+tab,e);}
 }
 function toggleMoreMenu(e){e.stopPropagation();document.getElementById('more-dropdown').classList.toggle('open');}
 function closeMoreMenu(){const d=document.getElementById('more-dropdown');if(d)d.classList.remove('open');}
