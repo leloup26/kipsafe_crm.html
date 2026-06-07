@@ -918,6 +918,8 @@ function unlockApp(){document.getElementById('pin-screen').style.display='none';
 function updateHeaderUser(){
   const el=document.getElementById('header-user');
   if(el&&currentUser){el.innerHTML=`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:${currentUser.color||'#fff'};display:inline-block;border:1px solid rgba(255,255,255,.5)"></span>${esc(currentUser.name)}${isAdmin()?' <span style="font-size:9px;background:var(--accent);padding:1px 5px;border-radius:99px">ADMIN</span>':''}</span>`;}
+  // Onglet Paramètres réservé à l'admin
+  const setBtn=document.querySelector('.more-item[data-tab="settings"]'); if(setBtn) setBtn.style.display=isAdmin()?'block':'none';
   const sel=document.getElementById('header-viewas');
   if(sel){
     if(isAdmin()&&members.length>1){
@@ -1032,6 +1034,7 @@ function setSyncPill(s){
 function updateHeaderDate(){const now=new Date();const days=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];const months=['jan','fév','mars','avr','mai','juin','juil','août','sep','oct','nov','déc'];document.getElementById('header-date').textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear()+' — '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
 const MAIN_TABS=['dashboard','planning','calendrier','prospects'];
 function showTab(tab){
+  if(tab==='settings'&&!isAdmin()){toast('Accès réservé à l\'administrateur');return;}
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+tab).classList.add('active');
   // Marquer l'onglet/élément actif via data-tab
