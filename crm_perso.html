@@ -1081,7 +1081,7 @@ async function initSupabase(){
       nextId=load('next_id',100);
       planOverrides=load('plan_overrides',{});
       const newMembers=load('members',null); if(newMembers&&newMembers.length){members=newMembers;currentUser=members.find(m=>m.id===currentUser.id)||currentUser;}
-      scheduleCustom=load('schedule_custom',[]);scheduleOverrides=load('schedule_overrides',{});scheduleHidden=load('schedule_hidden',[]);scheduleRecurringDone=load('schedule_recurring_done',{});occStatus=load('occ_status',{});
+      scheduleCustom=load('schedule_custom',[]);mergeScheduleCustom();scheduleOverrides=load('schedule_overrides',{});scheduleHidden=load('schedule_hidden',[]);scheduleRecurringDone=load('schedule_recurring_done',{});occStatus=load('occ_status',{});
       const newObj=load('objectives',null); if(newObj) objectives=newObj;
       // Migration : si données anciennes sans niveau hiérarchique → réinitialiser structure
       if(!objectives||!objectives.length||!objectives[0].level){objectives=DEFAULT_OBJECTIVES_DATA.map(o=>({...o}));save('objectives',objectives);}
@@ -1093,14 +1093,14 @@ async function initSupabase(){
         if(!payload.new) return;
         const {key,value}=payload.new;
         if(value===null||value===undefined){}else if(key&&key.indexOf('perso_')===0){localStorage.setItem(key,JSON.stringify(value));}else if(key==='schedule_custom'){kipScheduleCustom=Array.isArray(value)?value:[];localStorage.setItem('perso_kipsync_schedule_custom',JSON.stringify(kipScheduleCustom));kipLoaded=true;mergeScheduleCustom();}
-        switch(key){
+        switch(key&&key.indexOf('perso_')===0?key.slice(6):key){
           case 'prospects':prospects=load('prospects',[]);renderProspects();renderDashboard();break;
           case 'marches':marches=load('marches',[]);renderMarches();break;
           case 'plan_done':planDone=load('plan_done',[]);renderPlanning();renderDashboard();break;
           case 'quick_tasks':quickTasks=load('quick_tasks',[]);renderQuickTasks();break;
           case 'members':members=load('members',members);currentUser=members.find(m=>m.id===currentUser.id)||currentUser;updateHeaderUser();break;
           case 'objectives':objectives=load('objectives',objectives);renderObjectifDashboard();renderDashboard();break;
-          case 'schedule_custom':scheduleCustom=load('schedule_custom',[]);renderDashboard();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();break;
+          case 'schedule_custom':mergeScheduleCustom();renderDashboard();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();break;
         }
         toast('🔄 Sync reçue depuis un autre appareil');
       })
