@@ -712,6 +712,18 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
         </div>
       </div>
 
+      <!-- ENRICHISSEMENT API LUSHA -->
+      <div class="section-title">⚡ Enrichissement automatique (API Lusha)</div>
+      <div class="card" style="margin-bottom:24px">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Avec une <strong>clé API Lusha</strong> (offre payante), le bouton <strong>⚡ Enrichir</strong> sur chaque contact récupère email pro + téléphone automatiquement. Ta clé reste <strong>sur cet appareil</strong> (jamais publiée dans le fichier).</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="lusha-api-key" class="form-input" type="password" placeholder="Colle ta clé API Lusha ici" style="flex:1;min-width:220px">
+          <button class="btn btn-lusha" onclick="saveLushaKey()">🔑 Enregistrer la clé</button>
+        </div>
+        <div id="lusha-key-status" style="margin-top:8px;font-size:12px"></div>
+        <div style="margin-top:10px;font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px">⚠️ Lusha peut bloquer les appels directs depuis un navigateur (sécurité CORS). Si l'enrichissement échoue, c'est cette limite. Où trouver ta clé : Lusha → Settings → API.</div>
+      </div>
+
       <!-- IMPORT -->
       <div class="section-title">📥 Importer des prospects</div>
       <div class="card">
@@ -725,7 +737,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
           <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Dans Sales Navigator → Listes → Exporter → copie/colle le CSV ci-dessous.<br>Colonnes attendues : <code>First Name, Last Name, Email Address, Company, Title, LinkedIn Member URL</code></p>
           <textarea class="csv-textarea" id="csv-linkedin" placeholder="Colle ici ton export CSV LinkedIn Sales Navigator..."></textarea>
           <div style="margin-top:10px;display:flex;gap:8px">
-            <button class="btn btn-linkedin" onclick="previewImport('linkedin')">👁 Prévisualiser</button>
+            <label class="btn btn-outline" style="cursor:pointer">📁 Choisir un fichier<input type="file" accept=".csv,.txt" onchange="loadCSVFile('linkedin',this)" style="display:none"></label><button class="btn btn-linkedin" onclick="previewImport('linkedin')">👁 Prévisualiser</button>
             <button class="btn btn-primary" onclick="importCSV('linkedin')">✅ Importer dans le CRM</button>
           </div>
         </div>
@@ -733,7 +745,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
           <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Dans Lusha → My Prospects → Export CSV → colle ici.<br>Colonnes : <code>First Name, Last Name, Job Title, Company Name, Email, Phone Number, LinkedIn URL</code></p>
           <textarea class="csv-textarea" id="csv-lusha" placeholder="Colle ici ton export CSV Lusha..."></textarea>
           <div style="margin-top:10px;display:flex;gap:8px">
-            <button class="btn btn-lusha" onclick="previewImport('lusha')">👁 Prévisualiser</button>
+            <label class="btn btn-outline" style="cursor:pointer">📁 Choisir un fichier<input type="file" accept=".csv,.txt" onchange="loadCSVFile('lusha',this)" style="display:none"></label><button class="btn btn-lusha" onclick="previewImport('lusha')">👁 Prévisualiser</button>
             <button class="btn btn-primary" onclick="importCSV('lusha')">✅ Importer dans le CRM</button>
           </div>
         </div>
@@ -741,7 +753,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
           <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Dans Apollo → People → Export → colle ici.<br>Colonnes : <code>First Name, Last Name, Email, Company, Title, Phone, LinkedIn URL, City</code></p>
           <textarea class="csv-textarea" id="csv-apollo" placeholder="Colle ici ton export CSV Apollo.io..."></textarea>
           <div style="margin-top:10px;display:flex;gap:8px">
-            <button class="btn btn-apollo" onclick="previewImport('apollo')">👁 Prévisualiser</button>
+            <label class="btn btn-outline" style="cursor:pointer">📁 Choisir un fichier<input type="file" accept=".csv,.txt" onchange="loadCSVFile('apollo',this)" style="display:none"></label><button class="btn btn-apollo" onclick="previewImport('apollo')">👁 Prévisualiser</button>
             <button class="btn btn-primary" onclick="importCSV('apollo')">✅ Importer dans le CRM</button>
           </div>
         </div>
@@ -749,7 +761,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
           <p style="font-size:13px;color:var(--muted);margin-bottom:10px">CSV libre — 1ère ligne = en-têtes. Colonnes reconnues automatiquement : <code>nom/name, email, tel/phone, société/company, poste/title, linkedin, notes, offre</code></p>
           <textarea class="csv-textarea" id="csv-custom" placeholder="Colle ici ton CSV (n'importe quel format)..."></textarea>
           <div style="margin-top:10px;display:flex;gap:8px">
-            <button class="btn btn-outline" onclick="previewImport('custom')">👁 Prévisualiser</button>
+            <label class="btn btn-outline" style="cursor:pointer">📁 Choisir un fichier<input type="file" accept=".csv,.txt" onchange="loadCSVFile('custom',this)" style="display:none"></label><button class="btn btn-outline" onclick="previewImport('custom')">👁 Prévisualiser</button>
             <button class="btn btn-primary" onclick="importCSV('custom')">✅ Importer dans le CRM</button>
           </div>
         </div>
@@ -1048,7 +1060,7 @@ function showTab(tab){
   const moreBtn=document.getElementById('more-btn');
   if(moreBtn) moreBtn.classList.toggle('has-active',!MAIN_TABS.includes(tab));
   closeMoreMenu();
-  if(tab==='dashboard')renderDashboard();if(tab==='planning')renderObjectifDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='pitch')renderPitch();if(tab==='documents')loadDocuments();if(tab==='settings')renderMembers();
+  if(tab==='dashboard')renderDashboard();if(tab==='planning')renderObjectifDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='pitch')renderPitch();if(tab==='documents')loadDocuments();if(tab==='settings')renderMembers();if(tab==='integrations')renderLushaKeyStatus();
 }
 function toggleMoreMenu(e){e.stopPropagation();document.getElementById('more-dropdown').classList.toggle('open');}
 function closeMoreMenu(){const d=document.getElementById('more-dropdown');if(d)d.classList.remove('open');}
@@ -1537,6 +1549,7 @@ function searchLinks(p){
   links+=`<a href="https://www.lusha.com/people-search/?firstName=${name}&company=${co}" target="_blank" class="btn btn-lusha btn-xs" onclick="event.stopPropagation()">💜</a>`;
   links+=`<a href="https://app.apollo.io/#/people?q_keywords=${name}&q_organization_name=${co}" target="_blank" class="btn btn-apollo btn-xs" onclick="event.stopPropagation()">🔵</a>`;
   if(p.societe)links+=`<a href="https://www.pappers.fr/recherche?q=${co}" target="_blank" class="btn btn-pappers btn-xs" onclick="event.stopPropagation()">🔴</a>`;
+  links+=`<button class="btn btn-lusha btn-xs" onclick="event.stopPropagation();enrichLusha(${p.id})" title="Enrichir via API Lusha">⚡</button>`;
   return links;
 }
 
@@ -1595,7 +1608,7 @@ function renderList(fp){
 }
 
 function changeStatut(id,s){prospects=prospects.map(p=>p.id===id?{...p,statut:s}:p);save('prospects',prospects);renderProspects();renderDashboard();}
-function viewProspect(id){const p=prospects.find(x=>x.id===id);if(!p)return;openModal('Fiche prospect',`<div class="grid-2" style="gap:10px;margin-bottom:12px"><div><div class="form-label">Nom</div><strong>${esc(p.nom)}</strong></div><div><div class="form-label">Poste</div>${esc(p.poste||'—')}</div><div><div class="form-label">Société</div>${esc(p.societe||'—')}</div><div><div class="form-label">Email</div>${p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:'—'}</div><div><div class="form-label">Téléphone</div>${esc(p.tel||'—')}</div><div><div class="form-label">Offre</div>${esc(p.offre)}</div><div><div class="form-label">Statut</div><span class="status-badge">${p.statut}</span></div><div><div class="form-label">Source</div>${esc(p.source||'Manuel')}</div><div><div class="form-label">Valeur</div>${p.valeur?p.valeur+'€':'—'}</div><div><div class="form-label">1er contact</div>${p.date||'—'}</div></div><div class="form-label">LinkedIn</div><div style="margin-bottom:10px">${p.linkedin?`<a href="${p.linkedin}" target="_blank">${p.linkedin}</a>`:'—'}</div><div class="form-label">Notes</div><div style="background:var(--light);border-radius:8px;padding:12px;font-size:13px;min-height:50px">${esc(p.notes||'Aucune note')}</div><div style="margin-top:12px;display:flex;gap:6px">${searchLinks(p)}</div>`,[{label:'Modifier',cls:'btn-primary',fn:`editProspect(${p.id});closeModal()`},{label:'Supprimer',cls:'btn-danger',fn:`deleteProspect(${p.id});closeModal()`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);}
+function viewProspect(id){const p=prospects.find(x=>x.id===id);if(!p)return;openModal('Fiche prospect',`<div class="grid-2" style="gap:10px;margin-bottom:12px"><div><div class="form-label">Nom</div><strong>${esc(p.nom)}</strong></div><div><div class="form-label">Poste</div>${esc(p.poste||'—')}</div><div><div class="form-label">Société</div>${esc(p.societe||'—')}</div><div><div class="form-label">Email</div>${p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:'—'}</div><div><div class="form-label">Téléphone</div>${esc(p.tel||'—')}</div><div><div class="form-label">Offre</div>${esc(p.offre)}</div><div><div class="form-label">Statut</div><span class="status-badge">${p.statut}</span></div><div><div class="form-label">Source</div>${esc(p.source||'Manuel')}</div><div><div class="form-label">Valeur</div>${p.valeur?p.valeur+'€':'—'}</div><div><div class="form-label">1er contact</div>${p.date||'—'}</div></div><div class="form-label">LinkedIn</div><div style="margin-bottom:10px">${p.linkedin?`<a href="${p.linkedin}" target="_blank">${p.linkedin}</a>`:'—'}</div><div class="form-label">Notes</div><div style="background:var(--light);border-radius:8px;padding:12px;font-size:13px;min-height:50px">${esc(p.notes||'Aucune note')}</div><div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">${searchLinks(p)}<button class="btn btn-lusha btn-sm" onclick="enrichLusha(${p.id})">⚡ Enrichir via Lusha</button></div>`,[{label:'Modifier',cls:'btn-primary',fn:`editProspect(${p.id});closeModal()`},{label:'Supprimer',cls:'btn-danger',fn:`deleteProspect(${p.id});closeModal()`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);}
 function openAddProspect(){openProspectModal(null);}
 function editProspect(id){openProspectModal(prospects.find(p=>p.id===id));}
 function openProspectModal(p){
@@ -3107,6 +3120,40 @@ function deleteMarche(id){if(!confirm('Supprimer cet AO ?'))return;marches=march
 // ═══ INTEGRATIONS — EXPORT ══════════════════════════════════
 function dlCSV(rows,filename){const csv=rows.map(r=>r.map(v=>'"'+(v||'').toString().replace(/"/g,'""')+'"').join(',')).join('\n');const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();toast('✅ Export '+filename+' téléchargé');}
 function splitName(nom){const parts=(nom||'').trim().split(' ');return[parts[0]||'',parts.slice(1).join(' ')];}
+// ═══ LUSHA — Enrichissement automatique via API + upload import ═══════════
+function getLushaKey(){return localStorage.getItem('kipsafe_lusha_key')||'';}
+function saveLushaKey(){const i=document.getElementById('lusha-api-key');const k=(i?i.value:'').trim();if(!k){toast('⚠️ Colle ta clé API Lusha');return;}localStorage.setItem('kipsafe_lusha_key',k);if(i)i.value='';renderLushaKeyStatus();toast('🔑 Clé Lusha enregistrée sur cet appareil');}
+function clearLushaKey(){localStorage.removeItem('kipsafe_lusha_key');renderLushaKeyStatus();toast('Clé Lusha supprimée');}
+function renderLushaKeyStatus(){const el=document.getElementById('lusha-key-status');if(!el)return;const k=getLushaKey();el.innerHTML=k?`<span style="color:var(--green);font-weight:800">✓ Clé enregistrée</span> <span style="color:var(--muted)">(${esc(k.slice(0,4))}••••)</span> <button class="btn btn-outline btn-xs" onclick="clearLushaKey()" style="margin-left:6px">Retirer</button>`:'<span style="color:var(--muted)">Aucune clé configurée — l\'enrichissement auto est désactivé.</span>';}
+async function enrichLusha(id){
+  const p=prospects.find(x=>x.id===id); if(!p)return;
+  const key=getLushaKey();
+  if(!key){ if(confirm('Aucune clé API Lusha configurée.\n\nOuvrir la page Intégrations pour la coller ?')){if(typeof closeModal==='function')closeModal();showTab('integrations');} return; }
+  const parts=(typeof splitName==='function')?splitName(p.nom):[(p.nom||'').split(' ')[0],(p.nom||'').split(' ').slice(1).join(' ')];
+  const fn=parts[0]||'', ln=parts[1]||'';
+  if(!fn||!(p.societe||'').trim()){ toast('⚠️ Lusha a besoin du prénom/nom + société'); return; }
+  toast('💜 Enrichissement Lusha en cours…');
+  try{
+    const url='https://api.lusha.com/v2/person?firstName='+encodeURIComponent(fn)+'&lastName='+encodeURIComponent(ln)+'&companyName='+encodeURIComponent(p.societe||'');
+    const res=await fetch(url,{method:'GET',headers:{'api_key':key,'Accept':'application/json'}});
+    if(res.status===401||res.status===403){toast('⚠️ Clé Lusha invalide/non autorisée ('+res.status+')');return;}
+    if(!res.ok){toast('⚠️ Lusha a répondu '+res.status);return;}
+    const j=await res.json(); const d=(j&&j.data)?j.data:j;
+    const emails=[].concat(d.emailAddresses||d.email_addresses||d.emails||[]).map(e=>(e&&(e.email||e.address||e.value))||e).filter(x=>typeof x==='string');
+    const phones=[].concat(d.phoneNumbers||d.phone_numbers||d.phones||[]).map(e=>(e&&(e.number||e.phone||e.value))||e).filter(x=>typeof x==='string');
+    if(!emails.length&&!phones.length){toast('Lusha n\'a pas trouvé de coordonnées pour ce contact');return;}
+    const changed=[]; if(emails[0]&&!p.email)changed.push('email'); if(phones[0]&&!p.tel)changed.push('téléphone');
+    const note='[Lusha '+localDate()+'] '+(emails.join(', ')||'—')+(phones.length?' · '+phones.join(', '):'');
+    prospects=prospects.map(x=>x.id!==id?x:{...x,email:x.email||emails[0]||'',tel:x.tel||phones[0]||'',notes:((x.notes||'')+'\n'+note).trim()});
+    save('prospects',prospects); if(typeof renderProspects==='function')renderProspects();
+    toast('✅ Enrichi via Lusha'+(changed.length?' ('+changed.join(', ')+')':''));
+    if(typeof closeModal==='function')closeModal(); if(typeof viewProspect==='function')viewProspect(id);
+  }catch(e){
+    toast('❌ Appel Lusha bloqué par le navigateur (CORS) ou réseau. L\'API Lusha ne s\'appelle pas toujours depuis un site web statique — il faudrait un petit relais serveur.');
+    console.warn('Lusha enrich error',e);
+  }
+}
+function loadCSVFile(source,input){const fl=input.files&&input.files[0];if(!fl)return;const r=new FileReader();r.onload=e=>{const ta=document.getElementById('csv-'+source);if(ta){ta.value=e.target.result;previewImport(source);}};r.readAsText(fl);input.value='';}
 function exportLinkedIn(){const h=['First Name','Last Name','Email Address','Phone','Company Name','Title','LinkedIn Member URL','Country','City'];const rows=prospects.filter(p=>p.statut!=='Perdu').map(p=>{const[fn,ln]=splitName(p.nom);return[fn,ln,p.email||'',p.tel||'',p.societe||'',p.poste||'',p.linkedin||'','France',''];});dlCSV([h,...rows],'kipsafe_linkedin_salesnavigator.csv');}
 function exportLusha(){const h=['First Name','Last Name','Job Title','Company Name','Email','Phone Number','LinkedIn URL','Company Website','Industry','Country'];const rows=prospects.map(p=>{const[fn,ln]=splitName(p.nom);return[fn,ln,p.poste||'',p.societe||'',p.email||'',p.tel||'',p.linkedin||'','','Cybersécurité / IT','France'];});dlCSV([h,...rows],'kipsafe_lusha_import.csv');}
 function exportApollo(){const h=['First Name','Last Name','Email','Company','Title','Phone','LinkedIn URL','City','State','Country','Industry','Employees'];const rows=prospects.map(p=>{const[fn,ln]=splitName(p.nom);return[fn,ln,p.email||'',p.societe||'',p.poste||'',p.tel||'',p.linkedin||'','','','France','IT Security',''];});dlCSV([h,...rows],'kipsafe_apollo_import.csv');}
