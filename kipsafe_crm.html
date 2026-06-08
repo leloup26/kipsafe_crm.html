@@ -3155,7 +3155,10 @@ async function enrichLusha(id){
     const res=await fetch(url,opts);
     if(res.status===401||res.status===403){toast('⚠️ Clé Lusha invalide/non autorisée ('+res.status+')');return;}
     if(!res.ok){toast('⚠️ Lusha a répondu '+res.status);return;}
-    const j=await res.json(); const d=(j&&j.data)?j.data:j;
+    const j=await res.json();
+    const c=(j&&j.contact)?j.contact:j;
+    if(c&&c.error){const en=((c.error.name||c.error.message||'')+'');toast('⚠️ Lusha : '+(en.indexOf('COMPLIANCE')>=0?'contact non communicable (compliance Lusha)':(en||'aucune donnée pour ce contact')));return;}
+    const d=(c&&c.data)?c.data:(c||{});
     const emails=[].concat(d.emailAddresses||d.email_addresses||d.emails||[]).map(e=>(e&&(e.email||e.address||e.value))||e).filter(x=>typeof x==='string');
     const phones=[].concat(d.phoneNumbers||d.phone_numbers||d.phones||[]).map(e=>(e&&(e.number||e.phone||e.value))||e).filter(x=>typeof x==='string');
     if(!emails.length&&!phones.length){toast('Lusha n\'a pas trouvé de coordonnées pour ce contact');return;}
