@@ -715,13 +715,21 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
       <!-- ENRICHISSEMENT API LUSHA -->
       <div class="section-title">⚡ Enrichissement automatique (API Lusha)</div>
       <div class="card" style="margin-bottom:24px">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Avec une <strong>clé API Lusha</strong> (offre payante), le bouton <strong>⚡ Enrichir</strong> sur chaque contact récupère email pro + téléphone automatiquement. Ta clé reste <strong>sur cet appareil</strong> (jamais publiée dans le fichier).</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Lusha bloque les appels directs depuis un navigateur. Déploie le <strong>mini-relais Cloudflare</strong> (gratuit, ~5 min) puis colle son URL ici. Ensuite, le bouton <strong>⚡ Enrichir</strong> de chaque contact récupère email + téléphone (issus de LinkedIn). <strong>Ta clé Lusha reste dans le relais, jamais dans le CRM.</strong></div>
+        <label class="form-label">🔗 URL du relais (Cloudflare Worker)</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <input id="lusha-api-key" class="form-input" type="password" placeholder="Colle ta clé API Lusha ici" style="flex:1;min-width:220px">
-          <button class="btn btn-lusha" onclick="saveLushaKey()">🔑 Enregistrer la clé</button>
+          <input id="lusha-relay" class="form-input" placeholder="https://lusha-relay.xxx.workers.dev" style="flex:1;min-width:240px">
+          <button class="btn btn-lusha" onclick="saveLushaRelay()">🔗 Connecter le relais</button>
+          <button class="btn btn-outline" onclick="testLushaRelay()">🧪 Tester</button>
         </div>
         <div id="lusha-key-status" style="margin-top:8px;font-size:12px"></div>
-        <div style="margin-top:10px;font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px">⚠️ Lusha peut bloquer les appels directs depuis un navigateur (sécurité CORS). Si l'enrichissement échoue, c'est cette limite. Où trouver ta clé : Lusha → Settings → API.</div>
+        <details style="margin-top:10px"><summary style="font-size:12px;color:var(--muted);cursor:pointer">Mode direct (clé dans le navigateur — souvent bloqué par CORS)</summary>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
+            <input id="lusha-api-key" class="form-input" type="password" placeholder="Clé API Lusha" style="flex:1;min-width:220px">
+            <button class="btn btn-outline" onclick="saveLushaKey()">🔑 Enregistrer la clé</button>
+          </div>
+        </details>
+        <div style="margin-top:10px;font-size:11px;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px">📄 Le code du relais est dans <strong>Téléchargements/lusha-relay-worker.js</strong>. Étapes : crée un Worker sur Cloudflare → colle le code → Settings → Variables → ajoute <code>LUSHA_API_KEY</code> (ta clé) → Déployer → copie l'URL ici.</div>
       </div>
 
       <!-- IMPORT -->
@@ -3122,20 +3130,29 @@ function dlCSV(rows,filename){const csv=rows.map(r=>r.map(v=>'"'+(v||'').toStrin
 function splitName(nom){const parts=(nom||'').trim().split(' ');return[parts[0]||'',parts.slice(1).join(' ')];}
 // ═══ LUSHA — Enrichissement automatique via API + upload import ═══════════
 function getLushaKey(){return localStorage.getItem('kipsafe_lusha_key')||'';}
+function getLushaRelay(){return localStorage.getItem('kipsafe_lusha_relay')||'';}
+function saveLushaRelay(){const i=document.getElementById('lusha-relay');let u=(i?i.value:'').trim();if(u&&!/^https?:\/\//.test(u))u='https://'+u;if(!u){toast('⚠️ Colle l\'URL de ton relais');return;}localStorage.setItem('kipsafe_lusha_relay',u);if(i)i.value='';renderLushaKeyStatus();toast('🔗 Relais Lusha enregistré');}
+function clearLushaRelay(){localStorage.removeItem('kipsafe_lusha_relay');renderLushaKeyStatus();toast('Relais retiré');}
 function saveLushaKey(){const i=document.getElementById('lusha-api-key');const k=(i?i.value:'').trim();if(!k){toast('⚠️ Colle ta clé API Lusha');return;}localStorage.setItem('kipsafe_lusha_key',k);if(i)i.value='';renderLushaKeyStatus();toast('🔑 Clé Lusha enregistrée sur cet appareil');}
 function clearLushaKey(){localStorage.removeItem('kipsafe_lusha_key');renderLushaKeyStatus();toast('Clé Lusha supprimée');}
-function renderLushaKeyStatus(){const el=document.getElementById('lusha-key-status');if(!el)return;const k=getLushaKey();el.innerHTML=k?`<span style="color:var(--green);font-weight:800">✓ Clé enregistrée</span> <span style="color:var(--muted)">(${esc(k.slice(0,4))}••••)</span> <button class="btn btn-outline btn-xs" onclick="clearLushaKey()" style="margin-left:6px">Retirer</button>`:'<span style="color:var(--muted)">Aucune clé configurée — l\'enrichissement auto est désactivé.</span>';}
+function renderLushaKeyStatus(){const el=document.getElementById('lusha-key-status');if(!el)return;const rl=getLushaRelay();const k=getLushaKey();let h='';
+  h+=rl?`<div style="color:var(--green);font-weight:800">✓ Relais connecté <span style="color:var(--muted);font-weight:400">(${esc(rl)})</span> <button class="btn btn-outline btn-xs" onclick="clearLushaRelay()" style="margin-left:6px">Retirer</button></div>`:'<div style="color:var(--muted)">Relais non configuré — colle l\'URL de ton Worker Cloudflare ci-dessus.</div>';
+  if(k) h+=`<div style="margin-top:4px;color:var(--secondary)">Clé en mode direct enregistrée (${esc(k.slice(0,4))}••••) <button class="btn btn-outline btn-xs" onclick="clearLushaKey()" style="margin-left:6px">Retirer</button></div>`;
+  el.innerHTML=h;}
 async function enrichLusha(id){
   const p=prospects.find(x=>x.id===id); if(!p)return;
   const key=getLushaKey();
-  if(!key){ if(confirm('Aucune clé API Lusha configurée.\n\nOuvrir la page Intégrations pour la coller ?')){if(typeof closeModal==='function')closeModal();showTab('integrations');} return; }
+  if(!getLushaRelay()&&!key){ if(confirm('Enrichissement Lusha non configuré.\n\nOuvrir la page Intégrations pour brancher ton relais ?')){if(typeof closeModal==='function')closeModal();showTab('integrations');} return; }
   const parts=(typeof splitName==='function')?splitName(p.nom):[(p.nom||'').split(' ')[0],(p.nom||'').split(' ').slice(1).join(' ')];
   const fn=parts[0]||'', ln=parts[1]||'';
   if(!fn||!(p.societe||'').trim()){ toast('⚠️ Lusha a besoin du prénom/nom + société'); return; }
   toast('💜 Enrichissement Lusha en cours…');
   try{
-    const url='https://api.lusha.com/v2/person?firstName='+encodeURIComponent(fn)+'&lastName='+encodeURIComponent(ln)+'&companyName='+encodeURIComponent(p.societe||'');
-    const res=await fetch(url,{method:'GET',headers:{'api_key':key,'Accept':'application/json'}});
+    const relay=getLushaRelay();
+    let url,opts;
+    if(relay){ url=relay+(relay.indexOf('?')<0?'?':'&')+'firstName='+encodeURIComponent(fn)+'&lastName='+encodeURIComponent(ln)+'&company='+encodeURIComponent(p.societe||''); opts={method:'GET'}; }
+    else { url='https://api.lusha.com/v2/person?firstName='+encodeURIComponent(fn)+'&lastName='+encodeURIComponent(ln)+'&companyName='+encodeURIComponent(p.societe||''); opts={method:'GET',headers:{'api_key':key,'Accept':'application/json'}}; }
+    const res=await fetch(url,opts);
     if(res.status===401||res.status===403){toast('⚠️ Clé Lusha invalide/non autorisée ('+res.status+')');return;}
     if(!res.ok){toast('⚠️ Lusha a répondu '+res.status);return;}
     const j=await res.json(); const d=(j&&j.data)?j.data:j;
@@ -3149,9 +3166,19 @@ async function enrichLusha(id){
     toast('✅ Enrichi via Lusha'+(changed.length?' ('+changed.join(', ')+')':''));
     if(typeof closeModal==='function')closeModal(); if(typeof viewProspect==='function')viewProspect(id);
   }catch(e){
-    toast('❌ Appel Lusha bloqué par le navigateur (CORS) ou réseau. L\'API Lusha ne s\'appelle pas toujours depuis un site web statique — il faudrait un petit relais serveur.');
+    toast(getLushaRelay()?'❌ Relais injoignable. Vérifie l\'URL du Worker et que LUSHA_API_KEY y est bien configurée.':'❌ Lusha bloque les appels directs (CORS). Configure le relais Cloudflare dans Intégrations pour que ça marche.');
     console.warn('Lusha enrich error',e);
   }
+}
+async function testLushaRelay(){
+  const i=document.getElementById('lusha-relay');let rl=(i&&i.value.trim())||getLushaRelay();if(rl&&!/^https?:\/\//.test(rl))rl='https://'+rl;
+  if(!rl){toast('⚠️ Colle d\'abord l\'URL du relais');return;}
+  toast('🧪 Test du relais…');
+  try{
+    const res=await fetch(rl+(rl.indexOf('?')<0?'?':'&')+'firstName=Bill&lastName=Gates&company=Microsoft');
+    if(res.ok){toast('✅ Relais joignable ! (Lusha a répondu '+res.status+')');}
+    else{const t=(await res.text()).slice(0,120);toast('⚠️ Relais joignable mais Lusha/clé: '+res.status+' '+t);}
+  }catch(e){toast('❌ Relais injoignable (URL incorrecte ou pas encore déployé)');}
 }
 function loadCSVFile(source,input){const fl=input.files&&input.files[0];if(!fl)return;const r=new FileReader();r.onload=e=>{const ta=document.getElementById('csv-'+source);if(ta){ta.value=e.target.result;previewImport(source);}};r.readAsText(fl);input.value='';}
 function exportLinkedIn(){const h=['First Name','Last Name','Email Address','Phone','Company Name','Title','LinkedIn Member URL','Country','City'];const rows=prospects.filter(p=>p.statut!=='Perdu').map(p=>{const[fn,ln]=splitName(p.nom);return[fn,ln,p.email||'',p.tel||'',p.societe||'',p.poste||'',p.linkedin||'','France',''];});dlCSV([h,...rows],'kipsafe_linkedin_salesnavigator.csv');}
