@@ -1558,7 +1558,7 @@ function searchLinks(p){
   links+=`<a href="https://www.lusha.com/people-search/?firstName=${name}&company=${co}" target="_blank" class="btn btn-lusha btn-xs" onclick="event.stopPropagation()">💜</a>`;
   links+=`<a href="https://app.apollo.io/#/people?q_keywords=${name}&q_organization_name=${co}" target="_blank" class="btn btn-apollo btn-xs" onclick="event.stopPropagation()">🔵</a>`;
   if(p.societe)links+=`<a href="https://www.pappers.fr/recherche?q=${co}" target="_blank" class="btn btn-pappers btn-xs" onclick="event.stopPropagation()">🔴</a>`;
-  links+=`<button class="btn btn-lusha btn-xs" onclick="event.stopPropagation();enrichLusha(${p.id})" title="Enrichir via API Lusha">⚡</button>`;
+  links+=``;
   return links;
 }
 
@@ -1617,7 +1617,17 @@ function renderList(fp){
 }
 
 function changeStatut(id,s){prospects=prospects.map(p=>p.id===id?{...p,statut:s}:p);save('prospects',prospects);renderProspects();renderDashboard();}
-function viewProspect(id){const p=prospects.find(x=>x.id===id);if(!p)return;openModal('Fiche prospect',`<div class="grid-2" style="gap:10px;margin-bottom:12px"><div><div class="form-label">Nom</div><strong>${esc(p.nom)}</strong></div><div><div class="form-label">Poste</div>${esc(p.poste||'—')}</div><div><div class="form-label">Société</div>${esc(p.societe||'—')}</div><div><div class="form-label">Email</div>${p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:'—'}</div><div><div class="form-label">Téléphone</div>${esc(p.tel||'—')}</div><div><div class="form-label">Offre</div>${esc(p.offre)}</div><div><div class="form-label">Statut</div><span class="status-badge">${p.statut}</span></div><div><div class="form-label">Source</div>${esc(p.source||'Manuel')}</div><div><div class="form-label">Valeur</div>${p.valeur?p.valeur+'€':'—'}</div><div><div class="form-label">1er contact</div>${p.date||'—'}</div></div><div class="form-label">LinkedIn</div><div style="margin-bottom:10px">${p.linkedin?`<a href="${p.linkedin}" target="_blank">${p.linkedin}</a>`:'—'}</div><div class="form-label">Notes</div><div style="background:var(--light);border-radius:8px;padding:12px;font-size:13px;min-height:50px">${esc(p.notes||'Aucune note')}</div><div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">${searchLinks(p)}<button class="btn btn-lusha btn-sm" onclick="enrichLusha(${p.id})">⚡ Enrichir (Lusha + autres)</button></div>`,[{label:'Modifier',cls:'btn-primary',fn:`editProspect(${p.id});closeModal()`},{label:'Supprimer',cls:'btn-danger',fn:`deleteProspect(${p.id});closeModal()`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);}
+function viewProspect(id){const p=prospects.find(x=>x.id===id);if(!p)return;openModal('Fiche prospect',`<div class="grid-2" style="gap:10px;margin-bottom:12px"><div><div class="form-label">Nom</div><strong>${esc(p.nom)}</strong></div><div><div class="form-label">Poste</div>${esc(p.poste||'—')}</div><div><div class="form-label">Société</div>${esc(p.societe||'—')}</div><div><div class="form-label">Email</div>${p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:'—'}</div><div><div class="form-label">Téléphone</div>${esc(p.tel||'—')}</div><div><div class="form-label">Offre</div>${esc(p.offre)}</div><div><div class="form-label">Statut</div><span class="status-badge">${p.statut}</span></div><div><div class="form-label">Source</div>${esc(p.source||'Manuel')}</div><div><div class="form-label">Valeur</div>${p.valeur?p.valeur+'€':'—'}</div><div><div class="form-label">1er contact</div>${p.date||'—'}</div></div><div class="form-label">LinkedIn</div><div style="margin-bottom:10px">${p.linkedin?`<a href="${p.linkedin}" target="_blank">${p.linkedin}</a>`:'—'}</div><div class="form-label">Notes</div><div style="background:var(--light);border-radius:8px;padding:12px;font-size:13px;min-height:50px">${esc(p.notes||'Aucune note')}</div><div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+      <div style="font-size:11px;font-weight:800;color:var(--secondary);margin-bottom:6px">⚡ ENRICHIR — récupérer email + téléphone</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn btn-sm" style="background:#8B5CF6;color:#fff" onclick="enrichLusha(${p.id},'lusha')">💜 Lusha</button>
+        <button class="btn btn-sm" style="background:#2563EB;color:#fff" onclick="enrichLusha(${p.id},'apollo')">🔵 Apollo</button>
+        <button class="btn btn-sm" style="background:#16A34A;color:#fff" onclick="enrichLusha(${p.id},'hunter')">🟢 Hunter</button>
+        <button class="btn btn-sm btn-primary" onclick="enrichShowAll(${p.id})">🔎 Tout interroger &amp; comparer</button>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">🔗 RECHERCHE MANUELLE (ouvre le site)</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${searchLinks(p)}</div>
+    </div>`,[{label:'Modifier',cls:'btn-primary',fn:`editProspect(${p.id});closeModal()`},{label:'Supprimer',cls:'btn-danger',fn:`deleteProspect(${p.id});closeModal()`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);}
 function openAddProspect(){openProspectModal(null);}
 let _enrichRunning=false;
 async function enrichAllLusha(){
@@ -3176,7 +3186,7 @@ function renderLushaKeyStatus(){const el=document.getElementById('lusha-key-stat
   h+=rl?`<div style="color:var(--green);font-weight:800">✓ Relais connecté <span style="color:var(--muted);font-weight:400">(${esc(rl)})</span> <button class="btn btn-outline btn-xs" onclick="clearLushaRelay()" style="margin-left:6px">Retirer</button></div>`:'<div style="color:var(--muted)">Relais non configuré — colle l\'URL de ton Worker Cloudflare ci-dessus.</div>';
   if(k) h+=`<div style="margin-top:4px;color:var(--secondary)">Clé en mode direct enregistrée (${esc(k.slice(0,4))}••••) <button class="btn btn-outline btn-xs" onclick="clearLushaKey()" style="margin-left:6px">Retirer</button></div>`;
   el.innerHTML=h;}
-async function enrichLusha(id){
+async function enrichLusha(id,source){
   const p=prospects.find(x=>x.id===id); if(!p)return;
   const key=getLushaKey();
   if(!getLushaRelay()&&!key){ if(confirm('Enrichissement Lusha non configuré.\n\nOuvrir la page Intégrations pour brancher ton relais ?')){if(typeof closeModal==='function')closeModal();showTab('integrations');} return; }
@@ -3187,7 +3197,7 @@ async function enrichLusha(id){
   try{
     const relay=getLushaRelay();
     let url,opts;
-    if(relay){ url=relay+(relay.indexOf('?')<0?'?':'&')+'firstName='+encodeURIComponent(fn)+'&lastName='+encodeURIComponent(ln)+'&company='+encodeURIComponent(p.societe||''); opts={method:'GET'}; }
+    if(relay){ url=relay+(relay.indexOf('?')<0?'?':'&')+'firstName='+encodeURIComponent(fn)+'&lastName='+encodeURIComponent(ln)+'&company='+encodeURIComponent(p.societe||'')+(source?'&source='+encodeURIComponent(source):''); opts={method:'GET'}; }
     else { url='https://api.lusha.com/v2/person?firstName='+encodeURIComponent(fn)+'&lastName='+encodeURIComponent(ln)+'&companyName='+encodeURIComponent(p.societe||''); opts={method:'GET',headers:{'api_key':key,'Accept':'application/json'}}; }
     const res=await fetch(url,opts);
     if(res.status===401||res.status===403){toast('⚠️ Clé Lusha invalide/non autorisée ('+res.status+')');return;}
@@ -3231,6 +3241,36 @@ async function testLushaRelay(){
     if(res.ok){toast('✅ Relais joignable ! (Lusha a répondu '+res.status+')');}
     else{const t=(await res.text()).slice(0,120);toast('⚠️ Relais joignable mais Lusha/clé: '+res.status+' '+t);}
   }catch(e){toast('❌ Relais injoignable (URL incorrecte ou pas encore déployé)');}
+}
+async function enrichShowAll(id){
+  const p=prospects.find(x=>x.id===id); if(!p)return;
+  const relay=getLushaRelay();
+  if(!relay){ if(confirm(`Le mode "Tout interroger" necessite ton relais Cloudflare. Ouvrir la page Integrations ?`)){if(typeof closeModal==='function')closeModal();showTab('integrations');} return; }
+  const sp=splitName(p.nom); const fn=sp[0]||'',ln=sp[1]||'';
+  if(!fn||!(p.societe||'').trim()){ toast(`Il faut un prenom/nom + une societe`); return; }
+  toast(`Interrogation de toutes les plateformes...`);
+  try{
+    const url=relay+(relay.indexOf('?')<0?'?':'&')+'firstName='+encodeURIComponent(fn)+'&lastName='+encodeURIComponent(ln)+'&company='+encodeURIComponent(p.societe||'')+'&source=all';
+    const res=await fetch(url); const j=await res.json();
+    const bp=(j.multi&&j.multi.byProvider)||{};
+    const names={lusha:'💜 Lusha',apollo:'🔵 Apollo',hunter:'🟢 Hunter'};
+    let rows='';
+    ['lusha','apollo','hunter'].forEach(k=>{
+      const r=bp[k]; if(!r)return;
+      let info='',can=false;
+      if(r.status==='non configure'){info='<span style="color:var(--muted)">non configuré (ajoute sa clé dans le relais)</span>';}
+      else if(r.email||r.phone){can=true;info=(r.email?('✉️ '+esc(r.email)):'')+((r.email&&r.phone)?' · ':'')+(r.phone?('📞 '+esc(r.phone)):'');}
+      else {info='<span style="color:var(--muted)">rien trouvé'+(r.status&&r.status!=='erreur'?' ('+esc(r.status)+')':'')+'</span>';}
+      const ev=(r.email||'').replace(/[\\'"<>]/g,''); const pv=(r.phone||'').replace(/[\\'"<>]/g,'');
+      rows+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px"><div><div style="font-weight:700;font-size:13px">${names[k]}</div><div style="font-size:12px;margin-top:2px">${info}</div></div>${can?`<button class="btn btn-sm btn-primary" onclick="applyEnrich(${id},'${ev}','${pv}')">Appliquer</button>`:''}</div>`;
+    });
+    if(!rows) rows='<div style="color:var(--muted)">Aucune plateforme connectée n a répondu.</div>';
+    openModal('🔎 Résultats — '+esc(p.nom),`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Société : ${esc(p.societe||'—')}</div>${rows}`,[{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
+  }catch(e){ toast(`Relais injoignable`); }
+}
+function applyEnrich(id,email,phone){
+  prospects=prospects.map(x=>x.id!==id?x:{...x,email:x.email||email||'',tel:x.tel||phone||'',notes:((x.notes||'')+'\n[enrich '+localDate()+'] '+(email||'')+(phone?' · '+phone:'')).trim()});
+  save('prospects',prospects); if(typeof renderProspects==='function')renderProspects(); closeModal(); toast('✅ Appliqué au contact'); if(typeof viewProspect==='function')viewProspect(id);
 }
 function loadCSVFile(source,input){const fl=input.files&&input.files[0];if(!fl)return;const r=new FileReader();r.onload=e=>{const ta=document.getElementById('csv-'+source);if(ta){ta.value=e.target.result;previewImport(source);}};r.readAsText(fl);input.value='';}
 function exportLinkedIn(){const h=['First Name','Last Name','Email Address','Phone','Company Name','Title','LinkedIn Member URL','Country','City'];const rows=prospects.filter(p=>p.statut!=='Perdu').map(p=>{const[fn,ln]=splitName(p.nom);return[fn,ln,p.email||'',p.tel||'',p.societe||'',p.poste||'',p.linkedin||'','France',''];});dlCSV([h,...rows],'kipsafe_linkedin_salesnavigator.csv');}
