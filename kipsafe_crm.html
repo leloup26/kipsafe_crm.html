@@ -1616,7 +1616,7 @@ function renderList(fp){
 }
 
 function changeStatut(id,s){prospects=prospects.map(p=>p.id===id?{...p,statut:s}:p);save('prospects',prospects);renderProspects();renderDashboard();}
-function viewProspect(id){const p=prospects.find(x=>x.id===id);if(!p)return;openModal('Fiche prospect',`<div class="grid-2" style="gap:10px;margin-bottom:12px"><div><div class="form-label">Nom</div><strong>${esc(p.nom)}</strong></div><div><div class="form-label">Poste</div>${esc(p.poste||'—')}</div><div><div class="form-label">Société</div>${esc(p.societe||'—')}</div><div><div class="form-label">Email</div>${p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:'—'}</div><div><div class="form-label">Téléphone</div>${esc(p.tel||'—')}</div><div><div class="form-label">Offre</div>${esc(p.offre)}</div><div><div class="form-label">Statut</div><span class="status-badge">${p.statut}</span></div><div><div class="form-label">Source</div>${esc(p.source||'Manuel')}</div><div><div class="form-label">Valeur</div>${p.valeur?p.valeur+'€':'—'}</div><div><div class="form-label">1er contact</div>${p.date||'—'}</div></div><div class="form-label">LinkedIn</div><div style="margin-bottom:10px">${p.linkedin?`<a href="${p.linkedin}" target="_blank">${p.linkedin}</a>`:'—'}</div><div class="form-label">Notes</div><div style="background:var(--light);border-radius:8px;padding:12px;font-size:13px;min-height:50px">${esc(p.notes||'Aucune note')}</div><div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">${searchLinks(p)}<button class="btn btn-lusha btn-sm" onclick="enrichLusha(${p.id})">⚡ Enrichir via Lusha</button></div>`,[{label:'Modifier',cls:'btn-primary',fn:`editProspect(${p.id});closeModal()`},{label:'Supprimer',cls:'btn-danger',fn:`deleteProspect(${p.id});closeModal()`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);}
+function viewProspect(id){const p=prospects.find(x=>x.id===id);if(!p)return;openModal('Fiche prospect',`<div class="grid-2" style="gap:10px;margin-bottom:12px"><div><div class="form-label">Nom</div><strong>${esc(p.nom)}</strong></div><div><div class="form-label">Poste</div>${esc(p.poste||'—')}</div><div><div class="form-label">Société</div>${esc(p.societe||'—')}</div><div><div class="form-label">Email</div>${p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:'—'}</div><div><div class="form-label">Téléphone</div>${esc(p.tel||'—')}</div><div><div class="form-label">Offre</div>${esc(p.offre)}</div><div><div class="form-label">Statut</div><span class="status-badge">${p.statut}</span></div><div><div class="form-label">Source</div>${esc(p.source||'Manuel')}</div><div><div class="form-label">Valeur</div>${p.valeur?p.valeur+'€':'—'}</div><div><div class="form-label">1er contact</div>${p.date||'—'}</div></div><div class="form-label">LinkedIn</div><div style="margin-bottom:10px">${p.linkedin?`<a href="${p.linkedin}" target="_blank">${p.linkedin}</a>`:'—'}</div><div class="form-label">Notes</div><div style="background:var(--light);border-radius:8px;padding:12px;font-size:13px;min-height:50px">${esc(p.notes||'Aucune note')}</div><div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">${searchLinks(p)}<button class="btn btn-lusha btn-sm" onclick="enrichLusha(${p.id})">⚡ Enrichir (Lusha + autres)</button></div>`,[{label:'Modifier',cls:'btn-primary',fn:`editProspect(${p.id});closeModal()`},{label:'Supprimer',cls:'btn-danger',fn:`deleteProspect(${p.id});closeModal()`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);}
 function openAddProspect(){openProspectModal(null);}
 function editProspect(id){openProspectModal(prospects.find(p=>p.id===id));}
 function openProspectModal(p){
@@ -3156,6 +3156,18 @@ async function enrichLusha(id){
     if(res.status===401||res.status===403){toast('⚠️ Clé Lusha invalide/non autorisée ('+res.status+')');return;}
     if(!res.ok){toast('⚠️ Lusha a répondu '+res.status);return;}
     const j=await res.json();
+    if(j&&j.multi){
+      const mm=j.multi;
+      if(!mm.email&&!mm.phone){toast('🔎 Aucune coordonnée trouvée'+((mm.tried&&mm.tried.length)?' ('+mm.tried.join(', ')+' essayés)':''));return;}
+      const ch=[]; if(mm.email&&!p.email)ch.push('email'); if(mm.phone&&!p.tel)ch.push('téléphone');
+      const src=(mm.sources&&mm.sources.length)?mm.sources.join(', '):'multi-sources';
+      const note2='['+src+' '+localDate()+'] '+(mm.email||'')+(mm.phone?' · '+mm.phone:'');
+      prospects=prospects.map(x=>x.id!==id?x:{...x,email:x.email||mm.email||'',tel:x.tel||mm.phone||'',notes:((x.notes||'')+'\n'+note2).trim()});
+      save('prospects',prospects); if(typeof renderProspects==='function')renderProspects();
+      toast('✅ Enrichi ('+src+')'+(ch.length?' — '+ch.join(', '):''));
+      if(typeof closeModal==='function')closeModal(); if(typeof viewProspect==='function')viewProspect(id);
+      return;
+    }
     const c=(j&&j.contact)?j.contact:j;
     if(c&&c.error){const en=((c.error.name||c.error.message||'')+'').toUpperCase();let msg=en||'aucune donnée';if(en.indexOf('COMPLIANCE')>=0)msg='contact protégé (compliance Lusha)';else if(en.indexOf('EMPTY')>=0||en.indexOf('NOT_FOUND')>=0||en.indexOf('NO_')>=0)msg='aucune coordonnee trouvee pour ce contact';else if(en.indexOf('CREDIT')>=0)msg='crédits Lusha épuisés';toast('💜 Lusha : '+msg);return;}
     const d=(c&&c.data)?c.data:(c||{});
