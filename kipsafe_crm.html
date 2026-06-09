@@ -3157,7 +3157,7 @@ async function enrichLusha(id){
     if(!res.ok){toast('⚠️ Lusha a répondu '+res.status);return;}
     const j=await res.json();
     const c=(j&&j.contact)?j.contact:j;
-    if(c&&c.error){const en=((c.error.name||c.error.message||'')+'');toast('⚠️ Lusha : '+(en.indexOf('COMPLIANCE')>=0?'contact non communicable (compliance Lusha)':(en||'aucune donnée pour ce contact')));return;}
+    if(c&&c.error){const en=((c.error.name||c.error.message||'')+'').toUpperCase();let msg=en||'aucune donnée';if(en.indexOf('COMPLIANCE')>=0)msg='contact protégé (compliance Lusha)';else if(en.indexOf('EMPTY')>=0||en.indexOf('NOT_FOUND')>=0||en.indexOf('NO_')>=0)msg='aucune coordonnée trouvée pour ce contact (Lusha ne l'a pas)';else if(en.indexOf('CREDIT')>=0)msg='crédits Lusha épuisés';toast('💜 Lusha : '+msg);return;}
     const d=(c&&c.data)?c.data:(c||{});
     const emails=[].concat(d.emailAddresses||d.email_addresses||d.emails||[]).map(e=>(e&&(e.email||e.address||e.value))||e).filter(x=>typeof x==='string');
     const phones=[].concat(d.phoneNumbers||d.phone_numbers||d.phones||[]).map(e=>(e&&(e.number||e.phone||e.value))||e).filter(x=>typeof x==='string');
