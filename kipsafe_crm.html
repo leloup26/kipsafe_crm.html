@@ -462,6 +462,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
           <button id="view-list-btn" onclick="setView('list')">☰ Liste</button>
         </div>
         <button class="btn btn-primary" onclick="openAddProspect()">+ Ajouter</button>
+        <button class="btn btn-lusha" onclick="enrichAllLusha()" title="Enrichir tous les prospects sans coordonnees via toutes les plateformes connectees">⚡ Enrichir tous</button>
       </div>
       <div id="prospects-container"></div>
     </div>
@@ -1618,6 +1619,42 @@ function renderList(fp){
 function changeStatut(id,s){prospects=prospects.map(p=>p.id===id?{...p,statut:s}:p);save('prospects',prospects);renderProspects();renderDashboard();}
 function viewProspect(id){const p=prospects.find(x=>x.id===id);if(!p)return;openModal('Fiche prospect',`<div class="grid-2" style="gap:10px;margin-bottom:12px"><div><div class="form-label">Nom</div><strong>${esc(p.nom)}</strong></div><div><div class="form-label">Poste</div>${esc(p.poste||'—')}</div><div><div class="form-label">Société</div>${esc(p.societe||'—')}</div><div><div class="form-label">Email</div>${p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:'—'}</div><div><div class="form-label">Téléphone</div>${esc(p.tel||'—')}</div><div><div class="form-label">Offre</div>${esc(p.offre)}</div><div><div class="form-label">Statut</div><span class="status-badge">${p.statut}</span></div><div><div class="form-label">Source</div>${esc(p.source||'Manuel')}</div><div><div class="form-label">Valeur</div>${p.valeur?p.valeur+'€':'—'}</div><div><div class="form-label">1er contact</div>${p.date||'—'}</div></div><div class="form-label">LinkedIn</div><div style="margin-bottom:10px">${p.linkedin?`<a href="${p.linkedin}" target="_blank">${p.linkedin}</a>`:'—'}</div><div class="form-label">Notes</div><div style="background:var(--light);border-radius:8px;padding:12px;font-size:13px;min-height:50px">${esc(p.notes||'Aucune note')}</div><div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">${searchLinks(p)}<button class="btn btn-lusha btn-sm" onclick="enrichLusha(${p.id})">⚡ Enrichir (Lusha + autres)</button></div>`,[{label:'Modifier',cls:'btn-primary',fn:`editProspect(${p.id});closeModal()`},{label:'Supprimer',cls:'btn-danger',fn:`deleteProspect(${p.id});closeModal()`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);}
 function openAddProspect(){openProspectModal(null);}
+let _enrichRunning=false;
+async function enrichAllLusha(){
+  if(_enrichRunning){ if(confirm(`Un enrichissement est deja en cours. L'arreter ?`)) _enrichRunning=false; return; }
+  const relay=getLushaRelay(), key=getLushaKey();
+  if(!relay&&!key){ if(confirm(`Aucune source d'enrichissement configuree. Ouvrir la page Integrations ?`)){if(typeof closeModal==='function')closeModal();showTab('integrations');} return; }
+  const enc=encodeURIComponent;
+  const pickv=(arr,k)=>{if(!Array.isArray(arr))return '';for(const x of arr){const v=x&&(x[k]||x.value||x);if(typeof v==='string'&&v)return v;}return '';};
+  const cands=onlyProspects().filter(p=>{const parts=(p.nom||'').trim().split(/\s+/);return parts.length>=2 && (p.societe||'').trim() && (!p.email||!p.tel);});
+  if(!cands.length){ toast(`Aucun prospect a enrichir (il faut prenom + nom + societe, et un email/tel manquant).`); return; }
+  if(!confirm(`Lancer l'enrichissement de ${cands.length} prospect(s) via toutes tes plateformes connectees (Lusha / Apollo / Hunter) ?\n\nCela consomme des credits. Tu peux re-cliquer le bouton pour arreter en cours de route.`)) return;
+  _enrichRunning=true;
+  let done=0, ok=0;
+  for(const p of cands){
+    if(!_enrichRunning) break;
+    done++;
+    toast(`Enrichissement ${done}/${cands.length} - ${(p.nom||'').slice(0,24)}...`);
+    try{
+      const sp=splitName(p.nom); const fn=sp[0]||'', ln=sp[1]||'';
+      let url,opts;
+      if(relay){ url=relay+(relay.indexOf('?')<0?'?':'&')+'firstName='+enc(fn)+'&lastName='+enc(ln)+'&company='+enc(p.societe||''); opts={}; }
+      else { url='https://api.lusha.com/v2/person?firstName='+enc(fn)+'&lastName='+enc(ln)+'&companyName='+enc(p.societe||''); opts={headers:{api_key:key}}; }
+      const res=await fetch(url,opts); const j=await res.json();
+      let email='',phone='';
+      if(j&&j.multi){ email=j.multi.email||''; phone=j.multi.phone||''; }
+      else { const c=(j&&j.contact)?j.contact:j; const d=(c&&c.data)?c.data:(c||{}); email=pickv(d.emailAddresses,'email'); phone=pickv(d.phoneNumbers,'number'); }
+      if(email||phone){
+        prospects=prospects.map(x=>x.id!==p.id?x:{...x,email:x.email||email||'',tel:x.tel||phone||'',notes:((x.notes||'')+'\n[enrich '+localDate()+'] '+(email||'')+(phone?' - '+phone:'')).trim()});
+        ok++;
+      }
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,1200));
+  }
+  _enrichRunning=false;
+  save('prospects',prospects); if(typeof renderProspects==='function')renderProspects(); if(typeof renderDashboard==='function')renderDashboard();
+  toast(`Termine : ${ok} fiche(s) completee(s) sur ${done} testee(s).`);
+}
 function editProspect(id){openProspectModal(prospects.find(p=>p.id===id));}
 function openProspectModal(p){
   const isEdit=!!p;
