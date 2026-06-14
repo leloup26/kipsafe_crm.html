@@ -1122,12 +1122,12 @@ async function initSupabase(){
         const {key,value}=payload.new;
         if(value===null||value===undefined){}else if(key&&key.indexOf('perso_')===0){localStorage.setItem(key,JSON.stringify(value));}else if(key==='schedule_custom'){kipScheduleCustom=Array.isArray(value)?value:[];localStorage.setItem('perso_kipsync_schedule_custom',JSON.stringify(kipScheduleCustom));kipLoaded=true;mergeScheduleCustom();}else if(key==='objectives'){kipObjectives=Array.isArray(value)?value:[];localStorage.setItem('perso_kipsync_objectives',JSON.stringify(kipObjectives));kipObjLoaded=true;mergeObjectives();}
         switch(key&&key.indexOf('perso_')===0?key.slice(6):key){
-          case 'prospects':prospects=load('prospects',[]);renderProspects();renderDashboard();break;
+          case 'prospects':prospects=load('prospects',[]);renderProspects();renderDashboard();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();break;
           case 'marches':marches=load('marches',[]);renderMarches();break;
           case 'plan_done':planDone=load('plan_done',[]);renderPlanning();renderDashboard();break;
           case 'quick_tasks':quickTasks=load('quick_tasks',[]);renderQuickTasks();break;
           case 'members':members=load('members',members);currentUser=members.find(m=>m.id===currentUser.id)||currentUser;updateHeaderUser();break;
-          case 'objectives':mergeObjectives();renderObjectifDashboard();renderDashboard();break;
+          case 'objectives':mergeObjectives();renderObjectifDashboard();renderDashboard();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();break;
           case 'schedule_custom':mergeScheduleCustom();renderDashboard();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();break;
         }
         toast('🔄 Sync reçue depuis un autre appareil');
@@ -1595,7 +1595,7 @@ function openAddScheduleItem(today){
     </div>
     <div class="form-group"><label class="form-label">📅 Date</label><input id="na-date" type="date" class="form-input" value="${today}"></div>
     <div class="grid-2">
-      <div class="form-group"><label class="form-label">Heure début</label><input id="na-time" type="time" class="form-input" value="10:00"></div>
+      <div class="form-group"><label class="form-label">Heure début</label><input id="na-time" type="time" class="form-input" value="10:00" onchange="autoEndTime()"></div>
       <div class="form-group"><label class="form-label">Heure fin</label><input id="na-end" type="time" class="form-input" value="11:00"></div>
     </div>
     <div class="form-group"><label class="form-label">Intitulé *</label><textarea id="na-action" class="form-textarea" rows="2" placeholder="Ex: RDV client Dupont / Réunion équipe / Préparer plaquette..."></textarea></div>
@@ -1683,6 +1683,13 @@ function doImportPlanning(){
   closeModal();refreshScheduleViews();renderDashboard();toast('✅ '+items.length+' créneaux importés');
 }
 
+function autoEndTime(){
+  const t=document.getElementById('na-time'),e=document.getElementById('na-end');
+  if(!t||!e||!t.value) return;
+  const p=t.value.split(':').map(Number);
+  let tot=p[0]*60+p[1]+60; if(tot>=1440) tot=1439;
+  e.value=String(Math.floor(tot/60)).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');
+}
 function calcDur(time,end){
   const[sh,sm]=time.split(':').map(Number),[eh,em]=end.split(':').map(Number);
   const mins=(eh*60+em)-(sh*60+sm);
