@@ -256,7 +256,8 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .cal-grid.view7{grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .cal-grid.view7 .cal-cell{min-height:170px;padding:10px}
 .cal-grid.view7 .cal-num{font-size:16px;margin-bottom:8px}
-.cal-grid.view7 .cal-line{font-size:12px;line-height:1.6}
+.cal-grid.view7 .cal-line{font-size:12px;line-height:1.6;align-items:flex-start}
+  .lt{white-space:normal;overflow:visible;text-overflow:clip}
 .cal-grid.view7 .cal-tasks{gap:2px}
 .plan-row-overdue{background:#fef2f2!important}.plan-row-overdue td{color:#7f1d1d}
 .plan-row-inprogress{background:#eff9ff!important}
@@ -2183,7 +2184,7 @@ function calCellHtml(ds,todayStr,isCurrent,maxItems){
     if(ev.type==='schedule'&&ev.dateFin&&ev.date&&ev.dateFin!==ev.date){const _xd=new Date(ev.dateFin+'T12:00:00');_ex.push('→ '+(isNaN(_xd)?ev.dateFin:_xd.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})));}
     if(ev.assignees&&ev.assignees.length){_ex.push('👤 '+ev.assignees.map(id=>memberName(id)).join(', '));}
     const _sub=_ex.length?`<div style="font-size:9px;color:var(--muted);padding-left:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(_ex.join(' · '))}</div>`:'';
-    return `<div class="cal-line ${ev.done?'is-done':''}"><span class="cal-bullet" style="background:${ev.color}"></span>${t}<span class="lt">${esc(ev.label.slice(0,maxLen))}</span></div>${_sub}`;
+    return `<div class="cal-line ${ev.done?'is-done':''}"><span class="cal-bullet" style="background:${ev.color}"></span>${t}<span class="lt">${esc(ev.label)}</span></div>${_sub}`;
   }).join('')+(events.length>maxItems?`<div class="cal-more">+${events.length-maxItems} autres…</div>`:(events.length===0&&isCurrent?'<div style="font-size:10px;color:#cbd5e1">Libre</div>':''));
   const day=new Date(ds+'T12:00:00').getDate();
   const clickAttr=isCurrent?`onclick="openDayDetail('${ds}')"`:'';
