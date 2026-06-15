@@ -191,7 +191,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .preview-table th{background:var(--primary);color:#fff;padding:6px 10px}
 .preview-table td{padding:6px 10px;border-bottom:1px solid var(--border)}
 .preview-table tr:nth-child(even) td{background:var(--light)}
-.modal-overlay{position:fixed;inset:0;background:rgba(10,46,92,.5);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.modal-overlay{position:fixed;top:0;left:0;right:0;height:100vh;height:100dvh;background:rgba(10,46,92,.5);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
 .modal-box{background:#fff;border-radius:16px;padding:28px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 .modal-title{font-size:18px;font-weight:800;color:var(--primary);margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
 .modal-close{cursor:pointer;font-size:20px;color:var(--muted);background:none;border:none}
@@ -300,8 +300,8 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
   /* Export grid */
   .export-grid{grid-template-columns:1fr}
   /* Modal */
-  .modal-box{width:96vw;padding:18px 14px;max-height:88vh;margin:0}
-  .modal-overlay{align-items:flex-end;padding-bottom:env(safe-area-inset-bottom)}
+  .modal-box{width:96vw;padding:18px 14px;padding-bottom:calc(16px + env(safe-area-inset-bottom));max-height:88vh;margin:0}
+  .modal-overlay{align-items:flex-end}
   .modal-box{border-radius:16px 16px 0 0}
   /* Toolbar */
   .toolbar{flex-wrap:wrap;gap:6px}
