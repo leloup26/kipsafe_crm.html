@@ -1328,45 +1328,10 @@ function openScheduleItemModal(today,key){
   const item=getScheduleItemByKey(today,key);
   if(!item){toast('⚠️ Créneau introuvable');return;}
   const m=getSchedMeta(today,key);
-  const AXES=['','Admin','Commercial','Marketing','Web','Supports','Marchés','Formation','Pause'];
-  const objOpts='<option value="">— Aucun objectif —</option>'+objectives.map(o=>`<option value="${o.id}" ${m.objectifId===o.id?'selected':''}>${({annee:'📅',mois:'🗓️',semaine:'📋'}[o.level]||'')} ${esc(o.title.slice(0,40))}</option>`).join('');
-  const histHtml=(m.history||[]).slice().reverse().map(h=>{const d=new Date(h.t);const ds=isNaN(d)?'':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});return `<div style="font-size:11px;padding:5px 8px;background:var(--light);border-radius:6px;margin-bottom:4px"><span style="color:var(--muted)">${ds}</span> — ${esc(h.text)}</div>`;}).join('')||'<div style="font-size:11px;color:var(--muted)">Aucune note pour l\'instant</div>';
-  const STATUTS_MODAL=['À faire','En cours','Livré','Terminé'];
-  openModal('✏️ Modifier',`
-    <div class="form-group" style="background:var(--light);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-      <div>
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:.3px">🔒 Date & heure planifiées</div>
-        <div style="font-size:14px;font-weight:800;color:var(--primary);margin-top:2px">${item.isCustom&&item.date?frDate(item.date)+' · ':''}${item.time} – ${item.end}</div>
-      </div>
-      ${item.isCustom&&!item.isRec?`<button class="btn btn-sm btn-primary" onclick="closeModal();openSchedPostpone('${today}','${key}')">⏩ Reporter</button>`:''}
-    </div>
-    <input type="hidden" id="si-time" value="${item.time}"><input type="hidden" id="si-end" value="${item.end}">
-    <div class="form-group"><label class="form-label">Intitulé</label><textarea id="si-action" class="form-textarea" rows="2">${esc(item.action)}</textarea></div>
-    <div class="form-group"><label class="form-label">Axe</label><select id="si-axe" class="form-select">${AXES.map(a=>`<option ${a===item.axe?'selected':''}>${a}</option>`).join('')}</select></div>
-    <div class="form-group"><label class="form-label">📊 Statut <span style="color:var(--muted);font-weight:400;text-transform:none">— pour reporter, utilise le bouton ⏩</span></label>
-      <select id="si-status" class="form-select" onchange="si_statusChange()">
-        ${STATUTS_MODAL.map(s=>`<option ${s===m.status?'selected':''}>${SCHED_SICON[s]} ${s}</option>`).join('')}
-      </select>
-    </div>
-    <div id="si-encours-wrap" class="form-group" style="${m.status==='En cours'?'':'display:none'}">
-      <label class="form-label">📅 Date estimée de fin</label>
-      <input id="si-estfinish" type="date" class="form-input" value="${m.estFinish||''}">
-    </div>
-    <div id="si-relance-wrap" class="form-group" style="${m.status==='Livré'?'':'display:none'};background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px">
-      <label class="form-label">📦 Livré — relance automatique</label>
-      <div style="font-size:11px;color:#9a3412;margin-bottom:6px">Je te relancerai pour vérifier le retour, jusqu'à ce que tu passes en « Terminé ».</div>
-      <div class="grid-2">
-        <div><label class="form-label" style="font-size:11px">Me relancer tous les (jours)</label><input id="si-relance-every" type="number" min="1" class="form-input" value="${m.relanceEvery||2}"></div>
-        <div><label class="form-label" style="font-size:11px">Prochaine relance le</label><input id="si-relance-date" type="date" class="form-input" value="${m.relanceDate||''}"></div>
-      </div>
-    </div>
-    <div class="grid-2">
-      <div class="form-group"><label class="form-label">🎯 Rattaché à l'objectif</label><select id="si-objectif" class="form-select">${objOpts}</select></div>
-      <div class="form-group"><label class="form-label">🔔 Rappel</label><select id="si-reminder" class="form-select">${Object.keys(REMINDER_OPTS).map(k=>`<option value="${k}" ${m.reminder===k?'selected':''}>${REMINDER_OPTS[k]}</option>`).join('')}</select></div>
-    </div>
-    <div class="form-group"><label class="form-label">📝 Ajouter une note (historique)</label><textarea id="si-note" class="form-textarea" rows="2" placeholder="Compte-rendu, info, prochaine étape..."></textarea></div>
-    <div class="form-group"><label class="form-label">🕘 Historique</label><div style="max-height:120px;overflow-y:auto">${histHtml}</div></div>
-  `,[
+  const raw=key.startsWith('custom_')?(scheduleCustom.find(x=>String(x.id)===key.slice(7))||{}):(scheduleOverrides[key]||{});
+  const dtype=raw.type||Object.keys(TYPE_ICON).find(k=>TYPE_ICON[k]===item.icon)||'tache';
+  const d={createdAt:raw.createdAt||'',action:item.action,description:raw.description||'',type:dtype,axe:item.axe,date:item.date||today,dateFin:raw.dateFin||item.date||today,time:item.time,end:item.end,objectifId:m.objectifId,assignees:raw.assignees||[],shared:raw.shared,status:m.status,relanceEvery:m.relanceEvery,relanceDate:m.relanceDate,reminder:m.reminder,recurring:raw.recurring||'none',recurringUntil:raw.recurringUntil||'',history:m.history||raw.history||[]};
+  openModal('✏️ Modifier le créneau',scheduleFormHtml('si',d),[
     {label:'💾 Enregistrer',cls:'btn-primary',fn:`saveScheduleItem('${today}','${key}')`},
     {label:'🗑️ Supprimer',cls:'btn-danger',fn:`deleteScheduleItem('${today}','${key}')`},
     {label:'Fermer',cls:'btn-outline',fn:'closeModal()'}
@@ -1397,6 +1362,14 @@ function saveScheduleItem(today,key){
   const reportDate=document.getElementById('si-reportdate')?document.getElementById('si-reportdate').value:'';
   const reportReason=document.getElementById('si-reportreason')?document.getElementById('si-reportreason').value.trim():'';
   const objectifId=document.getElementById('si-objectif').value;
+  const description=document.getElementById('si-description')?document.getElementById('si-description').value.trim():'';
+  const dateFin=document.getElementById('si-datefin')?document.getElementById('si-datefin').value:'';
+  const _asg=readAssignees('si-owner');
+  const _shared=!!document.getElementById('si-owner-shared')?.checked;
+  const stype=document.getElementById('si-type')?document.getElementById('si-type').value:'';
+  const sicon=TYPE_ICON[stype]||icon;
+  const nrec=document.getElementById('si-recurring')?document.getElementById('si-recurring').value:undefined;
+  const nuntil=document.getElementById('si-until')?document.getElementById('si-until').value:'';
   const reminder=document.getElementById('si-reminder').value;
   const relanceEvery=document.getElementById('si-relance-every')?(parseInt(document.getElementById('si-relance-every').value)||2):2;
   let relanceDate=document.getElementById('si-relance-date')?document.getElementById('si-relance-date').value:'';
@@ -1425,13 +1398,13 @@ function saveScheduleItem(today,key){
       // Si c'était un report, on journalise et le créneau redevient "À faire" sur le nouveau jour
       if(status==='Reporté'){ history.push({t:Date.now(),text:`⏩ Reporté du ${frDate(oldDate)} au ${frDate(effDate)}${reportReason?' — '+reportReason:''}`}); finalStatus='À faire'; finalDone=false; }
     }
-    const rich={status:finalStatus,estFinish,reportDate:'',reportReason:'',objectifId,reminder,relanceDate:finalStatus==='Livré'?relanceDate:'',relanceEvery,history};
+    const rich={status:finalStatus,estFinish,reportDate:'',reportReason:'',objectifId,reminder,relanceDate:finalStatus==='Livré'?relanceDate:'',relanceEvery,history,description,dateFin,assignees:_asg,shared:_shared,type:stype,...(nrec!==undefined?{recurring:nrec,recurringUntil:nuntil}:{})};
     const dateUpdate=movedTo?{date:movedTo}:{};
-    scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,time,end,dur,axe,icon,action,...dateUpdate,...rich,...(isRec?{}:{done:finalDone})}:x);
+    scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,time,end,dur,axe,icon:sicon,action,...dateUpdate,...rich,...(isRec?{}:{done:finalDone})}:x);
     save('schedule_custom',scheduleCustom);
     if(isRec){ if(finalDone) scheduleRecurringDone[rawId+'_'+today]=true; else delete scheduleRecurringDone[rawId+'_'+today]; save('schedule_recurring_done',scheduleRecurringDone); }
   } else {
-    const rich={status,estFinish,reportDate,reportReason,objectifId,reminder,relanceDate:status==='Livré'?relanceDate:'',relanceEvery,history};
+    const rich={status,estFinish,reportDate,reportReason,objectifId,reminder,relanceDate:status==='Livré'?relanceDate:'',relanceEvery,history,description,dateFin,assignees:_asg,shared:_shared};
     scheduleOverrides[key]={...scheduleOverrides[key]||{},time,end,dur,axe,icon,action,done,...rich};
     save('schedule_overrides',scheduleOverrides);
   }
@@ -1461,41 +1434,53 @@ function deleteScheduleItem(today,key){
   closeModal();refreshScheduleViews();toast('🗑️ Créneau supprimé');
 }
 
+function sfApplyType(p){var a=document.getElementById(p+'-axe');if(a)a.value=TYPE_AXE[document.getElementById(p+'-type').value]||'Admin';}
+function sfAutoEnd(p){const t=document.getElementById(p+'-time'),e=document.getElementById(p+'-end');if(!t||!e||!t.value)return;const a=t.value.split(':').map(Number);let tot=a[0]*60+a[1]+60;if(tot>=1440)tot=1439;e.value=String(Math.floor(tot/60)).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');}
+function sfStatusChange(p){const v=document.getElementById(p+'-status').value.replace(/^[^\w\sÀ-ÿ]+\s*/,'').trim();const lw=document.getElementById(p+'-relance-wrap');if(lw)lw.style.display=v==='Livré'?'block':'none';}
+function scheduleFormHtml(p,d){
+  d=d||{};
+  const typeOpts=[['tache','✅ Tâche'],['rdv','📞 RDV'],['reunion','👥 Réunion'],['formation','📚 Formation'],['perso','📌 Personnel / Autre']].map(t=>'<option value="'+t[0]+'"'+(d.type===t[0]?' selected':'')+'>'+t[1]+'</option>').join('');
+  const axeOpts=['Commercial','Marketing','Web','Supports','Marchés','Formation','Admin','Pause'].map(a=>'<option'+(a===d.axe?' selected':'')+'>'+a+'</option>').join('');
+  const statOpts=['À faire','En cours','Reporté','Livré','Terminé'].map(s=>'<option'+(s===(d.status||'À faire')?' selected':'')+'>'+s+'</option>').join('');
+  const objOpts='<option value="">— Aucun objectif —</option>'+(objectives||[]).map(o=>'<option value="'+o.id+'"'+(d.objectifId===o.id?' selected':'')+'>'+(({annee:'📅',mois:'🗓️',semaine:'📋'})[o.level]||'')+' '+esc(o.title.slice(0,40))+'</option>').join('');
+  const remOpts=Object.keys(REMINDER_OPTS).map(k=>'<option value="'+k+'"'+(d.reminder===k?' selected':'')+'>'+REMINDER_OPTS[k]+'</option>').join('');
+  const recOpts=[['none','Aucune'],['daily','📅 Quotidienne'],['weekly','📆 Hebdomadaire'],['monthly','🗓 Mensuelle']].map(r=>'<option value="'+r[0]+'"'+(((d.recurring||'none')===r[0])?' selected':'')+'>'+r[1]+'</option>').join('');
+  const histHtml=(d.history||[]).slice().reverse().map(h=>{const dt=new Date(h.t);const ds=isNaN(dt)?'':dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});return '<div style="font-size:11px;padding:5px 8px;background:var(--light);border-radius:6px;margin-bottom:4px"><span style="color:var(--muted)">'+ds+'</span> — '+esc(h.text)+'</div>';}).join('')||'<div style="font-size:11px;color:var(--muted)">Aucune note pour le moment</div>';
+  return `
+    <div class="form-group"><label class="form-label">🗓️ Date de création</label><input id="${p}-created" type="date" class="form-input" value="${d.createdAt||localDate()}" readonly disabled style="background:#f1f5f9;color:var(--muted);cursor:not-allowed"><div style="font-size:10px;color:var(--muted);margin-top:3px">🔒 Renseignée automatiquement</div></div>
+    <div class="form-group"><label class="form-label">Titre *</label><textarea id="${p}-action" class="form-textarea" rows="2" placeholder="Ex: RDV client Dupont / Réunion équipe...">${esc(d.action||'')}</textarea></div>
+    <div class="form-group"><label class="form-label">Description</label><textarea id="${p}-description" class="form-textarea" style="min-height:54px" placeholder="Détails, contexte, ce qu'il faut faire...">${esc(d.description||'')}</textarea></div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Type</label><select id="${p}-type" class="form-select" onchange="sfApplyType('${p}')">${typeOpts}</select></div>
+      <div class="form-group"><label class="form-label">Axe</label><select id="${p}-axe" class="form-select">${axeOpts}</select></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">🚀 Date de début</label><input id="${p}-date" type="date" class="form-input" value="${d.date||localDate()}"></div>
+      <div class="form-group"><label class="form-label">⏳ Date de fin</label><input id="${p}-datefin" type="date" class="form-input" value="${d.dateFin||d.date||localDate()}"></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">🕐 Heure de début</label><input id="${p}-time" type="time" class="form-input" value="${d.time||'10:00'}" onchange="sfAutoEnd('${p}')"></div>
+      <div class="form-group"><label class="form-label">🕐 Heure de fin</label><input id="${p}-end" type="time" class="form-input" value="${d.end||'11:00'}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">🎯 Rattaché à un objectif <span style="color:var(--muted);font-weight:400">— optionnel</span></label><select id="${p}-objectif" class="form-select">${objOpts}</select></div>
+    ${memberMultiSelectHtml(p+'-owner',d.assignees||[],d.shared)}
+    <div class="form-group"><label class="form-label">📊 Statut</label><select id="${p}-status" class="form-select" onchange="sfStatusChange('${p}')">${statOpts}</select></div>
+    <div id="${p}-relance-wrap" class="form-group" style="${d.status==='Livré'?'':'display:none'};background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px">
+      <label class="form-label">📦 Livré — relance automatique</label>
+      <div class="grid-2"><div><label class="form-label" style="font-size:11px">Relance tous les (jours)</label><input id="${p}-relance-every" type="number" min="1" class="form-input" value="${d.relanceEvery||2}"></div><div><label class="form-label" style="font-size:11px">Prochaine relance le</label><input id="${p}-relance-date" type="date" class="form-input" value="${d.relanceDate||''}"></div></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">🔔 Rappel</label><select id="${p}-reminder" class="form-select">${remOpts}</select></div>
+      <div class="form-group"><label class="form-label">🔁 Récurrence</label><select id="${p}-recurring" class="form-select" onchange="document.getElementById('${p}-until-wrap').style.display=this.value!=='none'?'block':'none'">${recOpts}</select></div>
+    </div>
+    <div id="${p}-until-wrap" class="form-group" style="${(d.recurring&&d.recurring!=='none')?'':'display:none'}"><label class="form-label">Répéter jusqu'au</label><input id="${p}-until" type="date" class="form-input" value="${d.recurringUntil||localDate()}"></div>
+    <div class="form-group"><label class="form-label">📝 Ajouter une note</label><textarea id="${p}-note" class="form-textarea" rows="2" placeholder="Compte-rendu, info, prochaine étape..."></textarea></div>
+    <div class="form-group"><label class="form-label">🕘 Historique des notes</label><div style="max-height:120px;overflow-y:auto">${histHtml}</div></div>
+  `;
+}
+
 function openAddScheduleItem(today){
-  openModal('➕ Ajouter au planning',`
-    <div class="form-group"><label class="form-label">Type</label>
-      <select id="na-type" class="form-select" onchange="applyEventType()">
-        <option value="tache">✅ Tâche</option>
-        <option value="rdv">📞 RDV</option>
-        <option value="reunion">👥 Réunion</option>
-        <option value="formation">📚 Formation</option>
-        <option value="perso">📌 Personnel / Autre</option>
-      </select>
-    </div>
-    <div class="form-group"><label class="form-label">📅 Date</label><input id="na-date" type="date" class="form-input" value="${today}"></div>
-    <div class="grid-2">
-      <div class="form-group"><label class="form-label">Heure début</label><input id="na-time" type="time" class="form-input" value="10:00" onchange="autoEndTime()"></div>
-      <div class="form-group"><label class="form-label">Heure fin</label><input id="na-end" type="time" class="form-input" value="11:00"></div>
-    </div>
-    <div class="form-group"><label class="form-label">Intitulé *</label><textarea id="na-action" class="form-textarea" rows="2" placeholder="Ex: RDV client Dupont / Réunion équipe / Préparer plaquette..."></textarea></div>
-    <div class="grid-2">
-      <div class="form-group"><label class="form-label">Axe / Catégorie</label><select id="na-axe" class="form-select"><option>Commercial</option><option>Marketing</option><option>Web</option><option>Supports</option><option>Marchés</option><option>Formation</option><option>Admin</option><option>Pause</option></select></div>
-      <div class="form-group"><label class="form-label">📊 Statut</label><select id="na-status" class="form-select"><option>À faire</option><option>En cours</option><option>Reporté</option><option>Terminé</option></select></div>
-    </div>
-    ${memberMultiSelectHtml('na-owner',[],false)}
-    <div class="form-group"><label class="form-label">🔁 Récurrence</label>
-      <select id="na-recurring" class="form-select" onchange="document.getElementById('na-until-wrap').style.display=this.value!=='none'?'block':'none'">
-        <option value="none">Aucune (événement unique)</option>
-        <option value="daily">📅 Quotidienne</option>
-        <option value="weekly">📆 Hebdomadaire (même jour)</option>
-        <option value="monthly">🗓 Mensuelle (même date)</option>
-      </select>
-    </div>
-    <div id="na-until-wrap" style="display:none" class="form-group">
-      <label class="form-label">Répéter jusqu'au</label>
-      <input id="na-until" type="date" class="form-input" value="${today}">
-    </div>
-  `,[
+  openModal('➕ Nouveau créneau',scheduleFormHtml('na',{createdAt:today,date:today,dateFin:today,time:'10:00',end:'11:00',type:'tache',axe:'Commercial',status:'À faire',reminder:'none',recurring:'none',recurringUntil:today}),[
     {label:'➕ Ajouter',cls:'btn-primary',fn:`addScheduleItem()`},
     {label:'Annuler',cls:'btn-outline',fn:'closeModal()'}
   ]);
@@ -1576,20 +1561,31 @@ function calcDur(time,end){
 
 function addScheduleItem(){
   const date=document.getElementById('na-date').value;
-  if(!date){alert('Date requise');return;}
+  if(!date){alert('Date de début requise');return;}
+  const action=document.getElementById('na-action').value.trim();
+  if(!action){alert('Titre requis');return;}
   const time=document.getElementById('na-time').value;
   const end=document.getElementById('na-end').value;
-  const action=document.getElementById('na-action').value.trim();
-  if(!action){alert('Intitulé requis');return;}
+  const dateFin=document.getElementById('na-datefin')?document.getElementById('na-datefin').value:date;
+  const description=document.getElementById('na-description')?document.getElementById('na-description').value.trim():'';
   const axe=document.getElementById('na-axe').value;
   const type=document.getElementById('na-type')?.value||'tache';
   const icon=TYPE_ICON[type]||'📌';
-  const status=document.getElementById('na-status')?.value||'À faire';
+  const status=document.getElementById('na-status')?document.getElementById('na-status').value.replace(/^[^\w\sÀ-ÿ]+\s*/,'').trim():'À faire';
+  const objectifId=document.getElementById('na-objectif')?document.getElementById('na-objectif').value:'';
+  const reminder=document.getElementById('na-reminder')?document.getElementById('na-reminder').value:'none';
+  const relanceEvery=document.getElementById('na-relance-every')?(parseInt(document.getElementById('na-relance-every').value)||2):2;
+  let relanceDate=document.getElementById('na-relance-date')?document.getElementById('na-relance-date').value:'';
+  if(status==='Livré'&&!relanceDate) relanceDate=addDaysStr(localDate(),relanceEvery);
   const recurring=document.getElementById('na-recurring')?.value||'none';
   const recurringUntil=document.getElementById('na-until')?.value||'';
-  const _asg=readAssignees('na-owner');const _sid=Date.now();scheduleCustom.push({id:_sid,date,time,end,dur:calcDur(time,end),axe,icon,action,status,done:status==='Terminé',recurring,recurringUntil,owner:defaultOwner(),assignees:_asg,shared:!!document.getElementById('na-owner-shared')?.checked});notifyAssignees(_asg,'une réunion',action,date,time,_sid);
+  const note=document.getElementById('na-note')?document.getElementById('na-note').value.trim():'';
+  const history=note?[{t:Date.now(),text:note}]:[];
+  const _asg=readAssignees('na-owner');const _sid=Date.now();
+  scheduleCustom.push({id:_sid,date,dateFin,time,end,dur:calcDur(time,end),axe,icon,type,action,description,status,done:status==='Terminé',objectifId,reminder,relanceDate:status==='Livré'?relanceDate:'',relanceEvery,history,recurring,recurringUntil,owner:defaultOwner(),assignees:_asg,shared:!!document.getElementById('na-owner-shared')?.checked,createdAt:localDate()});
+  notifyAssignees(_asg,'une tâche',action,date,time,_sid);
   save('schedule_custom',scheduleCustom);
-  closeModal();refreshScheduleViews();toast('✅ Ajouté au planning'+(recurring!=='none'?' ('+RECUR_LABEL[recurring]+')':''));
+  closeModal();refreshScheduleViews();renderDashboard();toast('✅ Ajouté au planning'+(recurring!=='none'?' ('+RECUR_LABEL[recurring]+')':''));
 }
 function renderPipelineSummary(){const pp=onlyProspects();const counts={};STATUTS.forEach(s=>counts[s]=0);pp.forEach(p=>{if(counts[p.statut]!==undefined)counts[p.statut]++;});const colors={Nouveau:'#0369a1',Contacté:'#1d4ed8',RDV:'#059669',Proposition:'#d97706',Signé:'#228B22',Perdu:'#C00000'};let html='<div style="display:flex;flex-direction:column;gap:6px">';STATUTS.forEach(s=>{const pct=pp.length?Math.round(counts[s]/pp.length*100):0;html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:78px;color:${colors[s]};font-weight:700">${s}</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:${colors[s]}"></div></div><span style="width:20px;text-align:right;color:var(--muted)">${counts[s]}</span></div>`;});html+='</div>';document.getElementById('pipeline-summary').innerHTML=html;}
 function renderPlanTodayAction(){const today=localDate();const item=PLAN_30J.find(p=>p.date===today);if(!item){document.getElementById('plan-today-action').innerHTML='<div class="empty"><div class="empty-icon">🗓️</div><div class="empty-text">Pas d\'action planifiée aujourd\'hui</div></div>';return;}const done=planDone.includes(item.date);document.getElementById('plan-today-action').innerHTML=`<div style="background:var(--light);border-radius:10px;padding:14px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="axe-badge axe-${item.axe}">${item.axe}</span><button class="btn btn-sm ${done?'btn-success':'btn-outline'}" onclick="togglePlanDone('${item.date}')">${done?'✅ Fait':'Marquer fait'}</button></div><div style="font-size:13px;font-weight:600">${item.action}</div></div>`;}
