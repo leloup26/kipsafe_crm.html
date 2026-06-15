@@ -1941,7 +1941,7 @@ function getAllEventsForDate(dateStr){
     const recurTag=isRec?` (${RECUR_LABEL[s.recurring]||'🔁'})` :'';
     const meta=getSchedMeta(dateStr,'custom_'+s.id);
     const st=effSchedStatus(meta.status,dateStr);
-    events.push({type:'schedule',label:s.action+recurTag,axe:s.axe,status:st,color:SCHED_SC[st]||'var(--secondary)',icon:s.icon||'⏰',done:st==='Terminé',time:s.time,itemId:s.id,isRecurring:isRec,objectifId:meta.objectifId,reminder:meta.reminder,owner:s.owner,shared:s.shared});
+    events.push({type:'schedule',label:s.action+recurTag,axe:s.axe,status:st,color:SCHED_SC[st]||'var(--secondary)',icon:s.icon||'⏰',done:st==='Terminé',time:s.time,end:s.end,date:s.date,dateFin:s.dateFin||s.date,itemId:s.id,isRecurring:isRec,objectifId:meta.objectifId,reminder:meta.reminder,owner:s.owner,shared:s.shared});
   });
   // 3. RDV contacts (par date RDV) — coloré selon la catégorie
   prospects.forEach(p=>{
@@ -2236,7 +2236,7 @@ function openDayDetail(ds){
         <div style="display:flex;align-items:flex-start;gap:10px">
           ${t}
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:600;${strike}">${ev.icon} ${esc(ev.label)}</div>
+            <div style="font-size:13px;font-weight:600;${strike}">${ev.icon} ${esc(ev.label)}</div>${ev.type==='schedule'?`<div style="font-size:10px;color:var(--secondary);font-weight:600;margin-top:2px">📅 ${schedSpanLabel(ev)}</div>`:''}
             <div style="font-size:10px;color:var(--muted);margin-top:2px">${typeLabel[ev.type]||ev.type}${ev.axe?' · '+ev.axe:''} · <b style="color:${ev.color}">${ev.status}</b>${ownerBadge(ev)}</div>
           </div>
           ${editBtn}
