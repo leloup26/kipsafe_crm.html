@@ -946,18 +946,67 @@ function renderNotifBadge(){
   if(n>0){b.textContent=n>9?'9+':String(n);b.style.display='block';}else{b.style.display='none';}
 }
 function notifGoTo(kind){closeModal();if(/objectif/i.test(kind||'')){showTab('planning');}else{showTab('calendrier');}}
+function notifById(id){return (notifications||[]).find(function(n){return n.id===id;});}
+function notifAccept(id){
+  var n=notifById(id); if(!n) return; n.status='accepted'; n.read=true;
+  var me=currentUser?currentUser.name:'?';
+  notifications.push({id:'n_'+Date.now()+'_a',to:n.from,from:n.to,fromName:me,type:'response',kind:n.kind,label:n.label,text:me+' a accepté « '+(n.label||'')+' »'+(n.date?' du '+n.date:'')+(n.time?' à '+n.time:''),itemId:n.itemId,itemKey:n.itemKey,ts:Date.now(),read:false});
+  save('notifications',notifications); renderNotifBadge(); openNotifPanel();
+}
+function notifRefuse(id){
+  var n=notifById(id); if(!n) return;
+  openModal('❌ Refuser « '+(n.label||'')+' »','<div class="form-group"><label class="form-label">💬 Motif (commentaire)</label><textarea id="nr-comment" class="form-textarea" rows="2" placeholder="Ex: pas disponible à cette heure..."></textarea></div><div style="font-size:11px;color:var(--muted);margin:-4px 0 8px">Proposer une autre date/heure (optionnel) :</div><div class="grid-2"><div class="form-group"><label class="form-label">📅 Date</label><input id="nr-date" type="date" class="form-input" value="'+(n.date||localDate())+'"></div><div class="form-group"><label class="form-label">🕐 Début</label><input id="nr-time" type="time" class="form-input" value="'+(n.time||'10:00')+'"></div></div><div class="form-group"><label class="form-label">🕐 Fin</label><input id="nr-end" type="time" class="form-input" value="'+(n.end||'11:00')+'"></div>',[{label:'❌ Confirmer le refus',cls:'btn-danger',fn:"notifRefuseSubmit('"+id+"')"},{label:'Annuler',cls:'btn-outline',fn:'openNotifPanel()'}]);
+}
+function notifRefuseSubmit(id){
+  var n=notifById(id); if(!n) return;
+  var c=(document.getElementById('nr-comment')||{}).value||'';
+  var pd=(document.getElementById('nr-date')||{}).value||'';
+  var pt=(document.getElementById('nr-time')||{}).value||'';
+  var pe=(document.getElementById('nr-end')||{}).value||'';
+  var prop=(pd&&(pd!==n.date||pt!==n.time||pe!==n.end));
+  n.status='refused'; n.read=true;
+  var me=currentUser?currentUser.name:'?';
+  notifications.push({id:'n_'+Date.now()+'_r',to:n.from,from:n.to,fromName:me,type:'response',kind:n.kind,label:n.label,text:me+' a refusé « '+(n.label||'')+' »',comment:(c||'').trim(),itemId:n.itemId,itemKey:n.itemKey,propDate:prop?pd:'',propTime:prop?pt:'',propEnd:prop?pe:'',ts:Date.now(),read:false});
+  save('notifications',notifications); renderNotifBadge(); openNotifPanel();
+}
+function notifAcceptProposal(id){
+  var n=notifById(id); if(!n) return;
+  if(n.itemKey&&n.itemKey.indexOf('custom_')===0){
+    var rid=n.itemKey.slice(7);
+    scheduleCustom=scheduleCustom.map(function(s){return String(s.id)===rid?{...s,date:n.propDate||s.date,time:n.propTime||s.time,end:n.propEnd||s.end,dur:calcDur(n.propTime||s.time,n.propEnd||s.end)}:s;});
+    save('schedule_custom',scheduleCustom); if(typeof refreshScheduleViews==='function')refreshScheduleViews();
+  }
+  n.handled=true; n.read=true;
+  var me=currentUser?currentUser.name:'?';
+  notifications.push({id:'n_'+Date.now()+'_p',to:n.from,from:n.to,fromName:me,type:'response',kind:n.kind,label:n.label,text:me+' a accepté ta nouvelle date pour « '+(n.label||'')+' » : '+(n.propDate||'')+(n.propTime?' à '+n.propTime:''),itemId:n.itemId,itemKey:n.itemKey,ts:Date.now(),read:false});
+  save('notifications',notifications); renderNotifBadge(); openNotifPanel();
+}
 function openNotifPanel(){
-  const me=currentUser?currentUser.id:'admin';
-  const mine=(notifications||[]).filter(x=>x&&x.to===me).sort((a,b)=>b.ts-a.ts);
-  const body=mine.length?mine.map(x=>`<div onclick="notifGoTo('${x.kind||''}')" style="padding:9px 11px;border-bottom:1px solid var(--border);cursor:pointer;${x.read?'':'background:#eff6ff'}"><div style="font-size:13px">${esc(x.text)}</div><div style="font-size:10px;color:var(--muted);margin-top:3px">${new Date(x.ts).toLocaleString('fr-FR')} · <span style="color:var(--secondary);font-weight:600">↗ ouvrir</span></div></div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Aucune notification</div>';
-  openModal('🔔 Notifications',`<div style="max-height:60vh;overflow:auto;margin:0 -4px">${body}</div>`,[{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
-  let chg=false; (notifications||[]).forEach(x=>{if(x&&x.to===me&&!x.read){x.read=true;chg=true;}});
+  var me=currentUser?currentUser.id:'admin';
+  var mine=(notifications||[]).filter(function(x){return x&&x.to===me;}).sort(function(a,b){return b.ts-a.ts;});
+  var rows=mine.map(function(x){
+    var acts='';
+    if(x.type==='invite'){
+      if(x.status==='pending'){acts='<div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-sm btn-primary" onclick="notifAccept(\''+x.id+'\')">✅ Accepter</button><button class="btn btn-sm btn-danger" onclick="notifRefuse(\''+x.id+'\')">❌ Refuser</button></div>';}
+      else{acts='<div style="font-size:11px;margin-top:4px;font-weight:700;color:'+(x.status==='accepted'?'var(--green)':'var(--red)')+'">'+(x.status==='accepted'?'✅ Tu as accepté':'❌ Tu as refusé')+'</div>';}
+    } else if(x.type==='response'&&x.propDate){
+      acts='<div style="font-size:11px;margin-top:6px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:7px 9px">📅 Date proposée : <b>'+esc(x.propDate)+(x.propTime?' à '+esc(x.propTime):'')+(x.propEnd?'–'+esc(x.propEnd):'')+'</b>'+(x.handled?' <span style="color:var(--green);font-weight:700">✅ appliquée</span>':'<div style="margin-top:6px"><button class="btn btn-sm btn-primary" onclick="notifAcceptProposal(\''+x.id+'\')">✅ Accepter cette date</button></div>')+'</div>';
+    }
+    var cmt=x.comment?'<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">💬 '+esc(x.comment)+'</div>':'';
+    var navAttr=(x.type!=='invite'&&!x.propDate&&!x.comment)?' onclick="notifGoTo(\''+(x.kind||'')+'\')" style="cursor:pointer"':'';
+    var hint=navAttr?'<span style="color:var(--secondary);font-weight:600"> · ↗ ouvrir</span>':'';
+    return '<div style="padding:11px;border-bottom:1px solid var(--border);'+(x.read?'':'background:#eff6ff')+'"><div style="font-size:13px;font-weight:'+(x.read?'400':'600')+'"'+navAttr+'>'+esc(x.text)+'</div>'+cmt+acts+'<div style="font-size:10px;color:var(--muted);margin-top:5px">'+new Date(x.ts).toLocaleString('fr-FR')+hint+'</div></div>';
+  }).join('');
+  var body=mine.length?rows:'<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Aucune notification</div>';
+  openModal('🔔 Notifications','<div style="max-height:62vh;overflow:auto;margin:0 -4px">'+body+'</div>',[{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
+  var chg=false; (notifications||[]).forEach(function(x){if(x&&x.to===me&&!x.read&&!(x.type==='invite'&&x.status==='pending')){x.read=true;chg=true;}});
   if(chg){save('notifications',notifications);renderNotifBadge();}
 }
-function notifyAssignees(asg,kind,label,dateStr,timeStr,itemId){
+function notifyAssignees(asg,kind,label,dateStr,timeStr,itemId,endStr){
   if(!Array.isArray(asg)||!asg.length) return;
-  const me=currentUser?currentUser.id:'admin';const from=currentUser?currentUser.name:'Admin';let added=false;
-  asg.forEach(uid=>{if(uid===me)return;notifications.push({id:'n_'+Date.now()+'_'+uid,to:uid,from:me,fromName:from,kind:kind,text:from+" t'a assigné "+kind+" : « "+label+" »"+(dateStr?' le '+dateStr:'')+(timeStr?' à '+timeStr:''),itemId:itemId||null,ts:Date.now(),read:false});added=true;});
+  var me=currentUser?currentUser.id:'admin';var from=currentUser?currentUser.name:'Admin';var added=false;
+  var isMeeting=/r[ée]union|t[âa]che|rdv|cr[ée]neau/i.test(kind||'');
+  asg.forEach(function(uid){if(uid===me)return;notifications.push({id:'n_'+Date.now()+'_'+uid,to:uid,from:me,fromName:from,type:isMeeting?'invite':'info',status:isMeeting?'pending':'',kind:kind,label:label||'',text:from+" t'a assigné "+kind+" : « "+label+" »"+(dateStr?' le '+dateStr:'')+(timeStr?' à '+timeStr:''),itemId:itemId||null,itemKey:(isMeeting&&itemId)?('custom_'+itemId):null,date:dateStr||'',time:timeStr||'',end:endStr||'',ts:Date.now(),read:false});added=true;});
   if(added){save('notifications',notifications);if(typeof renderNotifBadge==='function')renderNotifBadge();}
 }
 
@@ -1597,7 +1646,7 @@ function addScheduleItem(){
   const history=note?[{t:Date.now(),text:note}]:[];
   const _asg=readAssignees('na-owner');const _sid=Date.now();
   scheduleCustom.push({id:_sid,date,dateFin,time,end,dur:calcDur(time,end),axe,icon,type,action,description,status,done:status==='Terminé',objectifId,reminder,relanceDate:status==='Livré'?relanceDate:'',relanceEvery,history,recurring,recurringUntil,owner:defaultOwner(),assignees:_asg,shared:!!document.getElementById('na-owner-shared')?.checked,createdAt:localDate()});
-  notifyAssignees(_asg,'une tâche',action,date,time,_sid);
+  notifyAssignees(_asg,'une tâche',action,date,time,_sid,end);
   save('schedule_custom',scheduleCustom);
   closeModal();refreshScheduleViews();renderDashboard();toast('✅ Ajouté au planning'+(recurring!=='none'?' ('+RECUR_LABEL[recurring]+')':''));
 }
