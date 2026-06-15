@@ -950,7 +950,7 @@ function openNotifPanel(){
   const me=currentUser?currentUser.id:'admin';
   const mine=(notifications||[]).filter(x=>x&&x.to===me).sort((a,b)=>b.ts-a.ts);
   const body=mine.length?mine.map(x=>`<div onclick="notifGoTo('${x.kind||''}')" style="padding:9px 11px;border-bottom:1px solid var(--border);cursor:pointer;${x.read?'':'background:#eff6ff'}"><div style="font-size:13px">${esc(x.text)}</div><div style="font-size:10px;color:var(--muted);margin-top:3px">${new Date(x.ts).toLocaleString('fr-FR')} · <span style="color:var(--secondary);font-weight:600">↗ ouvrir</span></div></div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Aucune notification</div>';
-  openModal('🔔 Notifications',`<div style="max-height:60vh;overflow:auto;margin:0 -4px">${body}</div>`);
+  openModal('🔔 Notifications',`<div style="max-height:60vh;overflow:auto;margin:0 -4px">${body}</div>`,[{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
   let chg=false; (notifications||[]).forEach(x=>{if(x&&x.to===me&&!x.read){x.read=true;chg=true;}});
   if(chg){save('notifications',notifications);renderNotifBadge();}
 }
@@ -3502,7 +3502,7 @@ function resetData(){if(!confirm('⚠️ Effacer TOUTES les données ? Irrévers
 // ═══ MODAL ══════════════════════════════════════════════════
 let _modalSaveFn=null,_modalDirty=false;
 function requestCloseModal(){if(_modalSaveFn&&_modalDirty){if(confirm('💾 Valider les modifications ?  (OK = enregistrer · Annuler = ne pas enregistrer)')){_modalSaveFn();}else{closeModal();}}else{closeModal();}}
-function openModal(title,body,buttons,saveFn){document.getElementById('modal-title-text').textContent=title;document.getElementById('modal-body').innerHTML=body;document.getElementById('modal-actions').innerHTML=buttons.map(b=>`<button class="btn ${b.cls}" onclick="${b.fn}">${b.label}</button>`).join('');document.getElementById('modal').style.display='flex';_modalSaveFn=saveFn||null;_modalDirty=false;const _mb=document.getElementById('modal-body');_mb.oninput=function(){_modalDirty=true;};_mb.onchange=function(){_modalDirty=true;};}
+function openModal(title,body,buttons,saveFn){document.getElementById('modal-title-text').textContent=title;document.getElementById('modal-body').innerHTML=body;document.getElementById('modal-actions').innerHTML=(buttons||[]).map(b=>`<button class="btn ${b.cls}" onclick="${b.fn}">${b.label}</button>`).join('');document.getElementById('modal').style.display='flex';_modalSaveFn=saveFn||null;_modalDirty=false;const _mb=document.getElementById('modal-body');_mb.oninput=function(){_modalDirty=true;};_mb.onchange=function(){_modalDirty=true;};}
 function closeModal(){document.getElementById('modal').style.display='none';_modalSaveFn=null;_modalDirty=false;}
 
 // ═══ TOAST ══════════════════════════════════════════════════
