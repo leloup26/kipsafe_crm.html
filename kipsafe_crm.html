@@ -913,11 +913,22 @@ function defaultOwner(){return currentUser?currentUser.id:'admin';}
 let notifications=load('notifications',[]);
 function memberMultiSelectHtml(idp,assignees,shared){
   assignees=Array.isArray(assignees)?assignees:[];
-  const rows=members.map(m=>`<label style="display:flex;align-items:center;gap:7px;padding:3px 0;font-size:13px;cursor:pointer"><input type="checkbox" class="${idp}-asg" value="${m.id}" ${assignees.includes(m.id)?'checked':''}><span style="width:11px;height:11px;border-radius:50%;background:${m.color||'#64748b'};flex-shrink:0"></span>${esc(m.name)}${m.role==='admin'?' (admin)':''}</label>`).join('');
-  return `<div class="form-group"><label class="form-label">👥 Assigné à <span style="font-weight:400;color:var(--muted);font-size:11px">(1 ou plusieurs)</span></label>
-    <div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;max-height:140px;overflow:auto">${rows}</div>
+  const rows=members.map(m=>`<label style="display:flex;align-items:center;gap:7px;padding:3px 0;font-size:13px;cursor:pointer"><input type="checkbox" class="${idp}-asg" value="${m.id}" ${assignees.includes(m.id)?'checked':''} onchange="updateAssignLabel('${idp}')"><span style="width:11px;height:11px;border-radius:50%;background:${m.color||'#64748b'};flex-shrink:0"></span>${esc(m.name)}${m.role==='admin'?' (admin)':''}</label>`).join('');
+  const lbl=assignees.length?assignees.length+' personne(s) sélectionnée(s)':'Cliquer pour choisir…';
+  return `<div class="form-group"><label class="form-label">👥 Assigné à</label>
+    <div id="${idp}-head" onclick="toggleAssignBox('${idp}')" style="border:1px solid var(--border);border-radius:8px;padding:9px 11px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#fff"><span id="${idp}-lbl" style="font-size:13px;color:var(--muted)">${lbl}</span><span id="${idp}-arr" style="font-size:10px">▶</span></div>
+    <div id="${idp}-box" style="display:none;border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:8px 11px;max-height:160px;overflow:auto">${rows}</div>
     <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="${idp}-shared" ${shared?'checked':''}> 🔓 Partager à toute l'équipe</label>
   </div>`;
+}
+function toggleAssignBox(idp){
+  const box=document.getElementById(idp+'-box'),arr=document.getElementById(idp+'-arr');
+  if(!box) return; const open=box.style.display!=='none';
+  box.style.display=open?'none':'block'; if(arr) arr.textContent=open?'▶':'▼';
+}
+function updateAssignLabel(idp){
+  const n=document.querySelectorAll('.'+idp+'-asg:checked').length;
+  const l=document.getElementById(idp+'-lbl'); if(l) l.textContent=n?n+' personne(s) sélectionnée(s)':'Cliquer pour choisir…';
 }
 function readAssignees(idp){return [...document.querySelectorAll('.'+idp+'-asg:checked')].map(c=>c.value);}
 function renderNotifBadge(){
@@ -2618,6 +2629,13 @@ function openObjectifModal(id,parentIdPreset){
   }
   const planItemsHtml=PLAN_30J.slice(0,44).map((item,i)=>`<label style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px;cursor:pointer"><input type="checkbox" value="${i}" ${(o.planItems||[]).includes(i)?'checked':''} style="accent-color:var(--accent)"><span class="axe-badge axe-${item.axe}" style="font-size:9px;padding:1px 5px">${item.axe}</span>${esc(item.action.slice(0,46))}</label>`).join('');
   openModal(isEdit?"✏️ Modifier l'objectif":'🎯 Nouvel objectif',`
+    <div class="form-group">
+      <label class="form-label">🗓️ Date de création</label>
+      <input id="om-created" type="date" class="form-input" value="${o.createdAt||localDate()}" readonly disabled style="background:#f1f5f9;color:var(--muted);cursor:not-allowed">
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">🔒 Renseignée automatiquement, non modifiable</div>
+    </div>
+    <div class="form-group"><label class="form-label">Titre *</label><input id="om-title" class="form-input" value="${esc(o.title)}" placeholder="Ex: Refondre la page d'accueil"></div>
+    <div class="form-group"><label class="form-label">Description</label><textarea id="om-description" class="form-textarea" style="min-height:60px" placeholder="Décrivez l'objectif : le but, le contexte, ce qu'il faut accomplir...">${esc(o.description||'')}</textarea></div>
     <div class="grid-2">
       <div class="form-group"><label class="form-label">Niveau</label>
         <select id="om-level" class="form-select" onchange="om_levelChange()">
@@ -2626,14 +2644,6 @@ function openObjectifModal(id,parentIdPreset){
           <option value="semaine" ${o.level==='semaine'?'selected':''}>📋 Semaine</option>
         </select></div>
       <div class="form-group"><label class="form-label">Axe</label><select id="om-axe" class="form-select">${AXES.map(a=>`<option ${a===o.axe?'selected':''}>${a}</option>`).join('')}</select></div>
-    </div>
-    <div class="form-group"><label class="form-label">Titre *</label><input id="om-title" class="form-input" value="${esc(o.title)}" placeholder="Ex: Refondre la page d'accueil"></div>
-    ${memberMultiSelectHtml('om-owner',o.assignees||[],o.shared)}
-    <div class="form-group"><label class="form-label">Description</label><textarea id="om-description" class="form-textarea" style="min-height:60px" placeholder="Décrivez l'objectif : le but, le contexte, ce qu'il faut accomplir...">${esc(o.description||'')}</textarea></div>
-    <div class="form-group">
-      <label class="form-label">🗓️ Date de création</label>
-      <input id="om-created" type="date" class="form-input" value="${o.createdAt||localDate()}" readonly disabled style="background:#f1f5f9;color:var(--muted);cursor:not-allowed">
-      <div style="font-size:10px;color:var(--muted);margin-top:3px">🔒 Renseignée automatiquement, non modifiable</div>
     </div>
     <div class="grid-2">
       <div class="form-group"><label class="form-label">🚀 Date de début</label><input id="om-debut" type="date" class="form-input" value="${o.debut||localDate()}"></div>
@@ -2649,6 +2659,7 @@ function openObjectifModal(id,parentIdPreset){
       <select id="om-parent" class="form-select">${parentOptions}</select>
       <div style="font-size:10px;color:var(--muted);margin-top:3px">💡 Laisse sur « Aucun » pour un objectif indépendant (non rattaché).</div>
     </div>
+    ${memberMultiSelectHtml('om-owner',o.assignees||[],o.shared)}
     <div class="grid-2">
       <div class="form-group"><label class="form-label">Statut</label><select id="om-status" class="form-select" onchange="om_statusChange()">${OBJ_STATUSES.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></div>
       <div class="form-group" id="om-hours-wrap" style="${o.level==='semaine'?'':'display:none'}"><label class="form-label">⏱ Heures prévues</label><input id="om-hours" type="number" class="form-input" value="${o.hours||''}" placeholder="2"></div>
