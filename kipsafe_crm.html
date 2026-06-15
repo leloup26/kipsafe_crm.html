@@ -1941,7 +1941,7 @@ function getAllEventsForDate(dateStr){
     const recurTag=isRec?` (${RECUR_LABEL[s.recurring]||'🔁'})` :'';
     const meta=getSchedMeta(dateStr,'custom_'+s.id);
     const st=effSchedStatus(meta.status,dateStr);
-    events.push({type:'schedule',label:s.action+recurTag,axe:s.axe,status:st,color:SCHED_SC[st]||'var(--secondary)',icon:s.icon||'⏰',done:st==='Terminé',time:s.time,end:s.end,date:s.date,dateFin:s.dateFin||s.date,itemId:s.id,isRecurring:isRec,objectifId:meta.objectifId,reminder:meta.reminder,owner:s.owner,shared:s.shared});
+    events.push({type:'schedule',label:s.action+recurTag,axe:s.axe,status:st,color:SCHED_SC[st]||'var(--secondary)',icon:s.icon||'⏰',done:st==='Terminé',time:s.time,end:s.end,date:s.date,dateFin:s.dateFin||s.date,assignees:s.assignees,itemId:s.id,isRecurring:isRec,objectifId:meta.objectifId,reminder:meta.reminder,owner:s.owner,shared:s.shared});
   });
   // 3. RDV contacts (par date RDV) — coloré selon la catégorie
   prospects.forEach(p=>{
@@ -1960,11 +1960,11 @@ function getAllEventsForDate(dateStr){
     if(!inScope(o)) return;
     const lvlTxt={annee:'Année',mois:'Mois',semaine:'Semaine'}[o.level]||'';
     if(o.debut===dateStr){
-      events.push({type:'objectif',isStart:true,label:`🚀 Début ${lvlTxt} : ${o.title}`,axe:o.axe,status:o.status,color:'#0e7490',icon:'🚀',done:false,objectifId:o.id,owner:o.owner,shared:o.shared});
+      events.push({type:'objectif',isStart:true,label:`🚀 Début ${lvlTxt} : ${o.title}`,axe:o.axe,status:o.status,color:'#0e7490',icon:'🚀',done:false,objectifId:o.id,owner:o.owner,shared:o.shared,assignees:o.assignees});
     }
     const ech=o.echeance||o.deadline;
     if(ech===dateStr){
-      events.push({type:'objectif',label:`🎯 Échéance ${lvlTxt} : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Terminé'?'var(--green)':o.status==='Annulé'?'var(--muted)':'var(--purple)',icon:'🎯',done:o.status==='Terminé',objectifId:o.id,owner:o.owner,shared:o.shared});
+      events.push({type:'objectif',label:`🎯 Échéance ${lvlTxt} : ${o.title}`,axe:o.axe,status:o.status,color:o.status==='Terminé'?'var(--green)':o.status==='Annulé'?'var(--muted)':'var(--purple)',icon:'🎯',done:o.status==='Terminé',objectifId:o.id,owner:o.owner,shared:o.shared,assignees:o.assignees});
     }
   });
   // Appliquer le statut manuel (occStatus) qui prime sur tout
@@ -2178,8 +2178,12 @@ function calCellHtml(ds,todayStr,isCurrent,maxItems){
   // Texte plus court pour la lisibilité (1 ligne)
   const maxLen=maxItems===2?16:24;
   const evHtml=events.slice(0,maxItems).map(ev=>{
-    const t=ev.time?`<span class="lh">${ev.time}</span>`:'';
-    return `<div class="cal-line ${ev.done?'is-done':''}"><span class="cal-bullet" style="background:${ev.color}"></span>${t}<span class="lt">${esc(ev.label.slice(0,maxLen))}</span></div>`;
+    const t=ev.time?`<span class="lh">${ev.time}${(ev.end&&ev.type==='schedule')?'–'+ev.end:''}</span>`:'';
+    const _ex=[];
+    if(ev.type==='schedule'&&ev.dateFin&&ev.date&&ev.dateFin!==ev.date){const _xd=new Date(ev.dateFin+'T12:00:00');_ex.push('→ '+(isNaN(_xd)?ev.dateFin:_xd.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})));}
+    if(ev.assignees&&ev.assignees.length){_ex.push('👤 '+ev.assignees.map(id=>memberName(id)).join(', '));}
+    const _sub=_ex.length?`<div style="font-size:9px;color:var(--muted);padding-left:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(_ex.join(' · '))}</div>`:'';
+    return `<div class="cal-line ${ev.done?'is-done':''}"><span class="cal-bullet" style="background:${ev.color}"></span>${t}<span class="lt">${esc(ev.label.slice(0,maxLen))}</span></div>${_sub}`;
   }).join('')+(events.length>maxItems?`<div class="cal-more">+${events.length-maxItems} autres…</div>`:(events.length===0&&isCurrent?'<div style="font-size:10px;color:#cbd5e1">Libre</div>':''));
   const day=new Date(ds+'T12:00:00').getDate();
   const clickAttr=isCurrent?`onclick="openDayDetail('${ds}')"`:'';
