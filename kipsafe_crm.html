@@ -271,7 +271,12 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 @media(max-width:768px){
   /* Header */
-  header{padding:0 12px;height:48px}
+  header{padding:0 8px;height:48px}
+  .h-logo{flex-shrink:0}
+  .h-right{gap:5px;min-width:0;flex-shrink:1}
+  #sync-pill,#lock-timer,#header-date{display:none}
+  #header-user{min-width:0;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #header-viewas{max-width:84px;min-width:0;font-size:10px}
   .h-logo{font-size:15px}
   .h-logo .badge{display:none}
   .h-date{display:none}
@@ -341,7 +346,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
   #cal-status-filter{width:100%!important;order:5}
   /* En-tête : alléger */
   #lock-timer{display:none}
-  .lock-btn{padding:5px 8px;font-size:11px}
+  .lock-btn{padding:5px 8px;font-size:11px;flex-shrink:0;white-space:nowrap}
   /* Onglet Objectifs */
   .lvl-tabs{width:100%;justify-content:space-between}
   .lvl-tab{flex:1;padding:9px 4px;font-size:12px;text-align:center}
