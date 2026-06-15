@@ -1202,6 +1202,11 @@ function getBaseSchedule(today,dow){
   return null;
 }
 
+function schedSpanLabel(it){
+  const f=d=>{const x=new Date(d+'T12:00:00');return isNaN(x)?(d||''):x.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'});};
+  if(!it.dateFin||it.dateFin===it.date) return f(it.date)+' · '+(it.time||'')+' → '+(it.end||'');
+  return f(it.date)+' '+(it.time||'')+' → '+f(it.dateFin)+' '+(it.end||'');
+}
 function getFullSchedule(today){
   const dow=new Date(today+'T12:00:00').getDay();
   const base=getBaseSchedule(today,dow);
@@ -1215,7 +1220,7 @@ function getFullSchedule(today){
     });
   }
   scheduleCustom.filter(s=>s.date===today).forEach(s=>{
-    items.push({key:'custom_'+s.id,type:'custom',time:s.time,end:s.end,dur:s.dur,axe:s.axe||'',icon:s.icon||'✨',action:s.action,done:s.done||false});
+    items.push({key:'custom_'+s.id,type:'custom',date:s.date,dateFin:s.dateFin||s.date,time:s.time,end:s.end,dur:s.dur,axe:s.axe||'',icon:s.icon||'✨',action:s.action,done:s.done||false});
   });
   items.sort((a,b)=>a.time<b.time?-1:1);
   return items;
@@ -1251,7 +1256,7 @@ function renderScheduleToday(){
     rows+=`<div class="schedule-row ${cls}" onclick="openScheduleItemModal('${today}','${item.key}')">
       <div class="s-time">${item.time}–${item.end}</div>
       <div class="s-dur">${item.dur}</div>
-      <div class="s-action ${actionCls}">${item.icon} ${esc(item.action)}</div>
+      <div class="s-action ${actionCls}"><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span>${item.icon} ${esc(item.action)}</span>${item.type==='custom'?`<span style="font-size:10px;color:var(--secondary);font-weight:600">📅 ${schedSpanLabel(item)}</span>`:''}</div></div>
       ${item.axe?`<div class="s-axe"><span class="${axeClass}">${item.axe}</span></div>`:''}
       <div class="s-edit">
         <span style="font-size:16px;cursor:pointer" title="${item.done?'Marquer à faire':'Marquer fait'}" onclick="event.stopPropagation();toggleScheduleDone('${today}','${item.key}')">${item.done?'↩️':'✅'}</span>
