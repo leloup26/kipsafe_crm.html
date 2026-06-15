@@ -246,9 +246,9 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .cal-cell.cal-overdue .cal-num{color:var(--red)}
 .cal-tasks{display:flex;flex-direction:column;gap:1px}
 /* Ligne épurée : pastille couleur + heure + texte */
-.cal-line{display:flex;align-items:center;gap:6px;font-size:11px;line-height:1.5;padding:1px 0;min-width:0}
+.cal-line{display:flex;align-items:flex-start;gap:6px;font-size:11px;line-height:1.4;padding:2px 0;min-width:0}
 .cal-bullet{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.cal-line .lt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#334155}
+.cal-line .lt{flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;color:#334155}
 .cal-line .lh{font-weight:700;color:#64748b;flex-shrink:0}
 .cal-line.is-done .lt{text-decoration:line-through;color:#9ca3b0}
 .cal-more{font-size:10px;color:var(--accent);font-weight:700;margin-top:3px;cursor:pointer}
@@ -902,11 +902,12 @@ function ownerBadge(item){
   let out='';
   if(item.shared) out+='<span style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:4px">🔓 Partagé</span>';
   const asg=(Array.isArray(item.assignees)?item.assignees:[]).filter(id=>id&&id!=='admin');
-  if(asg.length){out+=asg.map(id=>`<span style="font-size:9px;background:${memberColor(id)}22;color:${memberColor(id)};padding:1px 6px;border-radius:99px;font-weight:700;margin-left:4px">👤 ${esc(memberName(id))}</span>`).join('');}
-  else{const ow=item.owner;if(ow&&ow!=='admin') out+=`<span style="font-size:9px;background:${memberColor(ow)}22;color:${memberColor(ow)};padding:1px 6px;border-radius:99px;font-weight:700;margin-left:4px">👤 ${esc(memberName(ow))}</span>`;}
+  if(asg.length){out+=asg.map(id=>`<span style="font-size:9px;background:${memberColor(id)}22;color:${memberColor(id)};padding:1px 6px;border-radius:99px;font-weight:700;margin-left:4px">👤 ${esc(firstName(id))}</span>`).join('');}
+  else{const ow=item.owner;if(ow&&ow!=='admin') out+=`<span style="font-size:9px;background:${memberColor(ow)}22;color:${memberColor(ow)};padding:1px 6px;border-radius:99px;font-weight:700;margin-left:4px">👤 ${esc(firstName(ow))}</span>`;}
   return out;
 }
 function memberName(id){const m=memberById(id);return m?m.name:(id==='admin'?'Admin':'—');}
+function firstName(idOrM){var m=(typeof idOrM==='string')?memberById(idOrM):idOrM;var nm=m?m.name:(idOrM==='admin'?'Admin':'—');if(!nm)return '';var p=String(nm).trim().split(/\s+/);var w=p[p.length-1]||nm;return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase();}
 function memberColor(id){const m=memberById(id);return m?m.color:'#64748b';}
 // Un élément est visible si : on est admin (avec filtre éventuel), OU il est partagé, OU il nous appartient
 function inScope(item){
@@ -921,7 +922,7 @@ function defaultOwner(){return currentUser?currentUser.id:'admin';}
 let notifications=load('notifications',[]);
 function memberMultiSelectHtml(idp,assignees,shared){
   assignees=Array.isArray(assignees)?assignees:[];
-  const rows=members.map(m=>`<label style="display:flex;align-items:center;gap:7px;padding:3px 0;font-size:13px;cursor:pointer"><input type="checkbox" class="${idp}-asg" value="${m.id}" ${assignees.includes(m.id)?'checked':''} onchange="updateAssignLabel('${idp}')"><span style="width:11px;height:11px;border-radius:50%;background:${m.color||'#64748b'};flex-shrink:0"></span>${esc(m.name)}${m.role==='admin'?' (admin)':''}</label>`).join('');
+  const rows=members.map(m=>`<label style="display:flex;align-items:center;gap:7px;padding:3px 0;font-size:13px;cursor:pointer"><input type="checkbox" class="${idp}-asg" value="${m.id}" ${assignees.includes(m.id)?'checked':''} onchange="updateAssignLabel('${idp}')"><span style="width:11px;height:11px;border-radius:50%;background:${m.color||'#64748b'};flex-shrink:0"></span>${esc(firstName(m))}</label>`).join('');
   const lbl=assignees.length?assignees.length+' personne(s) sélectionnée(s)':'Cliquer pour choisir…';
   return `<div class="form-group"><label class="form-label">👥 Assigné à</label>
     <div id="${idp}-head" onclick="toggleAssignBox('${idp}')" style="border:1px solid var(--border);border-radius:8px;padding:9px 11px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#fff"><span id="${idp}-lbl" style="font-size:13px;color:var(--muted)">${lbl}</span><span id="${idp}-arr" style="font-size:10px">▶</span></div>
@@ -949,7 +950,7 @@ function notifGoTo(kind){closeModal();if(/objectif/i.test(kind||'')){showTab('pl
 function notifById(id){return (notifications||[]).find(function(n){return n.id===id;});}
 function notifAccept(id){
   var n=notifById(id); if(!n) return; n.status='accepted'; n.read=true;
-  var me=currentUser?currentUser.name:'?';
+  var me=currentUser?firstName(currentUser):'?';
   notifications.push({id:'n_'+Date.now()+'_a',to:n.from,from:n.to,fromName:me,type:'response',kind:n.kind,label:n.label,text:me+' a accepté « '+(n.label||'')+' »'+(n.date?' du '+n.date:'')+(n.time?' à '+n.time:''),itemId:n.itemId,itemKey:n.itemKey,ts:Date.now(),read:false});
   save('notifications',notifications); renderNotifBadge(); openNotifPanel();
 }
@@ -965,7 +966,7 @@ function notifRefuseSubmit(id){
   var pe=(document.getElementById('nr-end')||{}).value||'';
   var prop=(pd&&(pd!==n.date||pt!==n.time||pe!==n.end));
   n.status='refused'; n.read=true;
-  var me=currentUser?currentUser.name:'?';
+  var me=currentUser?firstName(currentUser):'?';
   notifications.push({id:'n_'+Date.now()+'_r',to:n.from,from:n.to,fromName:me,type:'response',kind:n.kind,label:n.label,text:me+' a refusé « '+(n.label||'')+' »',comment:(c||'').trim(),itemId:n.itemId,itemKey:n.itemKey,propDate:prop?pd:'',propTime:prop?pt:'',propEnd:prop?pe:'',ts:Date.now(),read:false});
   save('notifications',notifications); renderNotifBadge(); openNotifPanel();
 }
@@ -977,7 +978,7 @@ function notifAcceptProposal(id){
     save('schedule_custom',scheduleCustom); if(typeof refreshScheduleViews==='function')refreshScheduleViews();
   }
   n.handled=true; n.read=true;
-  var me=currentUser?currentUser.name:'?';
+  var me=currentUser?firstName(currentUser):'?';
   notifications.push({id:'n_'+Date.now()+'_p',to:n.from,from:n.to,fromName:me,type:'response',kind:n.kind,label:n.label,text:me+' a accepté ta nouvelle date pour « '+(n.label||'')+' » : '+(n.propDate||'')+(n.propTime?' à '+n.propTime:''),itemId:n.itemId,itemKey:n.itemKey,ts:Date.now(),read:false});
   save('notifications',notifications); renderNotifBadge(); openNotifPanel();
 }
@@ -1004,7 +1005,7 @@ function openNotifPanel(){
 }
 function notifyAssignees(asg,kind,label,dateStr,timeStr,itemId,endStr){
   if(!Array.isArray(asg)||!asg.length) return;
-  var me=currentUser?currentUser.id:'admin';var from=currentUser?currentUser.name:'Admin';var added=false;
+  var me=currentUser?currentUser.id:'admin';var from=currentUser?firstName(currentUser):'Admin';var added=false;
   var isMeeting=/r[ée]union|t[âa]che|rdv|cr[ée]neau/i.test(kind||'');
   asg.forEach(function(uid){if(uid===me)return;notifications.push({id:'n_'+Date.now()+'_'+uid,to:uid,from:me,fromName:from,type:isMeeting?'invite':'info',status:isMeeting?'pending':'',kind:kind,label:label||'',text:from+" t'a assigné "+kind+" : « "+label+" »"+(dateStr?' le '+dateStr:'')+(timeStr?' à '+timeStr:''),itemId:itemId||null,itemKey:(isMeeting&&itemId)?('custom_'+itemId):null,date:dateStr||'',time:timeStr||'',end:endStr||'',ts:Date.now(),read:false});added=true;});
   if(added){save('notifications',notifications);if(typeof renderNotifBadge==='function')renderNotifBadge();}
@@ -2234,9 +2235,9 @@ function calCellHtml(ds,todayStr,isCurrent,maxItems){
     const t=ev.time?`<span class="lh">${ev.time}${(ev.end&&ev.type==='schedule')?'–'+ev.end:''}</span>`:'';
     const _ex=[];
     if(ev.type==='schedule'&&ev.dateFin&&ev.date&&ev.dateFin!==ev.date){const _xd=new Date(ev.dateFin+'T12:00:00');_ex.push('→ '+(isNaN(_xd)?ev.dateFin:_xd.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})));}
-    if(ev.assignees&&ev.assignees.length){_ex.push('👤 '+ev.assignees.map(id=>memberName(id)).join(', '));}
+    if(ev.assignees&&ev.assignees.length){_ex.push('👤 '+ev.assignees.map(id=>firstName(id)).join(', '));}
     const _sub=_ex.length?`<div style="font-size:9px;color:var(--muted);padding-left:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(_ex.join(' · '))}</div>`:'';
-    return `<div class="cal-line ${ev.done?'is-done':''}"><span class="cal-bullet" style="background:${ev.color}"></span>${t}<span class="lt">${esc(ev.label)}</span></div>${_sub}`;
+    return `<div class="cal-line ${ev.done?'is-done':''}"><span class="cal-bullet" style="background:${ev.color}"></span>${t}<span class="lt" title="${esc(ev.label)}">${esc(ev.label)}</span></div>${_sub}`;
   }).join('')+(events.length>maxItems?`<div class="cal-more">+${events.length-maxItems} autres…</div>`:(events.length===0&&isCurrent?'<div style="font-size:10px;color:#cbd5e1">Libre</div>':''));
   const day=new Date(ds+'T12:00:00').getDate();
   const clickAttr=isCurrent?`onclick="openDayDetail('${ds}')"`:'';
