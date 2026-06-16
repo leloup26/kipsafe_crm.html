@@ -406,6 +406,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     <div class="more-menu">
       <button class="tab-btn" id="more-btn" onclick="toggleMoreMenu(event)">➕ Plus ▾</button>
       <div class="more-dropdown" id="more-dropdown">
+        <button class="more-item" data-tab="debrief" onclick="showTab('debrief')">📝 Débrief réunion</button>
         <button class="more-item" data-tab="pitch" onclick="showTab('pitch')">📢 Pitch commercial</button>
         <button class="more-item" data-tab="offres" onclick="showTab('offres')">💼 Offres</button>
         <button class="more-item" data-tab="marches" onclick="showTab('marches')">🏛️ Marchés publics</button>
@@ -567,6 +568,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     </div>
 
     <!-- DOCUMENTS -->
+    <div id="panel-debrief" class="panel"><div id="debrief-content"></div></div>
     <div id="panel-documents" class="panel">
       <div id="doc-upload-zone" style="border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:.2s;background:#fff;margin-bottom:14px" onclick="document.getElementById('doc-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='#eff9ff'" ondragleave="this.style.borderColor='var(--border)';this.style.background='#fff'" ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='#fff';handleDocUpload(event.dataTransfer.files)">
         <div style="font-size:40px;margin-bottom:8px">📁</div>
@@ -879,6 +881,7 @@ if(localStorage.getItem('kipsafe_data_version')!==DATA_VERSION){
 }
 let prospects=load('prospects',[]);
 let marches=load('marches',[]);
+let debriefs=load('debriefs',[]);
 let planDone=load('plan_done',[]);
 let quickTasks=load('quick_tasks',[]);
 let nextId=load('next_id',100);
@@ -1122,6 +1125,7 @@ async function initSupabase(){
       prospects=load('prospects',[]);
       notifications=load('notifications',[]);
       marches=load('marches',[]);
+      debriefs=load('debriefs',[]);
       planDone=load('plan_done',[]);
       quickTasks=load('quick_tasks',[]);
       nextId=load('next_id',100);
@@ -1142,6 +1146,7 @@ async function initSupabase(){
         switch(key){
           case 'prospects':prospects=load('prospects',[]);renderProspects();renderDashboard();if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();break;
           case 'marches':marches=load('marches',[]);renderMarches();break;
+          case 'debriefs':debriefs=load('debriefs',[]);if(document.getElementById('panel-debrief')&&document.getElementById('panel-debrief').classList.contains('active'))renderDebrief();break;
           case 'plan_done':planDone=load('plan_done',[]);renderPlanning();renderDashboard();break;
           case 'quick_tasks':quickTasks=load('quick_tasks',[]);renderQuickTasks();break;
           case 'members':members=load('members',members);currentUser=members.find(m=>m.id===currentUser.id)||currentUser;updateHeaderUser();break;
@@ -1175,7 +1180,7 @@ function showTab(tab){
   const moreBtn=document.getElementById('more-btn');
   if(moreBtn) moreBtn.classList.toggle('has-active',!MAIN_TABS.includes(tab));
   closeMoreMenu();
-  if(tab==='dashboard')renderDashboard();if(tab==='planning')renderObjectifDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='pitch')renderPitch();if(tab==='documents')loadDocuments();if(tab==='settings')renderMembers();if(tab==='integrations')renderLushaKeyStatus();
+  if(tab==='dashboard')renderDashboard();if(tab==='planning')renderObjectifDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='pitch')renderPitch();if(tab==='debrief')renderDebrief();if(tab==='documents')loadDocuments();if(tab==='settings')renderMembers();if(tab==='integrations')renderLushaKeyStatus();
 }
 function toggleMoreMenu(e){e.stopPropagation();document.getElementById('more-dropdown').classList.toggle('open');}
 function closeMoreMenu(){const d=document.getElementById('more-dropdown');if(d)d.classList.remove('open');}
@@ -1654,10 +1659,47 @@ function addScheduleItem(){
 function renderPipelineSummary(){const pp=onlyProspects();const counts={};STATUTS.forEach(s=>counts[s]=0);pp.forEach(p=>{if(counts[p.statut]!==undefined)counts[p.statut]++;});const colors={Nouveau:'#0369a1',Contacté:'#1d4ed8',RDV:'#059669',Proposition:'#d97706',Signé:'#228B22',Perdu:'#C00000'};let html='<div style="display:flex;flex-direction:column;gap:6px">';STATUTS.forEach(s=>{const pct=pp.length?Math.round(counts[s]/pp.length*100):0;html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:78px;color:${colors[s]};font-weight:700">${s}</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:${colors[s]}"></div></div><span style="width:20px;text-align:right;color:var(--muted)">${counts[s]}</span></div>`;});html+='</div>';document.getElementById('pipeline-summary').innerHTML=html;}
 function renderPlanTodayAction(){const today=localDate();const item=PLAN_30J.find(p=>p.date===today);if(!item){document.getElementById('plan-today-action').innerHTML='<div class="empty"><div class="empty-icon">🗓️</div><div class="empty-text">Pas d\'action planifiée aujourd\'hui</div></div>';return;}const done=planDone.includes(item.date);document.getElementById('plan-today-action').innerHTML=`<div style="background:var(--light);border-radius:10px;padding:14px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="axe-badge axe-${item.axe}">${item.axe}</span><button class="btn btn-sm ${done?'btn-success':'btn-outline'}" onclick="togglePlanDone('${item.date}')">${done?'✅ Fait':'Marquer fait'}</button></div><div style="font-size:13px;font-weight:600">${item.action}</div></div>`;}
 function pruneQuickTasks(){var lim=Date.now()-5*24*60*60*1000;var n=quickTasks.length;quickTasks=quickTasks.filter(function(t){return !(t.done&&!t.keep&&t.doneAt&&t.doneAt<lim);});if(quickTasks.length!==n)save('quick_tasks',quickTasks);}
-function keepQuickTask(id){quickTasks=quickTasks.map(function(t){return t.id===id?{...t,keep:true,doneAt:null}:t;});save('quick_tasks',quickTasks);renderQuickTasks();if(typeof toast==='function')toast('📌 Tâche conservée');}
-function renderQuickTasks(){pruneQuickTasks();var html='';quickTasks.filter(function(t){return (t.owner||'admin')===(currentUser?currentUser.id:'admin');}).forEach(function(t){var extra='';if(t.done){if(t.keep){extra='<span style="font-size:10px;color:var(--green);font-weight:600;white-space:nowrap">📌 conservée</span>';}else if(t.doneAt){var dl=Math.max(0,Math.ceil(5-(Date.now()-t.doneAt)/(24*60*60*1000)));extra='<span style="font-size:9px;color:var(--muted);white-space:nowrap">suppr. '+dl+'j</span><button class="btn btn-xs btn-outline" style="padding:2px 7px" onclick="keepQuickTask('+t.id+')" title="Conserver cette tache">📌</button>';}}html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)"><input type="checkbox" '+(t.done?'checked':'')+' onchange="toggleQuickTask('+t.id+')" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0"><span style="font-size:13px;flex:1;min-width:0;'+(t.done?'text-decoration:line-through;color:var(--muted)':'')+'">'+esc(t.text)+'</span>'+extra+'</div>';});html+='<div style="margin-top:8px;display:flex;gap:8px"><input type="text" id="new-task-input" class="form-input" placeholder="Nouvelle tache..." style="flex:1" onkeydown="if(event.key===\'Enter\')addQuickTask()"><button class="btn btn-accent btn-sm" onclick="addQuickTask()">+</button></div>';document.getElementById('quick-tasks').innerHTML=html;}
+function keepQuickTask(id){quickTasks=quickTasks.map(function(t){return t.id===id?{...t,keep:true,doneAt:null}:t;});save('quick_tasks',quickTasks);renderQuickTasks();if(typeof toast==='function')toast('💾 Tâche sauvegardée');}
+function deleteQuickTask(id){quickTasks=quickTasks.filter(function(t){return t.id!==id;});save('quick_tasks',quickTasks);renderQuickTasks();}
+function renderQuickTasks(){pruneQuickTasks();var html='';quickTasks.filter(function(t){return (t.owner||'admin')===(currentUser?currentUser.id:'admin');}).forEach(function(t){var extra='';if(t.done){var del='<button class="btn btn-xs btn-outline" style="padding:2px 7px" onclick="deleteQuickTask('+t.id+')" title="Supprimer">🗑️</button>';if(t.keep){extra='<span style="font-size:10px;color:var(--green);font-weight:600;white-space:nowrap">💾 gardée</span>'+del;}else{var dl=t.doneAt?Math.max(0,Math.ceil(5-(Date.now()-t.doneAt)/(24*60*60*1000))):5;extra='<span style="font-size:9px;color:var(--muted);white-space:nowrap" title="Suppression auto dans '+dl+' jours">'+dl+'j</span><button class="btn btn-xs btn-outline" style="padding:2px 7px" onclick="keepQuickTask('+t.id+')" title="Sauvegarder (garder)">💾</button>'+del;}}html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)"><input type="checkbox" '+(t.done?'checked':'')+' onchange="toggleQuickTask('+t.id+')" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0"><span style="font-size:13px;flex:1;min-width:0;'+(t.done?'text-decoration:line-through;color:var(--muted)':'')+'">'+esc(t.text)+'</span>'+extra+'</div>';});html+='<div style="margin-top:8px;display:flex;gap:8px"><input type="text" id="new-task-input" class="form-input" placeholder="Nouvelle tache..." style="flex:1" onkeydown="if(event.key===\'Enter\')addQuickTask()"><button class="btn btn-accent btn-sm" onclick="addQuickTask()">+</button></div>';document.getElementById('quick-tasks').innerHTML=html;}
 function toggleQuickTask(id){quickTasks=quickTasks.map(function(t){return t.id===id?{...t,done:!t.done,doneAt:!t.done?Date.now():null}:t;});save('quick_tasks',quickTasks);renderQuickTasks();}
 function addQuickTask(){const inp=document.getElementById('new-task-input');const text=inp.value.trim();if(!text)return;quickTasks.push({id:Date.now(),text,done:false,owner:defaultOwner()});save('quick_tasks',quickTasks);inp.value='';renderQuickTasks();}
+function debriefParts(d){var names=[];(d.members||[]).forEach(function(id){names.push(firstName(id));});(d.guests||[]).forEach(function(n){if(n)names.push(n);});return names.join(', ');}
+function debriefDateLabel(d){var x=new Date((d.date||'')+'T12:00:00');var ds=isNaN(x)?(d.date||''):x.toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long'});return ds+(d.time?' · '+d.time:'');}
+function renderDebrief(){
+  var me=currentUser?currentUser.id:'admin';
+  var mine=(debriefs||[]).filter(function(d){return (d.owner||'admin')===me;}).sort(function(a,b){return ((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||''));});
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px"><div><div style="font-size:18px;font-weight:800;color:var(--primary)">📝 Débriefs de réunion</div><div style="font-size:12px;color:var(--muted)">Compte-rendu rapide après chaque réunion</div></div><button class="btn btn-primary" onclick="openDebriefModal(null)">+ Nouveau débrief</button></div>';
+  if(!mine.length){html+='<div style="padding:36px 20px;text-align:center;color:var(--muted);background:#fff;border:1px dashed var(--border);border-radius:10px">Aucun débrief.<br>À la fin d\'une réunion, clique sur <b>+ Nouveau débrief</b> — la date et l\'heure se remplissent toutes seules.</div>';}
+  else{html+=mine.map(function(d){var preview=(d.notes||'').replace(/\n/g,' ').slice(0,110);return '<div onclick="openDebriefModal(\''+d.id+'\')" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:13px 14px;margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow)"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-weight:700;color:var(--primary);font-size:14px">📅 '+esc(debriefDateLabel(d))+'</div><button class="btn btn-xs btn-danger" onclick="event.stopPropagation();deleteDebrief(\''+d.id+'\')" title="Supprimer">🗑️</button></div>'+(d.title?'<div style="font-size:13px;font-weight:600;margin-top:2px">'+esc(d.title)+'</div>':'')+'<div style="font-size:12px;color:var(--secondary);margin:4px 0">👥 '+esc(debriefParts(d)||'—')+'</div><div style="font-size:12px;color:var(--muted)">'+esc(preview)+(d.notes&&d.notes.length>110?'…':'')+'</div></div>';}).join('');}
+  document.getElementById('debrief-content').innerHTML=html;
+}
+function openDebriefModal(id){
+  var d=id?(debriefs||[]).find(function(x){return x.id===id;}):null;var isEdit=!!d;
+  var now=new Date();var nowTime=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  d=d||{date:localDate(),time:nowTime,title:'',members:[],guests:[],notes:'',history:[]};
+  var memberRows=members.map(function(m){return '<label style="display:flex;align-items:center;gap:7px;padding:3px 0;font-size:13px;cursor:pointer"><input type="checkbox" class="db-mem" value="'+m.id+'" '+((d.members||[]).indexOf(m.id)>=0?'checked':'')+'><span style="width:11px;height:11px;border-radius:50%;background:'+(m.color||'#64748b')+';flex-shrink:0"></span>'+esc(firstName(m))+'</label>';}).join('');
+  var histHtml=(d.history||[]).slice().reverse().map(function(h){var dt=new Date(h.t);var ds=isNaN(dt)?'':dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});return '<div style="font-size:11px;padding:5px 8px;background:var(--light);border-radius:6px;margin-bottom:4px"><span style="color:var(--muted)">'+ds+'</span> — '+esc(h.text)+'</div>';}).join('')||'<div style="font-size:11px;color:var(--muted)">Aucune note ajoutée</div>';
+  var body='<div class="grid-2"><div class="form-group"><label class="form-label">📅 Date</label><input id="db-date" type="date" class="form-input" value="'+(d.date||localDate())+'"></div><div class="form-group"><label class="form-label">🕐 Heure</label><input id="db-time" type="time" class="form-input" value="'+(d.time||nowTime)+'"></div></div><div class="form-group"><label class="form-label">Sujet de la réunion</label><input id="db-title" class="form-input" value="'+esc(d.title||'')+'" placeholder="Ex: Point commercial, RDV client..."></div><div class="form-group"><label class="form-label">👥 Participants (membres du CRM)</label><div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;max-height:140px;overflow:auto">'+(memberRows||'<span style="font-size:12px;color:var(--muted)">Aucun membre</span>')+'</div></div><div class="form-group"><label class="form-label">➕ Autres participants (noms libres)</label><input id="db-guests" class="form-input" value="'+esc((d.guests||[]).join(', '))+'" placeholder="Noms séparés par des virgules"></div><div class="form-group"><label class="form-label">📝 Grandes lignes / compte-rendu</label><textarea id="db-notes" class="form-textarea" style="min-height:130px" placeholder="Points clés, décisions, prochaines étapes...">'+esc(d.notes||'')+'</textarea></div>'+(isEdit?'<div class="form-group"><label class="form-label">➕ Ajouter une note</label><textarea id="db-newnote" class="form-textarea" rows="2" placeholder="Info complémentaire..."></textarea></div><div class="form-group"><label class="form-label">🕘 Historique des notes</label><div style="max-height:130px;overflow:auto">'+histHtml+'</div></div>':'');
+  var btns=[{label:'💾 Enregistrer',cls:'btn-primary',fn:"saveDebrief('"+(isEdit?id:'')+"')"}];
+  if(isEdit)btns.push({label:'🗑️ Supprimer',cls:'btn-danger',fn:"deleteDebrief('"+id+"')"});
+  btns.push({label:'Fermer',cls:'btn-outline',fn:'closeModal()'});
+  openModal(isEdit?'📝 Débrief':'📝 Nouveau débrief',body,btns);
+}
+function saveDebrief(id){
+  var date=document.getElementById('db-date').value;var time=document.getElementById('db-time').value;
+  var title=document.getElementById('db-title').value.trim();
+  var mem=[].slice.call(document.querySelectorAll('.db-mem:checked')).map(function(c){return c.value;});
+  var guests=document.getElementById('db-guests').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+  var notes=document.getElementById('db-notes').value.trim();
+  var existing=id?(debriefs||[]).find(function(x){return x.id===id;}):null;
+  var hist=existing&&existing.history?existing.history.slice():[];
+  var nn=document.getElementById('db-newnote');if(nn&&nn.value.trim())hist.push({t:Date.now(),text:nn.value.trim()});
+  var data={id:id||('db_'+Date.now()),owner:(existing?existing.owner:defaultOwner()),date:date,time:time,title:title,members:mem,guests:guests,notes:notes,history:hist,createdAt:(existing?existing.createdAt:localDate())};
+  if(id)debriefs=debriefs.map(function(x){return x.id===id?data:x;});else debriefs.push(data);
+  save('debriefs',debriefs);closeModal();renderDebrief();if(typeof toast==='function')toast('✅ Débrief enregistré');
+}
+function deleteDebrief(id){if(!confirm('Supprimer ce débrief ?'))return;debriefs=(debriefs||[]).filter(function(x){return x.id!==id;});save('debriefs',debriefs);closeModal();renderDebrief();if(typeof toast==='function')toast('🗑️ Débrief supprimé');}
 function togglePlanDone(date){if(planDone.includes(date))planDone=planDone.filter(d=>d!==date);else planDone.push(date);save('plan_done',planDone);renderDashboard();renderPlanning();}
 
 // ═══ PROSPECTS ══════════════════════════════════════════════
