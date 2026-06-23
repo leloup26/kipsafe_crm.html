@@ -2327,7 +2327,8 @@ function openDayDetail(ds){
           const cur=ev.status;
           statusBtns='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:8px">'+OCC_STATUS.map(s=>{
             const active=cur===s.v||(s.v==='À faire'&&(cur==='À faire'||cur==='RDV'||cur==='Nouveau'));
-            return `<button onclick="event.stopPropagation();setEventStatus('${k}','${s.v}','${ds}')" style="font-size:10px;padding:3px 8px;border-radius:99px;cursor:pointer;border:1px solid ${active?s.color:'var(--border)'};background:${active?s.color:'#fff'};color:${active?'#fff':s.color};font-weight:700">${s.icon} ${s.v}</button>`;
+            const _rfn=(s.v==='Reporté'&&ev.type==='rdv')?`openRdvPostpone('${ds}','${ev.prospectId}')`:`setEventStatus('${k}','${s.v}','${ds}')`;
+            return `<button onclick="event.stopPropagation();${_rfn}" style="font-size:10px;padding:3px 8px;border-radius:99px;cursor:pointer;border:1px solid ${active?s.color:'var(--border)'};background:${active?s.color:'#fff'};color:${active?'#fff':s.color};font-weight:700">${s.icon} ${s.v}</button>`;
           }).join('')+'</div>';
         }
       }
@@ -2405,11 +2406,39 @@ function doSchedPostpone(ds,key){
   const reason=document.getElementById('sp-reason').value.trim();
   const hist=(s.history||[]).slice();
   hist.push({t:Date.now(),text:`⏩ Reporté du ${frDate(s.date)} ${s.time} au ${frDate(nd)} ${time}${reason?' — '+reason:''}`});
-  scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,date:nd,time,end,dur:calcDur(time,end),status:'À faire',done:false,history:hist}:x);
+  const _spanD=(s.dateFin&&s.dateFin>s.date)?Math.round((new Date(s.dateFin+'T12:00:00')-new Date(s.date+'T12:00:00'))/86400000):0;
+  const _ndFin=_spanD>0?addDaysStr(nd,_spanD):nd;
+  scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,date:nd,dateFin:_ndFin,time,end,dur:calcDur(time,end),status:'À faire',done:false,history:hist}:x);
   save('schedule_custom',scheduleCustom);
   closeModal();refreshScheduleViews();renderDashboard();
   toast('📅 Reporté au '+frDate(nd)+' à '+time);
   setTimeout(()=>openDayDetail(nd),80); // ouvre le nouveau jour pour voir le créneau déplacé
+}
+
+// Reporter (déplacer) un RDV prospect à une nouvelle date depuis le détail du jour
+function openRdvPostpone(ds,pid){
+  const p=prospects.find(x=>String(x.id)===String(pid)); if(!p){toast('RDV introuvable');return;}
+  const cur=p.rdv_date||p.date||ds;
+  const suggest=addDaysStr(cur,1);
+  openModal('⏩ Reporter le RDV',`
+    <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:10px">📞 ${esc(p.nom||'RDV')}${p.societe?' ('+esc(p.societe)+')':''}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Actuellement : ${frDate(cur)}${p.rdv_time?' à '+p.rdv_time:''}</div>
+    <div class="form-group"><label class="form-label">📅 Reporter au</label><input id="rp-date" type="date" class="form-input" value="${suggest}"></div>
+    <div class="form-group"><label class="form-label">🕐 Heure (optionnel)</label><input id="rp-time" type="time" class="form-input" value="${p.rdv_time||''}"></div>
+  `,[
+    {label:'⏩ Reporter',cls:'btn-primary',fn:`doRdvPostpone('${ds}','${pid}')`},
+    {label:'Annuler',cls:'btn-outline',fn:`closeModal();setTimeout(()=>openDayDetail('${ds}'),50)`}
+  ]);
+}
+function doRdvPostpone(ds,pid){
+  const nd=document.getElementById('rp-date').value; if(!nd){alert('Choisis une date');return;}
+  const time=document.getElementById('rp-time').value||'';
+  prospects=prospects.map(x=>String(x.id)===String(pid)?{...x,rdv_date:nd,rdv_time:time}:x);
+  const ok=ds+'|rdv|'+pid; if(occStatus[ok]!==undefined){ delete occStatus[ok]; save('occ_status',occStatus); }
+  save('prospects',prospects);
+  closeModal();refreshScheduleViews();renderDashboard();
+  toast('📅 RDV reporté au '+frDate(nd)+(time?' à '+time:''));
+  setTimeout(()=>openDayDetail(nd),80);
 }
 
 // ── Rappels : calcule les rappels déclenchés à une date donnée ──
