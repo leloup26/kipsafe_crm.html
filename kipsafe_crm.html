@@ -1477,7 +1477,7 @@ function saveScheduleItem(today,key){
     scheduleOverrides[key]={...scheduleOverrides[key]||{},time,end,dur,axe,icon,action,done,...rich};
     save('schedule_overrides',scheduleOverrides);
   }
-  closeModal();refreshScheduleViews();renderDashboard();toast(movedTo?('📅 Déplacé au '+frDate(movedTo)+' à '+time):'✅ Enregistré');
+  closeModal();if(movedTo)calGoToDate(movedTo);refreshScheduleViews();renderDashboard();toast(movedTo?('📅 Déplacé au '+frDate(movedTo)+' à '+time):'✅ Enregistré');
 }
 function deleteScheduleItem(today,key){
   if(!confirm('Supprimer ce créneau ?')) return;
@@ -2251,6 +2251,18 @@ function setCal2View(n){cal2View=n;cal2Offset=0;document.getElementById('cal2-bt
 function cal2NavPrev(){cal2Offset--;renderCalendar2();}
 function cal2NavNext(){cal2Offset++;renderCalendar2();}
 function cal2NavToday(){cal2Offset=0;renderCalendar2();}
+function calGoToDate(dateStr){
+  if(!dateStr) return;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const target=new Date(dateStr+'T12:00:00'); if(isNaN(target)) return; target.setHours(0,0,0,0);
+  if(cal2View===30){
+    cal2Offset=(target.getFullYear()-today.getFullYear())*12+(target.getMonth()-today.getMonth());
+  } else {
+    const ts=new Date(today); ts.setDate(ts.getDate()-((today.getDay()+6)%7));
+    const gs=new Date(target); gs.setDate(gs.getDate()-((target.getDay()+6)%7));
+    cal2Offset=Math.round((gs-ts)/(7*86400000));
+  }
+}
 
 function eventBucket(ev){
   const st=ev.status;
@@ -2410,7 +2422,7 @@ function doSchedPostpone(ds,key){
   const _ndFin=_spanD>0?addDaysStr(nd,_spanD):nd;
   scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,date:nd,dateFin:_ndFin,time,end,dur:calcDur(time,end),status:'À faire',done:false,history:hist}:x);
   save('schedule_custom',scheduleCustom);
-  closeModal();refreshScheduleViews();renderDashboard();
+  closeModal();calGoToDate(nd);refreshScheduleViews();renderDashboard();
   toast('📅 Reporté au '+frDate(nd)+' à '+time);
   setTimeout(()=>openDayDetail(nd),80); // ouvre le nouveau jour pour voir le créneau déplacé
 }
@@ -2436,7 +2448,7 @@ function doRdvPostpone(ds,pid){
   prospects=prospects.map(x=>String(x.id)===String(pid)?{...x,rdv_date:nd,rdv_time:time}:x);
   const ok=ds+'|rdv|'+pid; if(occStatus[ok]!==undefined){ delete occStatus[ok]; save('occ_status',occStatus); }
   save('prospects',prospects);
-  closeModal();refreshScheduleViews();renderDashboard();
+  closeModal();calGoToDate(nd);refreshScheduleViews();renderDashboard();
   toast('📅 RDV reporté au '+frDate(nd)+(time?' à '+time:''));
   setTimeout(()=>openDayDetail(nd),80);
 }
