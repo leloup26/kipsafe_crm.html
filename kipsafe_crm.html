@@ -387,7 +387,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
       <div style="margin-top:14px;text-align:center"><a href="#" onclick="doForgot();return false" style="font-size:12px;color:var(--secondary);text-decoration:underline">Mot de passe oublié / première connexion</a></div>
     </div>
     <div id="auth-setpw" style="display:none">
-      <input id="auth-newpw" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe (10 caractères min.)" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;font-size:15px;box-sizing:border-box">
+      <input id="auth-newpw" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe (12 caractères min.)" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;font-size:15px;box-sizing:border-box">
       <input id="auth-newpw2" type="password" autocomplete="new-password" placeholder="Confirmer le mot de passe" onkeydown="if(event.key==='Enter')doSetPassword()" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);margin-bottom:12px;font-size:15px;box-sizing:border-box">
       <button class="pin-key" style="width:100%;padding:14px;background:var(--secondary);color:#fff;border-color:var(--secondary);font-size:15px" onclick="doSetPassword()">Enregistrer</button>
     </div>
@@ -1081,7 +1081,7 @@ async function doForgot(){
 async function doSetPassword(){
   const p1=document.getElementById('auth-newpw').value||'';
   const p2=document.getElementById('auth-newpw2').value||'';
-  if(p1.length<10){authMsg('Mot de passe : 10 caractères minimum.');return;}
+  if(p1.length<12){authMsg('Mot de passe : 12 caractères minimum.');return;}
   if(p1!==p2){authMsg('Les deux mots de passe ne correspondent pas.');return;}
   authMsg('Enregistrement…',true);
   const {data,error}=await sbClient.auth.updateUser({password:p1,data:{must_change:false}});
