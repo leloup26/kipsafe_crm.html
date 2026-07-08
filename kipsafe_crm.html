@@ -382,7 +382,8 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
     <div class="pin-error" id="pin-error"></div>
     <div id="auth-login">
       <input id="auth-email" type="email" autocomplete="username" placeholder="Email" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;font-size:15px;box-sizing:border-box">
-      <input id="auth-pw" type="password" autocomplete="current-password" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);margin-bottom:12px;font-size:15px;box-sizing:border-box">
+      <input id="auth-pw" type="password" autocomplete="current-password" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;font-size:15px;box-sizing:border-box">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:2px 0 14px;cursor:pointer"><input type="checkbox" id="auth-remember" style="width:16px;height:16px;cursor:pointer"> Se souvenir de mon email</label>
       <button class="pin-key" style="width:100%;padding:14px;background:var(--secondary);color:#fff;border-color:var(--secondary);font-size:15px" onclick="doLogin()">Se connecter</button>
       <div style="margin-top:14px;text-align:center"><a href="#" onclick="doForgot();return false" style="font-size:12px;color:var(--secondary);text-decoration:underline">Mot de passe oublié / première connexion</a></div>
     </div>
@@ -1050,6 +1051,11 @@ function authView(v){ // 'login' | 'setpw'
   authMsg('');
 }
 function showAuthScreen(){document.getElementById('pin-screen').style.display='flex';document.getElementById('app').style.display='none';}
+// Pré-remplit l'email mémorisé (identifiant uniquement ; jamais le mot de passe). Clé hors préfixe kipsafe_ pour survivre aux réinitialisations.
+function prefillRememberedEmail(){
+  try{const e=localStorage.getItem('kip_remember_email');const f=document.getElementById('auth-email');const c=document.getElementById('auth-remember');
+    if(e&&f)f.value=e; if(c)c.checked=!!e;}catch(_){}
+}
 async function initPin(){ // point d'entrée auth (nom conservé pour compat boot)
   initClient();
   if(!sbClient){showAuthScreen();authView('login');authMsg('Serveur indisponible — réessayez.');return;}
@@ -1060,7 +1066,7 @@ async function initPin(){ // point d'entrée auth (nom conservé pour compat boo
   }
   // Session déjà active (JWT persistant) → entrer directement
   try{ const {data:{session}}=await sbClient.auth.getSession(); if(session&&session.user){ await enterAppAs(session.user); return; } }catch(e){}
-  showAuthScreen(); authView('login');
+  showAuthScreen(); authView('login'); prefillRememberedEmail();
 }
 async function doLogin(){
   const email=(document.getElementById('auth-email').value||'').trim().toLowerCase();
@@ -1069,6 +1075,7 @@ async function doLogin(){
   authMsg('Connexion…',true);
   const {data,error}=await sbClient.auth.signInWithPassword({email,password:pw});
   if(error){authMsg('Identifiants incorrects.');return;}
+  try{const c=document.getElementById('auth-remember');if(c&&c.checked){localStorage.setItem('kip_remember_email',email);}else{localStorage.removeItem('kip_remember_email');}}catch(_){}
   await enterAppAs(data.user);
 }
 async function doForgot(){
@@ -1128,7 +1135,7 @@ function setMemberFilter(v){
   if(document.getElementById('panel-calendrier')?.classList.contains('active'))renderCalendrierTab();
   toast(v?('👁 Vue : '+memberName(v)):'👁 Vue : tout');
 }
-async function lockApp(){stopAutoLock();try{if(sbClient)await sbClient.auth.signOut();}catch(e){}currentUser=null;document.getElementById('app').style.display='none';const pw=document.getElementById('auth-pw');if(pw)pw.value='';const p2=document.getElementById('auth-newpw');if(p2)p2.value='';const p3=document.getElementById('auth-newpw2');if(p3)p3.value='';showAuthScreen();authView('login');}
+async function lockApp(){stopAutoLock();try{if(sbClient)await sbClient.auth.signOut();}catch(e){}currentUser=null;document.getElementById('app').style.display='none';const pw=document.getElementById('auth-pw');if(pw)pw.value='';const p2=document.getElementById('auth-newpw');if(p2)p2.value='';const p3=document.getElementById('auth-newpw2');if(p3)p3.value='';showAuthScreen();authView('login');prefillRememberedEmail();}
 
 // ═══ AUTO-VERROUILLAGE ══════════════════════════════════════
 const AUTO_LOCK_MS = 4*60*60*1000;      // 4h en ms
