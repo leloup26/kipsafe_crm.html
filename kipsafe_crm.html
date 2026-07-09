@@ -428,6 +428,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
       <div id="reminders-banner"></div>
       <div id="relance-banner"></div>
       <div id="obj-review-banner"></div>
+      <div id="retention-banner"></div>
       <div class="grid-4" style="margin-bottom:16px" id="kpis"></div>
       <div class="grid-2">
         <div>
@@ -1256,7 +1257,57 @@ document.addEventListener('click',function(e){if(!e.target.closest('.more-menu')
 let objStatus=load('obj_status',{});
 
 // ═══ DASHBOARD ══════════════════════════════════════════════
-function renderDashboard(){renderSoirBanner();renderRemindersBanner();renderRelanceBanner();renderObjReviewBanner();renderKPIs();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
+function renderDashboard(){renderSoirBanner();renderRemindersBanner();renderRelanceBanner();renderObjReviewBanner();renderRetentionBanner();renderKPIs();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
+
+// ═══ CONSERVATION RGPD DES PROSPECTS (6 mois) ═══════════════════
+const RETENTION_MONTHS=6;
+// Date de référence d'un prospect = la plus récente connue (création, 1er contact, RDV). null si aucune.
+function prospectRefDate(p){
+  var ds=[p&&p.dateCreation,p&&p.date,p&&p.rdv_date].filter(function(x){return x&&/^\d{4}-\d{2}-\d{2}/.test(x);});
+  if(!ds.length) return null; ds.sort(); return ds[ds.length-1];
+}
+function retentionCutoff(){var d=new Date();d.setMonth(d.getMonth()-RETENTION_MONTHS);return localDate(d);}
+// Prospects concernés : NON « Signé » (clients conservés), avec une date connue, et plus vieux que la limite.
+function getExpiredProspects(){
+  var cut=retentionCutoff();
+  return prospects.filter(function(p){
+    if(!p||p.statut==='Signé') return false;
+    var ref=prospectRefDate(p); if(!ref) return false;
+    return ref<cut;
+  });
+}
+function renderRetentionBanner(){
+  var el=document.getElementById('retention-banner'); if(!el) return;
+  var exp=getExpiredProspects();
+  if(!exp.length){el.innerHTML='';return;}
+  el.innerHTML='<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">'
+    +'<div style="font-size:13px;color:#991b1b"><strong>🗓️ Conservation RGPD</strong> — '+exp.length+' prospect(s) sans activité depuis plus de '+RETENTION_MONTHS+' mois <span style="color:#b91c1c;opacity:.8">(clients signés exclus)</span>.</div>'
+    +'<button class="btn btn-sm btn-danger" onclick="openRetentionReview()">Revoir et supprimer</button></div>';
+}
+function openRetentionReview(){
+  var exp=getExpiredProspects();
+  if(!exp.length){toast('Aucun prospect à purger');return;}
+  var rows=exp.map(function(p){
+    return '<label style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer">'
+      +'<input type="checkbox" class="ret-chk" value="'+esc(String(p.id))+'" checked>'
+      +'<span style="flex:1"><strong>'+esc(p.nom||'—')+'</strong>'+(p.societe?' · '+esc(p.societe):'')+' <span style="color:var(--muted)">('+esc(p.statut||'—')+')</span></span>'
+      +'<span style="color:var(--muted);font-size:11px;white-space:nowrap">'+esc(prospectRefDate(p)||'—')+'</span></label>';
+  }).join('');
+  openModal('🗓️ Prospects de plus de '+RETENTION_MONTHS+' mois',
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Décoche ceux que tu veux <strong>conserver</strong>. Les clients « Signé » et les prospects sans date ne sont jamais listés ici.</div>'
+    +'<div style="max-height:50vh;overflow:auto;margin:0 -4px">'+rows+'</div>',
+    [{label:'🗑️ Supprimer les cochés',cls:'btn-danger',fn:'purgeRetentionSelected()'},{label:'Annuler',cls:'btn-outline',fn:'closeModal()'}]);
+}
+function purgeRetentionSelected(){
+  var ids=[].slice.call(document.querySelectorAll('.ret-chk:checked')).map(function(c){return c.value;});
+  if(!ids.length){toast('Aucun prospect coché');return;}
+  if(!confirm('Supprimer définitivement '+ids.length+' prospect(s) ? Action irréversible.')) return;
+  var idset={}; ids.forEach(function(v){idset[v]=1;});
+  prospects=prospects.filter(function(p){return !idset[String(p.id)];});
+  save('prospects',prospects);
+  closeModal(); renderProspects(); renderDashboard();
+  toast('🗑️ '+ids.length+' prospect(s) supprimé(s)');
+}
 function objToReview(){const today=localDate();return (objectives||[]).filter(o=>inScope(o)&&(o.level==='annee'||o.level==='mois')&&(o.echeance||o.deadline)&&(o.echeance||o.deadline)<=today&&o.status!=='Terminé'&&o.status!=='Annulé');}
 function renderObjReviewBanner(){
   const el=document.getElementById('obj-review-banner'); if(!el) return;
@@ -1907,7 +1958,7 @@ function openProspectModal(p){
     <div class="form-group"><label class="form-label">Notes</label><textarea id="f-notes" class="form-textarea">${p?esc(p.notes||''):''}</textarea></div>`,
     [{label:isEdit?'Enregistrer':'Ajouter',cls:'btn-primary',fn:`saveProspect(${isEdit?p.id:'null'})`},{label:'Annuler',cls:'btn-outline',fn:'closeModal()'}]);
 }
-function saveProspect(id){const nom=document.getElementById('f-nom').value.trim();if(!nom){alert('Nom requis');return;}const catRaw=document.getElementById('f-categorie').value;const categorie=catRaw.replace(/^[^\w]+\s*/,'').trim();const data={nom,categorie,poste:document.getElementById('f-poste').value.trim(),societe:document.getElementById('f-societe').value.trim(),email:document.getElementById('f-email').value.trim(),tel:document.getElementById('f-tel').value.trim(),linkedin:document.getElementById('f-linkedin').value.trim(),source:document.getElementById('f-source').value,offre:document.getElementById('f-offre').value,statut:document.getElementById('f-statut').value,valeur:document.getElementById('f-valeur').value,date:document.getElementById('f-date').value,rdv_date:document.getElementById('f-rdv-date').value,rdv_time:document.getElementById('f-rdv-time').value,owner:(document.getElementById('f-owner')?.value)||defaultOwner(),shared:!!document.getElementById('f-owner-shared')?.checked,notes:document.getElementById('f-notes').value.trim()};if(id){prospects=prospects.map(p=>p.id===id?{...p,...data}:p);}else{data.id=nextId++;save('next_id',nextId);prospects.push(data);}save('prospects',prospects);closeModal();renderProspects();renderDashboard();if(typeof refreshScheduleViews==='function')refreshScheduleViews();}
+function saveProspect(id){const nom=document.getElementById('f-nom').value.trim();if(!nom){alert('Nom requis');return;}const catRaw=document.getElementById('f-categorie').value;const categorie=catRaw.replace(/^[^\w]+\s*/,'').trim();const data={nom,categorie,poste:document.getElementById('f-poste').value.trim(),societe:document.getElementById('f-societe').value.trim(),email:document.getElementById('f-email').value.trim(),tel:document.getElementById('f-tel').value.trim(),linkedin:document.getElementById('f-linkedin').value.trim(),source:document.getElementById('f-source').value,offre:document.getElementById('f-offre').value,statut:document.getElementById('f-statut').value,valeur:document.getElementById('f-valeur').value,date:document.getElementById('f-date').value,rdv_date:document.getElementById('f-rdv-date').value,rdv_time:document.getElementById('f-rdv-time').value,owner:(document.getElementById('f-owner')?.value)||defaultOwner(),shared:!!document.getElementById('f-owner-shared')?.checked,notes:document.getElementById('f-notes').value.trim()};if(id){prospects=prospects.map(p=>p.id===id?{...p,...data}:p);}else{data.id=nextId++;data.dateCreation=localDate();save('next_id',nextId);prospects.push(data);}save('prospects',prospects);closeModal();renderProspects();renderDashboard();if(typeof refreshScheduleViews==='function')refreshScheduleViews();}
 function deleteProspect(id){if(!confirm('Supprimer ce prospect ?'))return;prospects=prospects.filter(p=>p.id!==id);save('prospects',prospects);renderProspects();renderDashboard();}
 
 // ═══ PLANNING v3 ════════════════════════════════════════════
