@@ -1038,10 +1038,7 @@ function occKeyOf(ev,ds){
   return null;
 }
 
-// ═══ PIN ════════════════════════════════════════════════════
-let pinBuffer='',pinMode='check',pinSetup1='';
-function simpleHash(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return(h>>>0).toString(16);}
-let _recovery=false;
+// ═══ AUTHENTIFICATION (Supabase Auth) ═══════════════════════
 function authMsg(t,ok){const e=document.getElementById('pin-error');if(e){e.style.color=ok?'var(--green)':'var(--red)';e.textContent=t||'';}}
 function authView(v){ // 'login' | 'setpw'
   const l=document.getElementById('auth-login'),s=document.getElementById('auth-setpw'),t=document.getElementById('pin-title');
@@ -1061,7 +1058,7 @@ async function initPin(){ // point d'entrée auth (nom conservé pour compat boo
   if(!sbClient){showAuthScreen();authView('login');authMsg('Serveur indisponible — réessayez.');return;}
   // Retour depuis le lien reçu par email (réinitialisation OU invitation) → écran mot de passe
   if(/type=(recovery|invite)/.test(location.hash||'')||/type=(recovery|invite)/.test(location.search||'')){
-    _recovery=true; showAuthScreen(); authView('setpw');
+    showAuthScreen(); authView('setpw');
     authMsg('Choisissez votre mot de passe.',true); return;
   }
   // Session déjà active (JWT persistant) → entrer directement
@@ -1093,7 +1090,7 @@ async function doSetPassword(){
   authMsg('Enregistrement…',true);
   const {data,error}=await sbClient.auth.updateUser({password:p1,data:{must_change:false}});
   if(error){authMsg(error.message);return;}
-  _recovery=false; history.replaceState(null,'',location.pathname);
+  history.replaceState(null,'',location.pathname);
   let u=(data&&data.user)||null;
   if(!u){try{u=((await sbClient.auth.getSession()).data.session||{}).user;}catch(e){}}
   authMsg('✅ Mot de passe enregistré.',true);
@@ -3348,8 +3345,6 @@ function docFormatSize(b){
   if(b<1048576) return Math.round(b/1024)+'KB';
   return (b/1048576).toFixed(1)+'MB';
 }
-
-function docCleanName(raw){return raw.replace(/^\d{10,}_/,'');}
 
 async function handleDocUpload(files){
   if(!files||!files.length) return;
