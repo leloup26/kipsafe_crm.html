@@ -2541,7 +2541,7 @@ function doSchedPostpone(ds,key){
   const _ndFin=_spanD>0?addDaysStr(nd,_spanD):nd;
   scheduleCustom=scheduleCustom.map(x=>String(x.id)===rawId?{...x,date:nd,dateFin:_ndFin,time,end,dur:calcDur(time,end),status:'À faire',done:false,history:hist}:x);
   save('schedule_custom',scheduleCustom);
-  closeModal();calGoToDate(nd);refreshScheduleViews();renderDashboard();
+  closeModal();calGoToDate(nd);showTab('calendrier');renderDashboard();
   toast('📅 Reporté au '+frDate(nd)+' à '+time);
   setTimeout(()=>openDayDetail(nd),80); // ouvre le nouveau jour pour voir le créneau déplacé
 }
@@ -2567,7 +2567,7 @@ function doRdvPostpone(ds,pid){
   prospects=prospects.map(x=>String(x.id)===String(pid)?{...x,rdv_date:nd,rdv_time:time}:x);
   const ok=ds+'|rdv|'+pid; if(occStatus[ok]!==undefined){ delete occStatus[ok]; save('occ_status',occStatus); }
   save('prospects',prospects);
-  closeModal();calGoToDate(nd);refreshScheduleViews();renderDashboard();
+  closeModal();calGoToDate(nd);showTab('calendrier');renderDashboard();
   toast('📅 RDV reporté au '+frDate(nd)+(time?' à '+time:''));
   setTimeout(()=>openDayDetail(nd),80);
 }
