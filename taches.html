@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' https://graujqkrxxceskgnqfin.supabase.co wss://graujqkrxxceskgnqfin.supabase.co https://yjiukywrsguoevavddru.supabase.co wss://yjiukywrsguoevavddru.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
 <title>Tâches — Samuel</title>
+<!-- Ajoutée à l'écran d'accueil, l'app s'ouvre en plein écran ET iOS conserve
+     bien mieux son stockage : la session ne se fait plus purger comme dans Safari. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tâches">
+<meta name="theme-color" content="#0A2E5C">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.0/dist/umd/supabase.js" integrity="sha384-3wY11tldQ5+yWqAvmTN4XtQvnjoTva0cV15O/O/O5NTtp0ivVopSzLOzsVXWZse9" crossorigin="anonymous"></script>
 <style>
@@ -66,6 +73,9 @@ textarea{resize:vertical;min-height:64px}
 .empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:13.5px}
 .empty .ico{font-size:32px;display:block;margin-bottom:8px;opacity:.5}
 
+/* ---------- Démarrage ---------- */
+#boot{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--navy),#061c3a)}
+
 /* ---------- Login ---------- */
 #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px;background:linear-gradient(160deg,var(--navy),#061c3a)}
 #login .box{background:#fff;border-radius:18px;padding:28px 22px;width:100%;max-width:370px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
@@ -85,16 +95,26 @@ textarea{resize:vertical;min-height:64px}
 </head>
 <body>
 
+<!-- ══════════════ DÉMARRAGE (reconnexion silencieuse) ══════════════ -->
+<div id="boot">
+  <div style="text-align:center;color:#fff">
+    <div style="font-size:46px;margin-bottom:14px">✅</div>
+    <div style="font-weight:800;font-size:18px;margin-bottom:6px">Mes tâches</div>
+    <div id="boot-msg" style="font-size:13px;opacity:.75">Connexion…</div>
+  </div>
+</div>
+
 <!-- ══════════════ LOGIN ══════════════ -->
-<div id="login">
+<div id="login" class="hidden">
   <div class="box">
     <h1>✅ Mes tâches</h1>
     <p class="sub">Saisie rapide · KIPSAFE · LMDK · Perso</p>
     <div class="field"><label>Email</label><input type="email" id="li-email" autocomplete="username" placeholder="galinsamuel@gmail.com"></div>
     <div class="field"><label>Mot de passe</label><input type="password" id="li-pw" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:16px">
-      <input type="checkbox" id="li-remember" style="width:auto" checked> Se souvenir de mon email
+    <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:6px">
+      <input type="checkbox" id="li-auto" style="width:auto" checked> Rester connecté sur cet appareil
     </label>
+    <p class="small" style="margin:0 0 16px">Plus de mot de passe à retaper. À décocher si ce téléphone n'est pas le tien.</p>
     <button class="btn btn-primary" id="li-btn" onclick="doLogin()">Se connecter</button>
     <div id="li-err" style="color:var(--red);font-size:13px;margin-top:12px;text-align:center"></div>
   </div>
@@ -103,7 +123,7 @@ textarea{resize:vertical;min-height:64px}
 <!-- ══════════════ APP ══════════════ -->
 <div id="app" class="hidden">
   <header>
-    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.1</span></div>
+    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.2</span></div>
     <button class="icon-btn" onclick="refreshAll()" title="Actualiser">↻</button>
     <button class="icon-btn" onclick="openSettings()" title="Réglages">⚙️</button>
   </header>
@@ -211,6 +231,8 @@ textarea{resize:vertical;min-height:64px}
     <div class="card">
       <h2>Compte</h2>
       <div class="status-line" id="me-status">…</div>
+      <div class="status-line" id="auto-status">…</div>
+      <button class="btn btn-ghost" style="width:100%;margin-bottom:8px" id="auto-btn" onclick="toggleAuto()">…</button>
       <button class="btn btn-ghost" style="width:100%" onclick="doLogout()">Se déconnecter</button>
     </div>
   </div>
@@ -229,7 +251,7 @@ textarea{resize:vertical;min-height:64px}
    partagée depuis un cache local. Toute écriture = relecture cloud
    fraîche → append → upsert. Voir cloudAppend().
    ════════════════════════════════════════════════════════════════ */
-const VERSION='v1.1';
+const VERSION='v1.2';
 
 /* ---------- Base KIPSAFE (partagée KIPSAFE + Perso) ---------- */
 const SB_URL='https://graujqkrxxceskgnqfin.supabase.co';
@@ -366,16 +388,57 @@ function initClients(){
   if(!lmdk)lmdk=window.supabase.createClient(LMDK_URL,LMDK_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'lmdk-auth'}});
   return true;
 }
+/* ─── Reconnexion automatique ──────────────────────────────────────
+   Trois filets, du plus sûr au dernier recours :
+     1. session Supabase encore valide (cas normal) ;
+     2. rafraîchissement du jeton si la session a expiré ;
+     3. identifiants mémorisés sur l'appareil, si « Rester connecté ».
+   Le 3 n'existe que parce que Safari purge le stockage local au bout
+   de quelques jours d'inactivité, ce qui déconnecte sans cela.        */
+function readAuto(k){try{return JSON.parse(localStorage.getItem(k)||'null');}catch(e){return null;}}
+function writeAuto(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function clearAuto(k){try{localStorage.removeItem(k);}catch(e){}}
+function bootMsg(t){const e=document.getElementById('boot-msg');if(e)e.textContent=t;}
+function showLogin(){
+  document.getElementById('boot').classList.add('hidden');
+  document.getElementById('login').classList.remove('hidden');
+}
+
 async function boot(){
   document.getElementById('ver-badge').textContent=VERSION;
-  const rem=localStorage.getItem('taches_email')||localStorage.getItem('kip_remember_email')||'';
+  const auto=readAuto('taches_auto');
+  const rem=(auto&&auto.email)||localStorage.getItem('taches_email')||localStorage.getItem('kip_remember_email')||'';
   if(rem)document.getElementById('li-email').value=rem;
+  document.getElementById('li-auto').checked=!!auto||!localStorage.getItem('taches_email');
   document.getElementById('f-date').value=localDate();
-  if(!initClients())return;
+  if(!initClients()){showLogin();return;}
+
   try{
+    // 1) session déjà valide
     const{data:{session}}=await sb.auth.getSession();
-    if(session)await enterApp(session.user);
-  }catch(e){console.warn(e);}
+    if(session){await enterApp(session.user);return;}
+    // 2) session expirée mais jeton de rafraîchissement encore là
+    bootMsg('Reconnexion…');
+    const{data:rd}=await sb.auth.refreshSession();
+    if(rd&&rd.session){await enterApp(rd.session.user);return;}
+  }catch(e){/* on passe au filet suivant */}
+
+  // 3) identifiants mémorisés sur cet appareil
+  if(auto&&auto.email&&auto.pw){
+    bootMsg('Reconnexion automatique…');
+    try{
+      const{data,error}=await sb.auth.signInWithPassword({email:auto.email,password:auto.pw});
+      if(!error&&data&&data.user){await enterApp(data.user);return;}
+      // mot de passe changé entre-temps → on oublie et on redemande
+      if(error&&/Invalid login/i.test(error.message||'')){
+        clearAuto('taches_auto');
+        showLogin();
+        document.getElementById('li-err').textContent='Ton mot de passe a changé — reconnecte-toi une fois.';
+        return;
+      }
+    }catch(e){}
+  }
+  showLogin();
 }
 async function doLogin(){
   const email=document.getElementById('li-email').value.trim().toLowerCase();
@@ -393,18 +456,23 @@ async function doLogin(){
       : ('Erreur : '+error.message);
     return;
   }
-  if(document.getElementById('li-remember').checked)localStorage.setItem('taches_email',email);
-  else localStorage.removeItem('taches_email');
+  localStorage.setItem('taches_email',email);
+  if(document.getElementById('li-auto').checked)writeAuto('taches_auto',{email,pw});
+  else clearAuto('taches_auto');
   document.getElementById('li-pw').value='';
   await enterApp(data.user);
 }
 async function doLogout(){
+  const auto=readAuto('taches_auto');
+  if(auto&&!confirm('Se déconnecter ?\n\nLa reconnexion automatique sera désactivée : il faudra retaper ton mot de passe la prochaine fois.'))return;
+  clearAuto('taches_auto');clearAuto('taches_lmdk_auto');
   try{await sb.auth.signOut();}catch(e){}
   try{if(lmdk)await lmdk.auth.signOut();}catch(e){}
   location.reload();
 }
 async function enterApp(user){
   me=user;
+  document.getElementById('boot').classList.add('hidden');
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('me-status').innerHTML='Connecté : <strong>'+esc(user.email)+'</strong>';
@@ -628,9 +696,20 @@ async function lmdkResume(){
   if(!lmdk)return;
   try{
     const{data:{session}}=await lmdk.auth.getSession();
-    lmdkStatus=session?'on':'off';
-  }catch(e){lmdkStatus='off';}
-  renderLmdkStatus();
+    if(session){lmdkStatus='on';renderLmdkStatus();return;}
+    const{data:rd}=await lmdk.auth.refreshSession();
+    if(rd&&rd.session){lmdkStatus='on';renderLmdkStatus();return;}
+  }catch(e){}
+  // même filet que le compte principal : identifiants mémorisés sur l'appareil
+  const auto=readAuto('taches_lmdk_auto');
+  if(auto&&auto.email&&auto.pw){
+    try{
+      const{error}=await lmdk.auth.signInWithPassword({email:auto.email,password:auto.pw});
+      if(!error){lmdkStatus='on';renderLmdkStatus();return;}
+      if(/Invalid login/i.test(error.message||''))clearAuto('taches_lmdk_auto');
+    }catch(e){}
+  }
+  lmdkStatus='off';renderLmdkStatus();
 }
 async function lmdkLogin(){
   const email=document.getElementById('lm-email').value.trim().toLowerCase();
@@ -640,6 +719,7 @@ async function lmdkLogin(){
   const{error}=await lmdk.auth.signInWithPassword({email,password:pw});
   if(error){lmdkStatus='error';renderLmdkStatus();toast('❌ LMDK : '+error.message,4000);return;}
   document.getElementById('lm-pw').value='';
+  if(readAuto('taches_auto'))writeAuto('taches_lmdk_auto',{email,pw});  // suit le réglage principal
   lmdkStatus='on';renderLmdkStatus();toast('✅ CRM LMDK connecté');
   await refreshAll();
 }
@@ -804,8 +884,30 @@ async function linkPerson(id,memberId){
   toast(memberId?('🔗 '+firstName(p)+' rattaché à son compte CRM'):('🔓 '+firstName(p)+' détaché'));
 }
 
+/* ═══════════ Réglages › reconnexion automatique ═══════════ */
+function renderAutoStatus(){
+  const on=!!readAuto('taches_auto');
+  const st=document.getElementById('auto-status'), btn=document.getElementById('auto-btn');
+  if(!st||!btn)return;
+  st.innerHTML=on
+    ? '<span style="color:var(--green);font-weight:800">✓ Reconnexion automatique active</span> — plus de mot de passe à saisir sur cet appareil.'
+    : '<span style="color:var(--muted)">Reconnexion automatique désactivée</span> — le mot de passe sera redemandé si la session expire.';
+  btn.textContent=on?'Désactiver la reconnexion automatique':'Activer la reconnexion automatique';
+}
+function toggleAuto(){
+  if(readAuto('taches_auto')){
+    clearAuto('taches_auto');clearAuto('taches_lmdk_auto');
+    renderAutoStatus();toast('🔒 Reconnexion automatique désactivée');
+  }else{
+    // Réactiver suppose de ressaisir le mot de passe → déconnexion propre
+    if(!confirm('Pour réactiver la reconnexion automatique, il faut te reconnecter une fois.\n\nSe déconnecter maintenant ?'))return;
+    clearAuto('taches_auto');clearAuto('taches_lmdk_auto');
+    sb.auth.signOut().catch(()=>{}).then(()=>location.reload());
+  }
+}
+
 /* ═══════════ Réglages ═══════════ */
-function openSettings(){document.getElementById('settings').classList.remove('hidden');renderLmdkStatus();renderPeopleSettings();}
+function openSettings(){document.getElementById('settings').classList.remove('hidden');renderLmdkStatus();renderPeopleSettings();renderAutoStatus();}
 function closeSettings(){document.getElementById('settings').classList.add('hidden');}
 
 document.addEventListener('DOMContentLoaded',boot);
