@@ -123,7 +123,7 @@ textarea{resize:vertical;min-height:64px}
 <!-- ══════════════ APP ══════════════ -->
 <div id="app" class="hidden">
   <header>
-    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.3</span></div>
+    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.4</span></div>
     <button class="icon-btn" onclick="refreshAll()" title="Actualiser">↻</button>
     <button class="icon-btn" onclick="openSettings()" title="Réglages">⚙️</button>
   </header>
@@ -256,8 +256,8 @@ textarea{resize:vertical;min-height:64px}
 
       <div class="field">
         <label>Entité</label>
-        <div id="ed-ent-view"></div>
-        <p class="small" style="margin:6px 0 0">L'entité ne se change pas ici : la tâche vit dans le planning de cette entité. Pour la déplacer, supprime-la et recrée-la.</p>
+        <div class="chips" id="ed-ent"></div>
+        <div class="small" id="ed-ent-hint" style="margin-top:7px"></div>
       </div>
 
       <div class="field" id="ed-who-wrap">
@@ -302,7 +302,7 @@ textarea{resize:vertical;min-height:64px}
    partagée depuis un cache local. Toute écriture = relecture cloud
    fraîche → append → upsert. Voir cloudAppend().
    ════════════════════════════════════════════════════════════════ */
-const VERSION='v1.3';
+const VERSION='v1.4';
 
 /* ---------- Base KIPSAFE (partagée KIPSAFE + Perso) ---------- */
 const SB_URL='https://graujqkrxxceskgnqfin.supabase.co';
@@ -883,7 +883,7 @@ async function toggleDone(){
 }
 
 /* ═══════════ Fiche tâche : modifier / supprimer ═══════════ */
-let edIdx=null, edWho=null;
+let edIdx=null, edWho=null, edEnt=null;
 /* Le nom d'une personne sans compte CRM est écrit en tête du titre
    (« 👤 Moche — … ») : on l'enlève pour l'édition, il sera reposé au besoin. */
 function stripPerson(titre){return String(titre||'').replace(/^👤\s*[^—]+—\s*/,'');}
@@ -892,12 +892,11 @@ const FR_TO_ST=t=>(t==='Terminé'?'fait':(t==='En cours'?'en_cours':'a_faire'));
 
 function openEdit(i){
   const t=myTasks[i]; if(!t)return;
-  edIdx=i;
+  edIdx=i; edEnt=t.ent;
   const e=entById(t.ent), r=t.raw||{};
   document.getElementById('ed-title').textContent='✏️ '+e.icon+' '+e.label;
   document.getElementById('ed-titre').value=stripPerson(t.src==='lmdk'?r.titre:r.action);
-  document.getElementById('ed-ent-view').innerHTML=
-    `<span class="chip on" style="background:${e.hex};display:inline-flex">${e.icon} ${esc(e.label)}</span>`;
+  renderEditEnt();
   // On lit l'enregistrement source (r), pas la ligne de liste : enregistrer
   // ne doit jamais effacer un horaire que la liste n'aurait pas repris.
   const heure=(t.src==='lmdk'?r.heure:r.time)||t.time||'';
@@ -914,8 +913,31 @@ function openEdit(i){
   const nomActuel=(t.src==='lmdk')?r.assignee:r.personne;
   const liste=peopleOf(t.ent);
   edWho=(liste.find(p=>normName(p.name)===normName(nomActuel))||liste[0]||{}).id||null;
-  renderEditWho(t.ent);
+  renderEditWho(edEnt);
   document.getElementById('edit').classList.remove('hidden');
+}
+
+/* Changer d'entité = déplacer la tâche d'un planning à l'autre (cf. moveTask) */
+function renderEditEnt(){
+  const t=myTasks[edIdx]; if(!t)return;
+  document.getElementById('ed-ent').innerHTML=ENTS.map(e=>
+    `<button type="button" class="chip${e.id===edEnt?' on':''}" style="${e.id===edEnt?'background:'+e.hex:''}" onclick="pickEditEnt('${e.id}')">${e.icon} ${esc(e.label)}</button>`
+  ).join('');
+  const hint=document.getElementById('ed-ent-hint');
+  if(edEnt===t.ent){hint.textContent='';return;}
+  const dest=entById(edEnt), src=entById(t.ent);
+  hint.innerHTML=(dest.store==='lmdk'&&lmdkStatus!=='on')
+    ? '<span style="color:var(--red)">⚠️ CRM LMDK non connecté — connecte-le dans ⚙️ Réglages avant de déplacer la tâche.</span>'
+    : '<span style="color:var(--amber)">↪️ À l\'enregistrement, la tâche sera déplacée de '+src.label+' vers '+dest.label+' : recréée dans le planning '+dest.label+', puis retirée de celui de '+src.label+'.</span>';
+}
+function pickEditEnt(id){
+  const t=myTasks[edIdx]; if(!t)return;
+  edEnt=id;
+  // la personne doit exister dans l'entité de destination
+  const nom=(personById(t.ent,edWho)||{}).name;
+  const liste=peopleOf(edEnt);
+  edWho=(liste.find(p=>normName(p.name)===normName(nom))||liste[0]||{}).id||null;
+  renderEditEnt();renderEditWho(edEnt);
 }
 /* Postgres renvoie « 09:30:00 » ; l'input time veut « 09:30 » */
 function hhmm(v){const s=String(v||'');return /^\d{1,2}:\d{2}/.test(s)?s.slice(0,5):'';}
@@ -933,7 +955,7 @@ function renderEditWho(ent){
     +`<span class="dot" style="background:${p.color}"></span>${esc(firstName(p))}</button>`
   ).join('');
 }
-function pickEditWho(id){const t=myTasks[edIdx];edWho=id;renderEditWho(t.ent);}
+function pickEditWho(id){edWho=id;renderEditWho(edEnt);}
 function closeEdit(){document.getElementById('edit').classList.add('hidden');edIdx=null;}
 
 async function saveEdit(){
@@ -945,9 +967,22 @@ async function saveEdit(){
   const end=document.getElementById('ed-end').value||'';
   const note=document.getElementById('ed-note').value.trim();
   const st=document.getElementById('ed-statut').value;
-  const who=personById(t.ent,edWho);
+  const who=personById(edEnt,edWho);
   const btn=document.getElementById('ed-save');
   btn.disabled=true;btn.textContent='Enregistrement…';
+  // Changement d'entité → déplacement d'un planning à l'autre
+  if(edEnt!==t.ent){
+    try{
+      await moveTask(t,{titre,date,time,end,note,st,who});
+      closeEdit();
+      await refreshAll();
+    }catch(e){
+      toast('❌ '+(e.message||'déplacement impossible'),5000);
+    }finally{
+      btn.disabled=false;btn.textContent='Enregistrer';
+    }
+    return;
+  }
   try{
     if(t.src==='lmdk'){
       const patch={titre,echeance:date||null,description:note||null,statut:st,
@@ -976,6 +1011,61 @@ async function saveEdit(){
     btn.disabled=false;btn.textContent='Enregistrer';
   }
 }
+/**
+ * Déplace une tâche d'une entité à l'autre — donc d'un stockage à l'autre
+ * (clé partagée KIPSAFE, clé perso, ou base Supabase LMDK).
+ * ORDRE VOLONTAIRE : on crée d'abord à destination, on ne supprime la source
+ * qu'une fois la création confirmée. Si la suppression échoue ensuite, il
+ * reste un doublon — visible et rattrapable — plutôt qu'une tâche perdue.
+ */
+async function moveTask(t,v){
+  const dest=entById(edEnt), src=entById(t.ent);
+  const type=(t.raw&&t.raw.type&&TYPE_ICON[t.raw.type])?t.raw.type:'tache';
+
+  // 1) création à destination
+  if(dest.store==='lmdk'){
+    if(lmdkStatus!=='on'){openSettings();throw new Error('CRM LMDK non connecté — connecte-le puis réessaie');}
+    const base={titre:v.titre,echeance:v.date||null,description:v.note||null,type:'admin',
+                priorite:'moyenne',statut:v.st,assignee:v.who?v.who.name:null};
+    const full=Object.assign({},base,{heure:v.time||null,duree_min:durMin(v.time,v.end),categorie:LMDK_CAT[type]||'autre'});
+    let{error}=await lmdk.from('taches').insert(full);
+    if(error&&(error.code==='PGRST204'||/column|colonne/i.test(error.message||'')))
+      ({error}=await lmdk.from('taches').insert(Object.assign({},base,{type:'autre'})));
+    if(error)throw new Error('création dans LMDK : '+error.message);
+  }else{
+    const meId=(currentUser&&currentUser.id)||'admin';
+    const linked=(dest.id==='KIPSAFE'&&v.who&&v.who.memberId&&members.find(m=>m.id===v.who.memberId))?v.who.memberId:null;
+    const action=(dest.id==='KIPSAFE'&&v.who&&!linked)?('👤 '+firstName(v.who)+' — '+v.titre):v.titre;
+    const id=Date.now();
+    const item={
+      id,date:v.date,dateFin:v.date,time:v.time,end:v.end,dur:calcDur(v.time,v.end),
+      axe:'Admin',icon:TYPE_ICON[type]||'📌',type,
+      action,description:v.note,
+      status:ST_TO_FR[v.st],done:v.st==='fait',objectifId:'',reminder:'none',
+      relanceDate:'',relanceEvery:2,history:[],recurring:'none',recurringUntil:'',
+      owner:meId,assignees:linked&&linked!==meId?[linked]:[],shared:false,
+      createdAt:localDate(),personne:v.who?v.who.name:''
+    };
+    if(dest.store==='perso')item.entreprise=dest.id;
+    await cloudAppend(dest.store==='perso'?'perso_schedule_custom':'schedule_custom',item);
+    if(item.assignees.length)await notifyAssignees(item.assignees,v.titre,v.date,v.time,v.end,id);
+  }
+
+  // 2) suppression de la source, seulement maintenant
+  try{
+    if(t.src==='lmdk'){
+      const{error}=await lmdk.from('taches').delete().eq('id',t.id);
+      if(error)throw new Error(error.message);
+    }else{
+      await cloudRemove(t.key,t.id);
+    }
+  }catch(e){
+    toast('⚠️ Créée dans '+dest.label+', mais pas retirée de '+src.label+' — supprime-la à la main pour éviter le doublon.',6000);
+    return;
+  }
+  toast('↪️ Déplacée : '+src.label+' → '+dest.label);
+}
+
 async function deleteEdit(){
   const t=myTasks[edIdx]; if(!t)return;
   const e=entById(t.ent);
