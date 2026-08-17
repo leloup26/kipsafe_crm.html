@@ -103,7 +103,7 @@ textarea{resize:vertical;min-height:64px}
 <!-- ══════════════ APP ══════════════ -->
 <div id="app" class="hidden">
   <header>
-    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.0</span></div>
+    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.1</span></div>
     <button class="icon-btn" onclick="refreshAll()" title="Actualiser">↻</button>
     <button class="icon-btn" onclick="openSettings()" title="Réglages">⚙️</button>
   </header>
@@ -174,6 +174,20 @@ textarea{resize:vertical;min-height:64px}
     </div>
 
     <div class="card">
+      <h2>👥 Personnes</h2>
+      <div class="chips" id="pe-ent" style="margin-bottom:14px"></div>
+      <div id="pe-list"></div>
+      <div class="row" style="margin-top:12px">
+        <input type="text" id="pe-new" placeholder="Nom de la personne" onkeydown="if(event.key==='Enter')addPerson()">
+        <button class="btn btn-ghost" style="flex:0 0 auto" onclick="addPerson()">+ Ajouter</button>
+      </div>
+      <p class="small" style="margin:12px 0 0">
+        « Compte CRM » relie la personne à son vrai compte KIPSAFE : l'assignation devient réelle et déclenche une notification.
+        Sans compte, la tâche est simplement étiquetée à son nom. Le rattachement se fait aussi tout seul dès qu'un compte du même nom existe.
+      </p>
+    </div>
+
+    <div class="card">
       <h2>Connexion LMDK</h2>
       <div class="status-line" id="lmdk-status">…</div>
       <div id="lmdk-form">
@@ -215,7 +229,7 @@ textarea{resize:vertical;min-height:64px}
    partagée depuis un cache local. Toute écriture = relecture cloud
    fraîche → append → upsert. Voir cloudAppend().
    ════════════════════════════════════════════════════════════════ */
-const VERSION='v1.0';
+const VERSION='v1.1';
 
 /* ---------- Base KIPSAFE (partagée KIPSAFE + Perso) ---------- */
 const SB_URL='https://graujqkrxxceskgnqfin.supabase.co';
@@ -225,9 +239,10 @@ const LMDK_URL='https://yjiukywrsguoevavddru.supabase.co';
 const LMDK_KEY='sb_publishable_DeaIffrmBM3Q8E0rdYaOFw_LBdsXfn5';
 
 let sb=null, lmdk=null, lmdkStatus='off';
-let members=[], me=null, currentUser=null;
+let members=[], me=null, currentUser=null;   // members = annuaire RÉEL du CRM KIPSAFE (comptes)
+let people={};                               // annuaire de l'app, par entité (noms simples)
 let myTasks=[];          // vue agrégée pour la liste
-let selEnt='KIPSAFE', selWho='admin';
+let selEnt='KIPSAFE', selWho=null;
 let advOpen=false;
 
 /* Les 4 entités, avec leur destination de stockage */
@@ -239,6 +254,38 @@ const ENTS=[
 ];
 const TYPE_ICON={tache:'✅',rdv:'📞',reunion:'👥',formation:'📚',perso:'📌'};
 const entById=id=>ENTS.find(e=>e.id===id)||ENTS[0];
+
+/* ─── Annuaire de l'app, par entité ───────────────────────────────
+   Une « personne » = {id, name, color, memberId}.
+   memberId est le lien vers un VRAI compte du CRM KIPSAFE (clé members) :
+     • null  → la tâche est simplement étiquetée à son nom (pas de compte,
+               pas de notification) — c'est l'état de départ ;
+     • défini → assignation réelle dans le CRM + notification, comme avant.
+   Le rattachement se fait dans ⚙️ Réglages › Personnes, quand le compte
+   existe. Le rapprochement par nom est aussi tenté automatiquement.        */
+const PALETTE=['#0A2E5C','#C9A227','#0891b2','#7c3aed','#b91c1c','#15803d','#d97706','#0369a1'];
+const PEOPLE_SEED={
+  KIPSAFE:[
+    {id:'p_samuel',   name:'Samuel Galin',           color:'#0A2E5C', memberId:'admin'},
+    {id:'p_moche',    name:'Moche Medioni',          color:'#C9A227', memberId:null},
+    {id:'p_florian',  name:'Florian Casalta',        color:'#0891b2', memberId:null},
+    {id:'p_jseb',     name:'Jean-Sébastien Orsoni',  color:'#7c3aed', memberId:null}
+  ],
+  LMDK:[
+    {id:'p_samuel',   name:'Samuel Galin',           color:'#0A2E5C', memberId:null},
+    {id:'p_mordehai', name:'Mordehai Levy',          color:'#C9A227', memberId:null},
+    {id:'p_meir',     name:'Meir Elkrief',           color:'#15803d', memberId:null}
+  ],
+  YSIOM:[{id:'p_samuel',name:'Samuel Galin',color:'#0A2E5C',memberId:null}],
+  PERSO:[{id:'p_samuel',name:'Samuel Galin',color:'#0A2E5C',memberId:null}]
+};
+const peopleOf=ent=>Array.isArray(people[ent])?people[ent]:[];
+const personById=(ent,id)=>peopleOf(ent).find(p=>p.id===id)||null;
+/* Normalise un nom pour le rapprochement : minuscules, sans accents ni ponctuation */
+function normName(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+         .replace(/[^a-z0-9]+/g,' ').trim();
+}
 
 /* ═══════════ Utilitaires ═══════════ */
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -252,7 +299,12 @@ function frDate(s){
   if(s===tom)return 'Demain';
   return new Date(y,m-1,d).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
 }
-function firstName(m){if(!m)return '—';const p=String(m.name||'').trim().split(/\s+/)[0]||m.name||'—';return p.charAt(0).toUpperCase()+p.slice(1).toLowerCase();}
+/* Prénom seul, proprement capitalisé — y compris les composés (Jean-Sébastien) */
+function firstName(m){
+  if(!m)return '—';
+  const p=String(m.name||'').trim().split(/\s+/)[0]||String(m.name||'')||'—';
+  return p.toLowerCase().replace(/(^|[-'])([a-zà-ÿ])/g,(s,sep,c)=>sep+c.toUpperCase());
+}
 function calcDur(time,end){
   if(!time||!end)return '';
   const[sh,sm]=time.split(':').map(Number),[eh,em]=end.split(':').map(Number);
@@ -357,6 +409,7 @@ async function enterApp(user){
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('me-status').innerHTML='Connecté : <strong>'+esc(user.email)+'</strong>';
   await loadMembers();
+  await loadPeople();
   renderEntChips();
   renderWhoChips();
   await lmdkResume();
@@ -371,7 +424,34 @@ async function loadMembers(){
   currentUser=members.find(x=>(x.email||'').toLowerCase()===email)
            || members.find(x=>x.role==='admin')
            || members[0];
-  selWho=currentUser.id;
+}
+
+/* ─── Annuaire de l'app ─── */
+async function loadPeople(){
+  const p=await cloudGet('taches_people',null);
+  people=(p&&typeof p==='object'&&!Array.isArray(p))?p:JSON.parse(JSON.stringify(PEOPLE_SEED));
+  // Une entité sans liste retombe sur la graine (ex. entité ajoutée après coup)
+  ENTS.forEach(e=>{if(!Array.isArray(people[e.id]))people[e.id]=JSON.parse(JSON.stringify(PEOPLE_SEED[e.id]||[]));});
+  if(autoLinkMembers()||!p)await savePeople();
+  selWho=(peopleOf(selEnt)[0]||{}).id||null;
+}
+async function savePeople(){await cloudSet('taches_people',people);}
+/**
+ * Rapproche automatiquement les personnes KIPSAFE des vrais comptes du CRM,
+ * par nom normalisé. Dès qu'un compte est créé pour Moche ou Jean-Sébastien,
+ * l'assignation devient réelle (notification incluse) sans rien resaisir.
+ * Renvoie true si au moins un rattachement a changé.
+ */
+function autoLinkMembers(){
+  let changed=false;
+  peopleOf('KIPSAFE').forEach(p=>{
+    if(p.memberId&&members.find(m=>m.id===p.memberId))return;   // déjà rattaché et valide
+    const hit=members.find(m=>normName(m.name)===normName(p.name));
+    // « Moi » est toujours rattaché au compte connecté, même si le nom diffère
+    const next=hit?hit.id:(p.id==='p_samuel'?((currentUser&&currentUser.id)||'admin'):null);
+    if(p.memberId!==next){p.memberId=next;changed=true;}
+  });
+  return changed;
 }
 
 /* ═══════════ Rendu du formulaire ═══════════ */
@@ -380,28 +460,34 @@ function renderEntChips(){
     `<button type="button" class="chip${e.id===selEnt?' on':''}" style="${e.id===selEnt?'background:'+e.hex:''}" onclick="pickEnt('${e.id}')">${e.icon} ${esc(e.label)}</button>`
   ).join('');
 }
-function pickEnt(id){selEnt=id;renderEntChips();renderWhoChips();}
+function pickEnt(id){
+  selEnt=id;
+  // La personne sélectionnée doit exister dans l'entité choisie
+  if(!personById(selEnt,selWho))selWho=(peopleOf(selEnt)[0]||{}).id||null;
+  renderEntChips();renderWhoChips();
+}
 
 function renderWhoChips(){
   const ent=entById(selEnt);
   const box=document.getElementById('f-who'), hint=document.getElementById('who-hint');
-  if(ent.store==='lmdk'){
-    // Le CRM LMDK n'a pas le même annuaire de membres → la tâche est nominative côté LMDK
-    box.innerHTML=`<button type="button" class="chip on" style="background:${ent.hex}"><span class="dot"></span> Moi</button>`;
-    hint.textContent='Les tâches LMDK ne sont pas nominatives dans le CRM LMDK : elles arrivent dans l\'agenda commun.';
-    return;
+  const list=peopleOf(selEnt);
+  if(!list.length){
+    box.innerHTML='<span class="small">Aucune personne — ajoute-les dans ⚙️ Réglages › Personnes.</span>';
+    hint.textContent='';return;
   }
-  if(ent.store==='perso'){
-    box.innerHTML=`<button type="button" class="chip on" style="background:${ent.hex}"><span class="dot"></span> Moi</button>`;
-    hint.textContent='Planning perso : la tâche n\'est visible que par toi.';
-    return;
-  }
-  // KIPSAFE : assignation à un membre du CRM
-  hint.textContent='';
-  box.innerHTML=members.map(m=>
-    `<button type="button" class="chip${m.id===selWho?' on':''}" style="${m.id===selWho?'background:'+(m.color||'#0A2E5C'):''}" onclick="pickWho('${esc(m.id)}')">`
-    +`<span class="dot" style="background:${m.color||'#64748b'}"></span>${esc(firstName(m))}${m.id===(currentUser&&currentUser.id)?' (moi)':''}</button>`
-  ).join('');
+  box.innerHTML=list.map(p=>{
+    const on=p.id===selWho;
+    const moi=p.memberId&&currentUser&&p.memberId===currentUser.id;
+    return `<button type="button" class="chip${on?' on':''}" style="${on?'background:'+p.color:''}" onclick="pickWho('${esc(p.id)}')">`
+      +`<span class="dot" style="background:${p.color}"></span>${esc(firstName(p))}${moi?' (moi)':''}</button>`;
+  }).join('');
+  // Explique ce qui va se passer pour la personne choisie
+  const sel=personById(selEnt,selWho);
+  if(ent.store==='lmdk')      hint.textContent=sel?'La tâche partira dans l\'agenda LMDK au nom de '+firstName(sel)+'.':'';
+  else if(ent.store==='perso')hint.textContent='Planning perso : visible par toi seul.';
+  else if(sel&&sel.memberId)  hint.textContent='';
+  else if(sel)                hint.innerHTML='<span style="color:var(--amber)">⚠️ '+esc(firstName(sel))+' n\'a pas encore de compte CRM : la tâche sera étiquetée à son nom, sans notification. Rattachable dans ⚙️ Réglages.</span>';
+  else                        hint.textContent='';
 }
 function pickWho(id){selWho=id;renderWhoChips();}
 
@@ -429,12 +515,13 @@ async function createTask(){
   const type=document.getElementById('f-type').value||'tache';
   const note=document.getElementById('f-note').value.trim();
   const ent=entById(selEnt);
+  const who=personById(selEnt,selWho);
   const btn=document.getElementById('f-submit');
   btn.disabled=true;btn.textContent='Enregistrement…';
   try{
-    if(ent.store==='lmdk')      await createLmdk(titre,date,time,end,type,note);
-    else if(ent.store==='perso')await createPerso(titre,date,time,end,type,note,ent.id);
-    else                        await createKipsafe(titre,date,time,end,type,note);
+    if(ent.store==='lmdk')      await createLmdk(titre,date,time,end,type,note,who);
+    else if(ent.store==='perso')await createPerso(titre,date,time,end,type,note,ent.id,who);
+    else                        await createKipsafe(titre,date,time,end,type,note,who);
     // Reset du formulaire, en gardant entité + personne (saisie en rafale)
     document.getElementById('f-titre').value='';
     document.getElementById('f-time').value='';
@@ -450,25 +537,34 @@ async function createTask(){
   }
 }
 
-/* --- KIPSAFE : clé partagée schedule_custom + notification --- */
-async function createKipsafe(titre,date,time,end,type,note){
+/* --- KIPSAFE : clé partagée schedule_custom + notification ---
+   Deux cas selon que la personne a un compte CRM ou non :
+     • compte rattaché → assignees:[memberId] + notification (assignation réelle)
+     • pas de compte   → le nom est écrit dans le titre (« 👤 Moche — … ») et
+                         dans un champ `personne`, pour rester lisible dans le
+                         planning KIPSAFE sans y créer de membre fantôme.      */
+async function createKipsafe(titre,date,time,end,type,note,who){
   const id=Date.now();
-  const asg=(selWho&&selWho!==(currentUser&&currentUser.id))?[selWho]:[];
+  const meId=(currentUser&&currentUser.id)||'admin';
+  const linked=who&&who.memberId&&members.find(m=>m.id===who.memberId)?who.memberId:null;
+  const asg=(linked&&linked!==meId)?[linked]:[];
+  const pourAutre=who&&!(linked&&linked===meId);
+  const action=(pourAutre&&!linked)?('👤 '+firstName(who)+' — '+titre):titre;
   const item={
     id,date,dateFin:date,time,end,dur:calcDur(time,end),
     axe:'Admin',icon:TYPE_ICON[type]||'📌',type,
-    action:titre,description:note,
+    action,description:note,
     status:'À faire',done:false,objectifId:'',reminder:'none',
     relanceDate:'',relanceEvery:2,
     history:note?[{t:Date.now(),text:note}]:[],
     recurring:'none',recurringUntil:'',
-    owner:(currentUser&&currentUser.id)||'admin',
-    assignees:asg,shared:false,createdAt:localDate()
+    owner:meId,
+    assignees:asg,shared:false,createdAt:localDate(),
+    personne:who?who.name:''      // champ propre à l'app, ignoré par les CRM
   };
   await cloudAppend('schedule_custom',item);
   if(asg.length)await notifyAssignees(asg,titre,date,time,end,id);
-  const who=asg.length?firstName(members.find(m=>m.id===asg[0])):'toi';
-  toast('✅ Ajouté au planning KIPSAFE — '+who);
+  toast('✅ Planning KIPSAFE — '+(who?firstName(who):'toi')+(asg.length?' (notifié)':''));
 }
 async function notifyAssignees(asg,titre,date,time,end,itemId){
   try{
@@ -491,11 +587,11 @@ async function notifyAssignees(asg,titre,date,time,end,itemId){
 }
 
 /* --- PERSO / YSIOM : clé perso_schedule_custom, taguée entreprise --- */
-async function createPerso(titre,date,time,end,type,note,entreprise){
+async function createPerso(titre,date,time,end,type,note,entreprise,who){
   const item={
     id:Date.now(),date,dateFin:date,time,end,dur:calcDur(time,end),
     axe:'Admin',icon:TYPE_ICON[type]||'📌',type,
-    action:titre,description:note,entreprise,
+    action:titre,description:note,entreprise,personne:who?who.name:'',
     status:'À faire',done:false,objectifId:'',reminder:'none',
     relanceDate:'',relanceEvery:2,
     history:note?[{t:Date.now(),text:note}]:[],
@@ -508,12 +604,14 @@ async function createPerso(titre,date,time,end,type,note,entreprise){
 
 /* --- LMDK : table taches de l'autre projet Supabase --- */
 const LMDK_CAT={tache:'tache',rdv:'rdv',reunion:'reunion',formation:'autre',perso:'autre'};
-async function createLmdk(titre,date,time,end,type,note){
+async function createLmdk(titre,date,time,end,type,note,who){
   if(lmdkStatus!=='on'){
     openSettings();
     throw new Error('CRM LMDK non connecté — renseigne tes identifiants LMDK ci-dessous');
   }
-  const base={titre,echeance:date||null,description:note||null,type:'admin',priorite:'moyenne',statut:'a_faire'};
+  // la table taches a une colonne `assignee` (text) → tâche nominative
+  const base={titre,echeance:date||null,description:note||null,type:'admin',
+              priorite:'moyenne',statut:'a_faire',assignee:who?who.name:null};
   const full=Object.assign({},base,{heure:time||null,duree_min:durMin(time,end),categorie:LMDK_CAT[type]||'autre'});
   let{error}=await lmdk.from('taches').insert(full);
   if(error&&(error.code==='PGRST204'||/column|colonne/i.test(error.message||''))){
@@ -522,7 +620,7 @@ async function createLmdk(titre,date,time,end,type,note){
     if(!error)toast('ℹ️ Enregistré sans l\'heure (migration agenda LMDK non appliquée)',4000);
   }
   if(error)throw new Error('LMDK : '+error.message);
-  toast('✅ Ajouté à l\'agenda LMDK');
+  toast('✅ Agenda LMDK — '+(who?firstName(who):'toi'));
 }
 
 /* ═══════════ Connexion LMDK ═══════════ */
@@ -568,16 +666,19 @@ async function refreshAll(){
     (Array.isArray(kip)?kip:[]).forEach(x=>{
       const asg=Array.isArray(x.assignees)?x.assignees:[];
       if((x.owner||'admin')!==myId&&!asg.includes(myId)&&!(myId==='admin'))return;
+      const nom=x.personne?firstName({name:x.personne})
+               :(asg.length?firstName(members.find(m=>m.id===asg[0])||{name:asg[0]}):null);
       out.push({src:'kipsafe',key:'schedule_custom',id:x.id,ent:'KIPSAFE',
         titre:x.action,date:x.date,time:x.time,done:!!x.done||x.status==='Terminé',
-        who:asg.length?firstName(members.find(m=>m.id===asg[0])||{name:asg[0]}):null,icon:x.icon});
+        who:nom,icon:x.icon});
     });
 
     // PERSO / YSIOM
     const per=await cloudGet('perso_schedule_custom',[]);
     (Array.isArray(per)?per:[]).forEach(x=>{
       out.push({src:'perso',key:'perso_schedule_custom',id:x.id,ent:x.entreprise||'PERSO',
-        titre:x.action,date:x.date,time:x.time,done:!!x.done||x.status==='Terminé',who:null,icon:x.icon});
+        titre:x.action,date:x.date,time:x.time,done:!!x.done||x.status==='Terminé',
+        who:x.personne?firstName({name:x.personne}):null,icon:x.icon});
     });
 
     // LMDK
@@ -585,7 +686,8 @@ async function refreshAll(){
       try{
         const{data}=await lmdk.from('taches').select('*').order('echeance',{ascending:true});
         (data||[]).forEach(t=>out.push({src:'lmdk',key:'taches',id:t.id,ent:'LMDK',
-          titre:t.titre,date:t.echeance,time:t.heure||'',done:t.statut==='termine'||t.statut==='fait',who:null,icon:'👑'}));
+          titre:t.titre,date:t.echeance,time:t.heure||'',done:t.statut==='termine'||t.statut==='fait',
+          who:t.assignee?firstName({name:t.assignee}):null,icon:'👑'}));
       }catch(e){console.warn('LMDK list',e);}
     }
 
@@ -640,8 +742,70 @@ async function markDone(src,key,id){
   }catch(e){toast('❌ '+(e.message||'échec'),4000);}
 }
 
+/* ═══════════ Réglages › Personnes ═══════════ */
+let peEnt='KIPSAFE';
+function renderPeopleSettings(){
+  const chips=document.getElementById('pe-ent');
+  chips.innerHTML=ENTS.map(e=>
+    `<button type="button" class="chip${e.id===peEnt?' on':''}" style="${e.id===peEnt?'background:'+e.hex:''}" onclick="pePick('${e.id}')">${e.icon} ${esc(e.label)}</button>`
+  ).join('');
+  const list=peopleOf(peEnt);
+  const box=document.getElementById('pe-list');
+  if(!list.length){box.innerHTML='<div class="small">Personne pour cette entité.</div>';return;}
+  // Le rattachement à un compte CRM n'a de sens que pour KIPSAFE
+  box.innerHTML=list.map((p,i)=>{
+    const link=(peEnt==='KIPSAFE')
+      ? `<select onchange="linkPerson('${esc(p.id)}',this.value)" style="font-size:13px;padding:7px 8px;margin-top:6px">
+           <option value="">— sans compte CRM —</option>
+           ${members.map(m=>`<option value="${esc(m.id)}"${p.memberId===m.id?' selected':''}>${esc(m.name)}</option>`).join('')}
+         </select>`
+      : '';
+    return `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)">
+      <span style="width:11px;height:11px;border-radius:50%;background:${p.color};margin-top:5px;flex-shrink:0"></span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:14px">${esc(p.name)}</div>
+        ${peEnt==='KIPSAFE'&&!p.memberId?'<div class="small" style="color:var(--amber)">Pas de compte CRM — étiquetage seul</div>':''}
+        ${link}
+      </div>
+      ${i===0&&p.id==='p_samuel'?'':`<button class="btn btn-ghost btn-xs" onclick="removePerson('${esc(p.id)}')">Retirer</button>`}
+    </div>`;
+  }).join('');
+}
+function pePick(id){peEnt=id;renderPeopleSettings();}
+async function addPerson(){
+  const inp=document.getElementById('pe-new');
+  const name=inp.value.trim();
+  if(!name){toast('⚠️ Indique un nom');return;}
+  const list=peopleOf(peEnt);
+  if(list.find(p=>normName(p.name)===normName(name))){toast('⚠️ Déjà dans la liste');return;}
+  const id='p_'+normName(name).replace(/ /g,'_')+'_'+Date.now().toString(36);
+  list.push({id,name,color:PALETTE[list.length%PALETTE.length],memberId:null});
+  people[peEnt]=list;
+  autoLinkMembers();
+  await savePeople();
+  inp.value='';
+  renderPeopleSettings();renderWhoChips();
+  toast('✅ '+name+' ajouté'+(peEnt==='KIPSAFE'?' — rattache son compte CRM si besoin':''));
+}
+async function removePerson(id){
+  const p=personById(peEnt,id); if(!p)return;
+  if(!confirm('Retirer '+p.name+' de la liste '+peEnt+' ?\n\nLes tâches déjà créées à son nom ne bougent pas.'))return;
+  people[peEnt]=peopleOf(peEnt).filter(x=>x.id!==id);
+  if(selWho===id)selWho=(peopleOf(selEnt)[0]||{}).id||null;
+  await savePeople();
+  renderPeopleSettings();renderWhoChips();
+  toast('🗑️ '+p.name+' retiré');
+}
+async function linkPerson(id,memberId){
+  const p=personById(peEnt,id); if(!p)return;
+  p.memberId=memberId||null;
+  await savePeople();
+  renderPeopleSettings();renderWhoChips();
+  toast(memberId?('🔗 '+firstName(p)+' rattaché à son compte CRM'):('🔓 '+firstName(p)+' détaché'));
+}
+
 /* ═══════════ Réglages ═══════════ */
-function openSettings(){document.getElementById('settings').classList.remove('hidden');renderLmdkStatus();}
+function openSettings(){document.getElementById('settings').classList.remove('hidden');renderLmdkStatus();renderPeopleSettings();}
 function closeSettings(){document.getElementById('settings').classList.add('hidden');}
 
 document.addEventListener('DOMContentLoaded',boot);
