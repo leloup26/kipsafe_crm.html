@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' https://graujqkrxxceskgnqfin.supabase.co wss://graujqkrxxceskgnqfin.supabase.co https://yjiukywrsguoevavddru.supabase.co wss://yjiukywrsguoevavddru.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>Tâches — Samuel</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.0/dist/umd/supabase.js" integrity="sha384-3wY11tldQ5+yWqAvmTN4XtQvnjoTva0cV15O/O/O5NTtp0ivVopSzLOzsVXWZse9" crossorigin="anonymous"></script>
+<style>
+:root{
+  --navy:#0A2E5C; --navy2:#123f7a; --gold:#C9A227;
+  --bg:#f4f6fa; --card:#fff; --border:#e2e8f0; --text:#0f172a; --muted:#64748b;
+  --green:#15803d; --red:#b91c1c; --amber:#d97706;
+  --ent-kipsafe:#0A2E5C; --ent-lmdk:#15803d; --ent-ysiom:#7c3aed; --ent-perso:#0891b2;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.45}
+.hidden{display:none!important}
+
+/* ---------- Header ---------- */
+header{position:sticky;top:0;z-index:50;background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 12px rgba(10,46,92,.25)}
+header .title{font-weight:800;font-size:17px;letter-spacing:.2px;flex:1}
+header .ver{font-size:10px;opacity:.65;font-weight:600}
+.icon-btn{background:rgba(255,255,255,.14);border:0;color:#fff;width:34px;height:34px;border-radius:9px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.icon-btn:active{background:rgba(255,255,255,.3)}
+
+/* ---------- Layout ---------- */
+.wrap{max-width:620px;margin:0 auto;padding:14px 14px 90px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.card h2{margin:0 0 14px;font-size:14px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.5px}
+
+/* ---------- Form ---------- */
+label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:0 0 5px;text-transform:uppercase;letter-spacing:.3px}
+input,select,textarea{width:100%;padding:12px;border:1.5px solid var(--border);border-radius:10px;font-size:16px;font-family:inherit;background:#fff;color:var(--text);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--navy)}
+textarea{resize:vertical;min-height:64px}
+.field{margin-bottom:14px}
+.row{display:flex;gap:10px}
+.row>*{flex:1;min-width:0}
+
+/* Choix entreprise / personne en pastilles */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--border);background:#fff;border-radius:999px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--muted);transition:.12s}
+.chip:active{transform:scale(.96)}
+.chip.on{color:#fff;border-color:transparent}
+.chip .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.chip.on .dot{background:#fff!important}
+
+.btn{border:0;border-radius:11px;padding:13px 18px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+.btn-primary{background:var(--navy);color:#fff;width:100%}
+.btn-primary:active{background:var(--navy2)}
+.btn-primary:disabled{opacity:.5}
+.btn-ghost{background:#fff;border:1.5px solid var(--border);color:var(--muted);padding:9px 14px;font-size:13px}
+.btn-xs{padding:5px 10px;font-size:12px;border-radius:8px}
+
+/* ---------- Liste ---------- */
+.task{display:flex;gap:11px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border)}
+.task:last-child{border-bottom:0}
+.task .bar{width:4px;align-self:stretch;border-radius:99px;flex-shrink:0}
+.task .body{flex:1;min-width:0}
+.task .t1{font-weight:700;font-size:14.5px;word-break:break-word}
+.task .t2{font-size:12px;color:var(--muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.task.done .t1{text-decoration:line-through;opacity:.5}
+.badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:13.5px}
+.empty .ico{font-size:32px;display:block;margin-bottom:8px;opacity:.5}
+
+/* ---------- Login ---------- */
+#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px;background:linear-gradient(160deg,var(--navy),#061c3a)}
+#login .box{background:#fff;border-radius:18px;padding:28px 22px;width:100%;max-width:370px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+#login h1{margin:0 0 4px;font-size:21px;color:var(--navy);text-align:center}
+#login p.sub{margin:0 0 20px;text-align:center;color:var(--muted);font-size:13px}
+
+/* ---------- Toast ---------- */
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;background:#0f172a;color:#fff;padding:12px 18px;border-radius:11px;font-size:14px;font-weight:600;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:88%;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+
+/* ---------- Réglages ---------- */
+#settings{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+#settings .panel{background:var(--bg);width:100%;max-width:620px;max-height:88vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 14px 30px}
+.status-line{font-size:13px;padding:10px 12px;border-radius:9px;background:#f1f5f9;margin-bottom:10px}
+.small{font-size:12px;color:var(--muted);line-height:1.5}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="login">
+  <div class="box">
+    <h1>✅ Mes tâches</h1>
+    <p class="sub">Saisie rapide · KIPSAFE · LMDK · Perso</p>
+    <div class="field"><label>Email</label><input type="email" id="li-email" autocomplete="username" placeholder="galinsamuel@gmail.com"></div>
+    <div class="field"><label>Mot de passe</label><input type="password" id="li-pw" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:16px">
+      <input type="checkbox" id="li-remember" style="width:auto" checked> Se souvenir de mon email
+    </label>
+    <button class="btn btn-primary" id="li-btn" onclick="doLogin()">Se connecter</button>
+    <div id="li-err" style="color:var(--red);font-size:13px;margin-top:12px;text-align:center"></div>
+  </div>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div id="app" class="hidden">
+  <header>
+    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.0</span></div>
+    <button class="icon-btn" onclick="refreshAll()" title="Actualiser">↻</button>
+    <button class="icon-btn" onclick="openSettings()" title="Réglages">⚙️</button>
+  </header>
+
+  <div class="wrap">
+    <!-- ---------- Saisie ---------- -->
+    <div class="card">
+      <h2>Nouvelle tâche</h2>
+
+      <div class="field">
+        <label>Quoi faire ?</label>
+        <input type="text" id="f-titre" placeholder="Ex. Rappeler le client TEKNEUM" onkeydown="if(event.key==='Enter')createTask()">
+      </div>
+
+      <div class="field">
+        <label>Pour quelle entité ?</label>
+        <div class="chips" id="f-ent"></div>
+      </div>
+
+      <div class="field">
+        <label>Qui s'en occupe ?</label>
+        <div class="chips" id="f-who"></div>
+        <div class="small" id="who-hint" style="margin-top:7px"></div>
+      </div>
+
+      <div class="row">
+        <div class="field"><label>Date</label><input type="date" id="f-date"></div>
+        <div class="field"><label>Heure <span style="font-weight:500;text-transform:none">(option.)</span></label><input type="time" id="f-time" onchange="autoEnd()"></div>
+      </div>
+
+      <div id="adv" class="hidden">
+        <div class="row">
+          <div class="field"><label>Fin</label><input type="time" id="f-end"></div>
+          <div class="field"><label>Type</label>
+            <select id="f-type">
+              <option value="tache">✅ Tâche</option>
+              <option value="rdv">📞 Appel / RDV</option>
+              <option value="reunion">👥 Réunion</option>
+              <option value="formation">📚 Formation</option>
+              <option value="perso">📌 Perso</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Note</label><textarea id="f-note" placeholder="Détails, contexte…"></textarea></div>
+      </div>
+
+      <button class="btn btn-ghost" style="width:100%;margin-bottom:12px" onclick="toggleAdv()" id="adv-btn">＋ Plus d'options</button>
+      <button class="btn btn-primary" id="f-submit" onclick="createTask()">Ajouter au planning</button>
+    </div>
+
+    <!-- ---------- Liste ---------- -->
+    <div class="card">
+      <h2 style="display:flex;justify-content:space-between;align-items:center">
+        <span>À venir</span>
+        <span class="small" id="list-count" style="text-transform:none;letter-spacing:0;font-weight:600"></span>
+      </h2>
+      <div id="list"><div class="empty"><span class="ico">⏳</span>Chargement…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ RÉGLAGES ══════════════ -->
+<div id="settings" class="hidden" onclick="if(event.target===this)closeSettings()">
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <strong style="font-size:17px;color:var(--navy)">⚙️ Réglages</strong>
+      <button class="btn btn-ghost btn-xs" onclick="closeSettings()">Fermer</button>
+    </div>
+
+    <div class="card">
+      <h2>Connexion LMDK</h2>
+      <div class="status-line" id="lmdk-status">…</div>
+      <div id="lmdk-form">
+        <div class="field"><label>Email CRM LMDK</label><input type="email" id="lm-email" autocomplete="off"></div>
+        <div class="field"><label>Mot de passe</label><input type="password" id="lm-pw" autocomplete="off"></div>
+        <button class="btn btn-primary" onclick="lmdkLogin()">Connecter LMDK</button>
+      </div>
+      <p class="small" style="margin:12px 0 0">Nécessaire uniquement pour créer des tâches LMDK : le CRM LMDK est sur une base Supabase distincte. La session reste mémorisée.</p>
+    </div>
+
+    <div class="card">
+      <h2>Où vont les tâches ?</h2>
+      <p class="small" style="margin:0">
+        <strong style="color:var(--ent-kipsafe)">KIPSAFE</strong> → planning du CRM KIPSAFE (visible par le collaborateur assigné, + notification).<br>
+        <strong style="color:var(--ent-lmdk)">LMDK</strong> → agenda du CRM LMDK (table <code>taches</code>).<br>
+        <strong style="color:var(--ent-ysiom)">YSIOM</strong> / <strong style="color:var(--ent-perso)">PERSO</strong> → planning du CRM Perso.<br><br>
+        Dans tous les cas la tâche apparaît dans l'agenda du CRM Perso, qui agrège les trois.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Compte</h2>
+      <div class="status-line" id="me-status">…</div>
+      <button class="btn btn-ghost" style="width:100%" onclick="doLogout()">Se déconnecter</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════════════════════════════
+   Mini-app « Mes tâches » — saisie rapide multi-CRM
+   Écrit DIRECTEMENT dans les bases des CRM existants :
+     • KIPSAFE / YSIOM / PERSO → table kipsafe_data (clé/valeur JSONB)
+     • LMDK                    → table taches (2e projet Supabase)
+   RÈGLE D'OR (incident du 2026-06-07) : on ne réécrit JAMAIS une clé
+   partagée depuis un cache local. Toute écriture = relecture cloud
+   fraîche → append → upsert. Voir cloudAppend().
+   ════════════════════════════════════════════════════════════════ */
+const VERSION='v1.0';
+
+/* ---------- Base KIPSAFE (partagée KIPSAFE + Perso) ---------- */
+const SB_URL='https://graujqkrxxceskgnqfin.supabase.co';
+const SB_KEY='sb_publishable_AH2fKuizUTsCsmWzRWfiKA_6BMnmjVQ';
+/* ---------- Base LMDK ---------- */
+const LMDK_URL='https://yjiukywrsguoevavddru.supabase.co';
+const LMDK_KEY='sb_publishable_DeaIffrmBM3Q8E0rdYaOFw_LBdsXfn5';
+
+let sb=null, lmdk=null, lmdkStatus='off';
+let members=[], me=null, currentUser=null;
+let myTasks=[];          // vue agrégée pour la liste
+let selEnt='KIPSAFE', selWho='admin';
+let advOpen=false;
+
+/* Les 4 entités, avec leur destination de stockage */
+const ENTS=[
+  {id:'KIPSAFE', label:'KIPSAFE', icon:'🛡️', color:'var(--ent-kipsafe)', hex:'#0A2E5C', store:'kipsafe'},
+  {id:'LMDK',    label:'LMDK',    icon:'👑', color:'var(--ent-lmdk)',    hex:'#15803d', store:'lmdk'},
+  {id:'YSIOM',   label:'YSIOM',   icon:'🏢', color:'var(--ent-ysiom)',   hex:'#7c3aed', store:'perso'},
+  {id:'PERSO',   label:'Perso',   icon:'🏠', color:'var(--ent-perso)',   hex:'#0891b2', store:'perso'}
+];
+const TYPE_ICON={tache:'✅',rdv:'📞',reunion:'👥',formation:'📚',perso:'📌'};
+const entById=id=>ENTS.find(e=>e.id===id)||ENTS[0];
+
+/* ═══════════ Utilitaires ═══════════ */
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function toast(msg,ms){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),ms||2600);}
+function localDate(d){const x=d||new Date();return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
+function frDate(s){
+  if(!s)return '';
+  const [y,m,d]=s.split('-').map(Number); if(!y)return s;
+  const today=localDate(), tom=localDate(new Date(Date.now()+864e5));
+  if(s===today)return "Aujourd'hui";
+  if(s===tom)return 'Demain';
+  return new Date(y,m-1,d).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+}
+function firstName(m){if(!m)return '—';const p=String(m.name||'').trim().split(/\s+/)[0]||m.name||'—';return p.charAt(0).toUpperCase()+p.slice(1).toLowerCase();}
+function calcDur(time,end){
+  if(!time||!end)return '';
+  const[sh,sm]=time.split(':').map(Number),[eh,em]=end.split(':').map(Number);
+  const mins=(eh*60+em)-(sh*60+sm);
+  return mins>0?(mins>=60?Math.floor(mins/60)+'h'+(mins%60?mins%60+'min':''):mins+'min'):'';
+}
+function durMin(time,end){
+  if(!time||!end)return null;
+  const[sh,sm]=time.split(':').map(Number),[eh,em]=end.split(':').map(Number);
+  const m=(eh*60+em)-(sh*60+sm); return m>0?m:null;
+}
+
+/* ═══════════ Accès cloud kipsafe_data ═══════════ */
+async function cloudGet(key,fallback){
+  try{
+    const{data,error}=await sb.from('kipsafe_data').select('value').eq('key',key).maybeSingle();
+    if(error){console.warn('cloudGet',key,error.message);return fallback;}
+    return (data&&data.value!=null)?data.value:fallback;
+  }catch(e){console.warn('cloudGet',key,e);return fallback;}
+}
+async function cloudSet(key,value){
+  const{error}=await sb.from('kipsafe_data').upsert({key,value,updated_at:new Date().toISOString()});
+  if(error)throw new Error(error.message);
+}
+/**
+ * Ajoute un élément à une clé-tableau SANS jamais écraser l'existant :
+ * relecture cloud fraîche → append → upsert. C'est le garde-fou qui
+ * évite de rejouer l'incident du 2026-06-07 (planning écrasé par un
+ * cache local vide).
+ */
+async function cloudAppend(key,item){
+  const arr=await cloudGet(key,null);
+  if(arr!==null&&!Array.isArray(arr)) throw new Error('Clé '+key+' inattendue (pas un tableau) — écriture annulée par sécurité');
+  const list=Array.isArray(arr)?arr.slice():[];
+  list.push(item);
+  await cloudSet(key,list);
+  return list;
+}
+/** Modifie un élément par id, sur relecture fraîche également. */
+async function cloudPatch(key,id,patch){
+  const arr=await cloudGet(key,null);
+  if(!Array.isArray(arr))throw new Error('Clé '+key+' introuvable');
+  const list=arr.map(x=>String(x.id)===String(id)?Object.assign({},x,patch):x);
+  await cloudSet(key,list);
+  return list;
+}
+async function cloudRemove(key,id){
+  const arr=await cloudGet(key,null);
+  if(!Array.isArray(arr))throw new Error('Clé '+key+' introuvable');
+  const list=arr.filter(x=>String(x.id)!==String(id));
+  await cloudSet(key,list);
+  return list;
+}
+
+/* ═══════════ Auth ═══════════ */
+function initClients(){
+  if(!window.supabase){toast('⚠️ Librairie Supabase non chargée');return false;}
+  if(!sb)sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'taches-auth'}});
+  if(!lmdk)lmdk=window.supabase.createClient(LMDK_URL,LMDK_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'lmdk-auth'}});
+  return true;
+}
+async function boot(){
+  document.getElementById('ver-badge').textContent=VERSION;
+  const rem=localStorage.getItem('taches_email')||localStorage.getItem('kip_remember_email')||'';
+  if(rem)document.getElementById('li-email').value=rem;
+  document.getElementById('f-date').value=localDate();
+  if(!initClients())return;
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(session)await enterApp(session.user);
+  }catch(e){console.warn(e);}
+}
+async function doLogin(){
+  const email=document.getElementById('li-email').value.trim().toLowerCase();
+  const pw=document.getElementById('li-pw').value;
+  const err=document.getElementById('li-err'), btn=document.getElementById('li-btn');
+  err.textContent='';
+  if(!email||!pw){err.textContent='Email et mot de passe requis';return;}
+  if(!initClients())return;
+  btn.disabled=true;btn.textContent='Connexion…';
+  const{data,error}=await sb.auth.signInWithPassword({email,password:pw});
+  btn.disabled=false;btn.textContent='Se connecter';
+  if(error){
+    err.textContent = /Invalid login/i.test(error.message)
+      ? 'Email ou mot de passe incorrect.'
+      : ('Erreur : '+error.message);
+    return;
+  }
+  if(document.getElementById('li-remember').checked)localStorage.setItem('taches_email',email);
+  else localStorage.removeItem('taches_email');
+  document.getElementById('li-pw').value='';
+  await enterApp(data.user);
+}
+async function doLogout(){
+  try{await sb.auth.signOut();}catch(e){}
+  try{if(lmdk)await lmdk.auth.signOut();}catch(e){}
+  location.reload();
+}
+async function enterApp(user){
+  me=user;
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('me-status').innerHTML='Connecté : <strong>'+esc(user.email)+'</strong>';
+  await loadMembers();
+  renderEntChips();
+  renderWhoChips();
+  await lmdkResume();
+  await refreshAll();
+}
+
+/* ═══════════ Membres (viennent du CRM KIPSAFE) ═══════════ */
+async function loadMembers(){
+  const m=await cloudGet('members',null);
+  members=Array.isArray(m)&&m.length?m:[{id:'admin',name:'Samuel',role:'admin',color:'#0A2E5C'}];
+  const email=(me&&me.email||'').toLowerCase();
+  currentUser=members.find(x=>(x.email||'').toLowerCase()===email)
+           || members.find(x=>x.role==='admin')
+           || members[0];
+  selWho=currentUser.id;
+}
+
+/* ═══════════ Rendu du formulaire ═══════════ */
+function renderEntChips(){
+  document.getElementById('f-ent').innerHTML=ENTS.map(e=>
+    `<button type="button" class="chip${e.id===selEnt?' on':''}" style="${e.id===selEnt?'background:'+e.hex:''}" onclick="pickEnt('${e.id}')">${e.icon} ${esc(e.label)}</button>`
+  ).join('');
+}
+function pickEnt(id){selEnt=id;renderEntChips();renderWhoChips();}
+
+function renderWhoChips(){
+  const ent=entById(selEnt);
+  const box=document.getElementById('f-who'), hint=document.getElementById('who-hint');
+  if(ent.store==='lmdk'){
+    // Le CRM LMDK n'a pas le même annuaire de membres → la tâche est nominative côté LMDK
+    box.innerHTML=`<button type="button" class="chip on" style="background:${ent.hex}"><span class="dot"></span> Moi</button>`;
+    hint.textContent='Les tâches LMDK ne sont pas nominatives dans le CRM LMDK : elles arrivent dans l\'agenda commun.';
+    return;
+  }
+  if(ent.store==='perso'){
+    box.innerHTML=`<button type="button" class="chip on" style="background:${ent.hex}"><span class="dot"></span> Moi</button>`;
+    hint.textContent='Planning perso : la tâche n\'est visible que par toi.';
+    return;
+  }
+  // KIPSAFE : assignation à un membre du CRM
+  hint.textContent='';
+  box.innerHTML=members.map(m=>
+    `<button type="button" class="chip${m.id===selWho?' on':''}" style="${m.id===selWho?'background:'+(m.color||'#0A2E5C'):''}" onclick="pickWho('${esc(m.id)}')">`
+    +`<span class="dot" style="background:${m.color||'#64748b'}"></span>${esc(firstName(m))}${m.id===(currentUser&&currentUser.id)?' (moi)':''}</button>`
+  ).join('');
+}
+function pickWho(id){selWho=id;renderWhoChips();}
+
+function toggleAdv(){
+  advOpen=!advOpen;
+  document.getElementById('adv').classList.toggle('hidden',!advOpen);
+  document.getElementById('adv-btn').textContent=advOpen?'− Moins d\'options':'＋ Plus d\'options';
+}
+function autoEnd(){
+  const t=document.getElementById('f-time'),e=document.getElementById('f-end');
+  if(!t.value||e.value)return;
+  const p=t.value.split(':').map(Number);
+  let tot=p[0]*60+p[1]+60; if(tot>=1440)tot=1439;
+  e.value=String(Math.floor(tot/60)).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');
+}
+
+/* ═══════════ Création de la tâche ═══════════ */
+async function createTask(){
+  const titre=document.getElementById('f-titre').value.trim();
+  if(!titre){toast('⚠️ Indique ce qu\'il y a à faire');document.getElementById('f-titre').focus();return;}
+  const date=document.getElementById('f-date').value||localDate();
+  const time=document.getElementById('f-time').value||'';
+  let end=document.getElementById('f-end').value||'';
+  if(time&&!end){const p=time.split(':').map(Number);let tot=Math.min(p[0]*60+p[1]+60,1439);end=String(Math.floor(tot/60)).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');}
+  const type=document.getElementById('f-type').value||'tache';
+  const note=document.getElementById('f-note').value.trim();
+  const ent=entById(selEnt);
+  const btn=document.getElementById('f-submit');
+  btn.disabled=true;btn.textContent='Enregistrement…';
+  try{
+    if(ent.store==='lmdk')      await createLmdk(titre,date,time,end,type,note);
+    else if(ent.store==='perso')await createPerso(titre,date,time,end,type,note,ent.id);
+    else                        await createKipsafe(titre,date,time,end,type,note);
+    // Reset du formulaire, en gardant entité + personne (saisie en rafale)
+    document.getElementById('f-titre').value='';
+    document.getElementById('f-time').value='';
+    document.getElementById('f-end').value='';
+    document.getElementById('f-note').value='';
+    document.getElementById('f-titre').focus();
+    await refreshAll();
+  }catch(e){
+    console.error(e);
+    toast('❌ '+(e.message||'Échec de l\'enregistrement'),4500);
+  }finally{
+    btn.disabled=false;btn.textContent='Ajouter au planning';
+  }
+}
+
+/* --- KIPSAFE : clé partagée schedule_custom + notification --- */
+async function createKipsafe(titre,date,time,end,type,note){
+  const id=Date.now();
+  const asg=(selWho&&selWho!==(currentUser&&currentUser.id))?[selWho]:[];
+  const item={
+    id,date,dateFin:date,time,end,dur:calcDur(time,end),
+    axe:'Admin',icon:TYPE_ICON[type]||'📌',type,
+    action:titre,description:note,
+    status:'À faire',done:false,objectifId:'',reminder:'none',
+    relanceDate:'',relanceEvery:2,
+    history:note?[{t:Date.now(),text:note}]:[],
+    recurring:'none',recurringUntil:'',
+    owner:(currentUser&&currentUser.id)||'admin',
+    assignees:asg,shared:false,createdAt:localDate()
+  };
+  await cloudAppend('schedule_custom',item);
+  if(asg.length)await notifyAssignees(asg,titre,date,time,end,id);
+  const who=asg.length?firstName(members.find(m=>m.id===asg[0])):'toi';
+  toast('✅ Ajouté au planning KIPSAFE — '+who);
+}
+async function notifyAssignees(asg,titre,date,time,end,itemId){
+  try{
+    const notifs=await cloudGet('notifications',[]);
+    if(!Array.isArray(notifs))return;
+    const from=(currentUser&&currentUser.id)||'admin';
+    const fromName=firstName(currentUser);
+    asg.forEach(uid=>{
+      if(uid===from)return;
+      notifs.push({
+        id:'n_'+Date.now()+'_'+uid,to:uid,from,fromName,
+        type:'invite',status:'pending',kind:'une tâche',label:titre,
+        text:fromName+" t'a assigné une tâche : « "+titre+" »"+(date?' le '+date:'')+(time?' à '+time:''),
+        itemId,itemKey:'custom_'+itemId,date:date||'',time:time||'',end:end||'',
+        ts:Date.now(),read:false
+      });
+    });
+    await cloudSet('notifications',notifs);
+  }catch(e){console.warn('notif',e);}
+}
+
+/* --- PERSO / YSIOM : clé perso_schedule_custom, taguée entreprise --- */
+async function createPerso(titre,date,time,end,type,note,entreprise){
+  const item={
+    id:Date.now(),date,dateFin:date,time,end,dur:calcDur(time,end),
+    axe:'Admin',icon:TYPE_ICON[type]||'📌',type,
+    action:titre,description:note,entreprise,
+    status:'À faire',done:false,objectifId:'',reminder:'none',
+    relanceDate:'',relanceEvery:2,
+    history:note?[{t:Date.now(),text:note}]:[],
+    recurring:'none',recurringUntil:'',
+    owner:'admin',assignees:[],shared:false,createdAt:localDate()
+  };
+  await cloudAppend('perso_schedule_custom',item);
+  toast('✅ Ajouté au planning '+(entreprise==='PERSO'?'Perso':entreprise));
+}
+
+/* --- LMDK : table taches de l'autre projet Supabase --- */
+const LMDK_CAT={tache:'tache',rdv:'rdv',reunion:'reunion',formation:'autre',perso:'autre'};
+async function createLmdk(titre,date,time,end,type,note){
+  if(lmdkStatus!=='on'){
+    openSettings();
+    throw new Error('CRM LMDK non connecté — renseigne tes identifiants LMDK ci-dessous');
+  }
+  const base={titre,echeance:date||null,description:note||null,type:'admin',priorite:'moyenne',statut:'a_faire'};
+  const full=Object.assign({},base,{heure:time||null,duree_min:durMin(time,end),categorie:LMDK_CAT[type]||'autre'});
+  let{error}=await lmdk.from('taches').insert(full);
+  if(error&&(error.code==='PGRST204'||/column|colonne/i.test(error.message||''))){
+    // migration agenda 20260720 non appliquée côté LMDK → repli sans les colonnes horaires
+    ({error}=await lmdk.from('taches').insert(Object.assign({},base,{type:'autre'})));
+    if(!error)toast('ℹ️ Enregistré sans l\'heure (migration agenda LMDK non appliquée)',4000);
+  }
+  if(error)throw new Error('LMDK : '+error.message);
+  toast('✅ Ajouté à l\'agenda LMDK');
+}
+
+/* ═══════════ Connexion LMDK ═══════════ */
+async function lmdkResume(){
+  if(!lmdk)return;
+  try{
+    const{data:{session}}=await lmdk.auth.getSession();
+    lmdkStatus=session?'on':'off';
+  }catch(e){lmdkStatus='off';}
+  renderLmdkStatus();
+}
+async function lmdkLogin(){
+  const email=document.getElementById('lm-email').value.trim().toLowerCase();
+  const pw=document.getElementById('lm-pw').value;
+  if(!email||!pw){toast('⚠️ Email et mot de passe LMDK requis');return;}
+  lmdkStatus='connecting';renderLmdkStatus();
+  const{error}=await lmdk.auth.signInWithPassword({email,password:pw});
+  if(error){lmdkStatus='error';renderLmdkStatus();toast('❌ LMDK : '+error.message,4000);return;}
+  document.getElementById('lm-pw').value='';
+  lmdkStatus='on';renderLmdkStatus();toast('✅ CRM LMDK connecté');
+  await refreshAll();
+}
+function renderLmdkStatus(){
+  const el=document.getElementById('lmdk-status'), form=document.getElementById('lmdk-form');
+  if(!el)return;
+  if(lmdkStatus==='on'){
+    el.innerHTML='<span style="color:var(--green);font-weight:800">✓ Connecté</span> — les tâches LMDK partent dans l\'agenda du CRM.';
+    form.classList.add('hidden');
+  }else if(lmdkStatus==='connecting'){el.textContent='⏳ Connexion…';}
+  else if(lmdkStatus==='error'){el.innerHTML='<span style="color:var(--red)">❌ Connexion refusée</span> — vérifie les identifiants, ou que <code>PERSO_LMDK_ACCES.sql</code> a bien été exécuté sur la base LMDK.';form.classList.remove('hidden');}
+  else{el.innerHTML='<span style="color:var(--muted)">Non connecté</span> — impossible de créer des tâches LMDK.';form.classList.remove('hidden');}
+}
+
+/* ═══════════ Liste « À venir » ═══════════ */
+async function refreshAll(){
+  const box=document.getElementById('list');
+  try{
+    const out=[];
+    const myId=(currentUser&&currentUser.id)||'admin';
+
+    // KIPSAFE (clé partagée) — ce que j'ai créé ou ce qui m'est assigné
+    const kip=await cloudGet('schedule_custom',[]);
+    (Array.isArray(kip)?kip:[]).forEach(x=>{
+      const asg=Array.isArray(x.assignees)?x.assignees:[];
+      if((x.owner||'admin')!==myId&&!asg.includes(myId)&&!(myId==='admin'))return;
+      out.push({src:'kipsafe',key:'schedule_custom',id:x.id,ent:'KIPSAFE',
+        titre:x.action,date:x.date,time:x.time,done:!!x.done||x.status==='Terminé',
+        who:asg.length?firstName(members.find(m=>m.id===asg[0])||{name:asg[0]}):null,icon:x.icon});
+    });
+
+    // PERSO / YSIOM
+    const per=await cloudGet('perso_schedule_custom',[]);
+    (Array.isArray(per)?per:[]).forEach(x=>{
+      out.push({src:'perso',key:'perso_schedule_custom',id:x.id,ent:x.entreprise||'PERSO',
+        titre:x.action,date:x.date,time:x.time,done:!!x.done||x.status==='Terminé',who:null,icon:x.icon});
+    });
+
+    // LMDK
+    if(lmdkStatus==='on'){
+      try{
+        const{data}=await lmdk.from('taches').select('*').order('echeance',{ascending:true});
+        (data||[]).forEach(t=>out.push({src:'lmdk',key:'taches',id:t.id,ent:'LMDK',
+          titre:t.titre,date:t.echeance,time:t.heure||'',done:t.statut==='termine'||t.statut==='fait',who:null,icon:'👑'}));
+      }catch(e){console.warn('LMDK list',e);}
+    }
+
+    // Tri : non terminées d'abord, puis par date/heure
+    const today=localDate();
+    myTasks=out
+      .filter(t=>t.titre&&(!t.done||(t.date||'')>=today))
+      .sort((a,b)=>(a.done?1:0)-(b.done?1:0)||String(a.date||'9999').localeCompare(String(b.date||'9999'))||String(a.time||'99').localeCompare(String(b.time||'99')))
+      .slice(0,40);
+    renderList();
+  }catch(e){
+    console.error(e);
+    box.innerHTML='<div class="empty"><span class="ico">⚠️</span>Impossible de charger : '+esc(e.message||'')+'</div>';
+  }
+}
+function renderList(){
+  const box=document.getElementById('list'), cnt=document.getElementById('list-count');
+  const open=myTasks.filter(t=>!t.done).length;
+  cnt.textContent=open?open+' en cours':'';
+  if(!myTasks.length){
+    box.innerHTML='<div class="empty"><span class="ico">🎉</span>Rien à faire pour le moment.</div>';
+    return;
+  }
+  box.innerHTML=myTasks.map(t=>{
+    const e=entById(t.ent);
+    const late=!t.done&&t.date&&t.date<localDate();
+    return `<div class="task${t.done?' done':''}">
+      <div class="bar" style="background:${e.hex}"></div>
+      <div class="body">
+        <div class="t1">${esc(t.icon||'')} ${esc(t.titre)}</div>
+        <div class="t2">
+          <span class="badge" style="background:${e.hex}1a;color:${e.hex}">${e.icon} ${esc(e.label)}</span>
+          <span${late?' style="color:var(--red);font-weight:700"':''}>${late?'⚠️ ':''}${esc(frDate(t.date))}${t.time?' · '+esc(t.time):''}</span>
+          ${t.who?'<span>👤 '+esc(t.who)+'</span>':''}
+        </div>
+      </div>
+      ${t.done?'<span style="color:var(--green);font-size:18px">✓</span>'
+             :`<button class="btn btn-ghost btn-xs" onclick="markDone('${t.src}','${esc(t.key)}','${esc(String(t.id))}')">Fait</button>`}
+    </div>`;
+  }).join('');
+}
+async function markDone(src,key,id){
+  try{
+    if(src==='lmdk'){
+      const{error}=await lmdk.from('taches').update({statut:'termine'}).eq('id',id);
+      if(error)throw new Error(error.message);
+    }else{
+      await cloudPatch(key,id,{status:'Terminé',done:true});
+    }
+    toast('✅ Terminé');
+    await refreshAll();
+  }catch(e){toast('❌ '+(e.message||'échec'),4000);}
+}
+
+/* ═══════════ Réglages ═══════════ */
+function openSettings(){document.getElementById('settings').classList.remove('hidden');renderLmdkStatus();}
+function closeSettings(){document.getElementById('settings').classList.add('hidden');}
+
+document.addEventListener('DOMContentLoaded',boot);
+</script>
+</body>
+</html>
