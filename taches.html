@@ -86,9 +86,9 @@ textarea{resize:vertical;min-height:64px}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;background:#0f172a;color:#fff;padding:12px 18px;border-radius:11px;font-size:14px;font-weight:600;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:88%;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.show{opacity:1}
 
-/* ---------- Réglages ---------- */
-#settings{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:100;display:flex;align-items:flex-end;justify-content:center}
-#settings .panel{background:var(--bg);width:100%;max-width:620px;max-height:88vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 14px 30px}
+/* ---------- Panneaux glissants (réglages, fiche tâche) ---------- */
+#settings,#edit{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+#settings .panel,#edit .panel{background:var(--bg);width:100%;max-width:620px;max-height:88vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 14px 30px}
 .status-line{font-size:13px;padding:10px 12px;border-radius:9px;background:#f1f5f9;margin-bottom:10px}
 .small{font-size:12px;color:var(--muted);line-height:1.5}
 </style>
@@ -123,7 +123,7 @@ textarea{resize:vertical;min-height:64px}
 <!-- ══════════════ APP ══════════════ -->
 <div id="app" class="hidden">
   <header>
-    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.2</span></div>
+    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.3</span></div>
     <button class="icon-btn" onclick="refreshAll()" title="Actualiser">↻</button>
     <button class="icon-btn" onclick="openSettings()" title="Réglages">⚙️</button>
   </header>
@@ -181,6 +181,8 @@ textarea{resize:vertical;min-height:64px}
         <span class="small" id="list-count" style="text-transform:none;letter-spacing:0;font-weight:600"></span>
       </h2>
       <div id="list"><div class="empty"><span class="ico">⏳</span>Chargement…</div></div>
+      <button class="btn btn-ghost" style="width:100%;margin-top:12px" id="done-btn" onclick="toggleDone()">Afficher les tâches terminées</button>
+      <p class="small" style="margin:10px 0 0">Touche une tâche pour la modifier ou la supprimer.</p>
     </div>
   </div>
 </div>
@@ -238,6 +240,55 @@ textarea{resize:vertical;min-height:64px}
   </div>
 </div>
 
+<!-- ══════════════ FICHE TÂCHE ══════════════ -->
+<div id="edit" class="hidden" onclick="if(event.target===this)closeEdit()">
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <strong style="font-size:17px;color:var(--navy)" id="ed-title">✏️ Modifier</strong>
+      <button class="btn btn-ghost btn-xs" onclick="closeEdit()">Fermer</button>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label>Quoi faire ?</label>
+        <input type="text" id="ed-titre">
+      </div>
+
+      <div class="field">
+        <label>Entité</label>
+        <div id="ed-ent-view"></div>
+        <p class="small" style="margin:6px 0 0">L'entité ne se change pas ici : la tâche vit dans le planning de cette entité. Pour la déplacer, supprime-la et recrée-la.</p>
+      </div>
+
+      <div class="field" id="ed-who-wrap">
+        <label>Qui s'en occupe ?</label>
+        <div class="chips" id="ed-who"></div>
+      </div>
+
+      <div class="row">
+        <div class="field"><label>Date</label><input type="date" id="ed-date"></div>
+        <div class="field"><label>Heure</label><input type="time" id="ed-time"></div>
+      </div>
+
+      <div class="row">
+        <div class="field"><label>Fin</label><input type="time" id="ed-end"></div>
+        <div class="field"><label>Statut</label>
+          <select id="ed-statut">
+            <option value="a_faire">⬜ À faire</option>
+            <option value="en_cours">🔄 En cours</option>
+            <option value="fait">✅ Terminé</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field"><label>Note</label><textarea id="ed-note"></textarea></div>
+
+      <button class="btn btn-primary" id="ed-save" onclick="saveEdit()">Enregistrer</button>
+      <button class="btn btn-ghost" style="width:100%;margin-top:10px;color:var(--red);border-color:#fecaca" onclick="deleteEdit()">🗑️ Supprimer la tâche</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -251,7 +302,7 @@ textarea{resize:vertical;min-height:64px}
    partagée depuis un cache local. Toute écriture = relecture cloud
    fraîche → append → upsert. Voir cloudAppend().
    ════════════════════════════════════════════════════════════════ */
-const VERSION='v1.2';
+const VERSION='v1.3';
 
 /* ---------- Base KIPSAFE (partagée KIPSAFE + Perso) ---------- */
 const SB_URL='https://graujqkrxxceskgnqfin.supabase.co';
@@ -264,6 +315,7 @@ let sb=null, lmdk=null, lmdkStatus='off';
 let members=[], me=null, currentUser=null;   // members = annuaire RÉEL du CRM KIPSAFE (comptes)
 let people={};                               // annuaire de l'app, par entité (noms simples)
 let myTasks=[];          // vue agrégée pour la liste
+let showDone=false;      // inclure les tâches déjà terminées
 let selEnt='KIPSAFE', selWho=null;
 let advOpen=false;
 
@@ -750,7 +802,7 @@ async function refreshAll(){
                :(asg.length?firstName(members.find(m=>m.id===asg[0])||{name:asg[0]}):null);
       out.push({src:'kipsafe',key:'schedule_custom',id:x.id,ent:'KIPSAFE',
         titre:x.action,date:x.date,time:x.time,done:!!x.done||x.status==='Terminé',
-        who:nom,icon:x.icon});
+        who:nom,icon:x.icon,raw:x});
     });
 
     // PERSO / YSIOM
@@ -758,7 +810,7 @@ async function refreshAll(){
     (Array.isArray(per)?per:[]).forEach(x=>{
       out.push({src:'perso',key:'perso_schedule_custom',id:x.id,ent:x.entreprise||'PERSO',
         titre:x.action,date:x.date,time:x.time,done:!!x.done||x.status==='Terminé',
-        who:x.personne?firstName({name:x.personne}):null,icon:x.icon});
+        who:x.personne?firstName({name:x.personne}):null,icon:x.icon,raw:x});
     });
 
     // LMDK
@@ -766,17 +818,17 @@ async function refreshAll(){
       try{
         const{data}=await lmdk.from('taches').select('*').order('echeance',{ascending:true});
         (data||[]).forEach(t=>out.push({src:'lmdk',key:'taches',id:t.id,ent:'LMDK',
-          titre:t.titre,date:t.echeance,time:t.heure||'',done:t.statut==='termine'||t.statut==='fait',
-          who:t.assignee?firstName({name:t.assignee}):null,icon:'👑'}));
+          titre:t.titre,date:t.echeance,time:t.heure||'',done:t.statut==='fait'||t.statut==='annulee',
+          who:t.assignee?firstName({name:t.assignee}):null,icon:'👑',raw:t}));
       }catch(e){console.warn('LMDK list',e);}
     }
 
     // Tri : non terminées d'abord, puis par date/heure
     const today=localDate();
     myTasks=out
-      .filter(t=>t.titre&&(!t.done||(t.date||'')>=today))
+      .filter(t=>t.titre&&(showDone||!t.done||(t.date||'')>=today))
       .sort((a,b)=>(a.done?1:0)-(b.done?1:0)||String(a.date||'9999').localeCompare(String(b.date||'9999'))||String(a.time||'99').localeCompare(String(b.time||'99')))
-      .slice(0,40);
+      .slice(0,showDone?120:40);
     renderList();
   }catch(e){
     console.error(e);
@@ -791,12 +843,13 @@ function renderList(){
     box.innerHTML='<div class="empty"><span class="ico">🎉</span>Rien à faire pour le moment.</div>';
     return;
   }
-  box.innerHTML=myTasks.map(t=>{
+  // Le corps de la ligne ouvre la fiche ; le bouton « Fait » reste indépendant
+  box.innerHTML=myTasks.map((t,i)=>{
     const e=entById(t.ent);
     const late=!t.done&&t.date&&t.date<localDate();
     return `<div class="task${t.done?' done':''}">
       <div class="bar" style="background:${e.hex}"></div>
-      <div class="body">
+      <div class="body" style="cursor:pointer" onclick="openEdit(${i})">
         <div class="t1">${esc(t.icon||'')} ${esc(t.titre)}</div>
         <div class="t2">
           <span class="badge" style="background:${e.hex}1a;color:${e.hex}">${e.icon} ${esc(e.label)}</span>
@@ -804,22 +857,140 @@ function renderList(){
           ${t.who?'<span>👤 '+esc(t.who)+'</span>':''}
         </div>
       </div>
-      ${t.done?'<span style="color:var(--green);font-size:18px">✓</span>'
-             :`<button class="btn btn-ghost btn-xs" onclick="markDone('${t.src}','${esc(t.key)}','${esc(String(t.id))}')">Fait</button>`}
+      ${t.done?`<button class="btn btn-ghost btn-xs" onclick="openEdit(${i})">✓ Ouvrir</button>`
+             :`<button class="btn btn-ghost btn-xs" onclick="markDone(${i})">Fait</button>`}
     </div>`;
   }).join('');
 }
-async function markDone(src,key,id){
+async function markDone(i){
+  const t=myTasks[i]; if(!t)return;
   try{
-    if(src==='lmdk'){
-      const{error}=await lmdk.from('taches').update({statut:'termine'}).eq('id',id);
+    if(t.src==='lmdk'){
+      const{error}=await lmdk.from('taches').update({statut:'fait'}).eq('id',t.id);
       if(error)throw new Error(error.message);
     }else{
-      await cloudPatch(key,id,{status:'Terminé',done:true});
+      await cloudPatch(t.key,t.id,{status:'Terminé',done:true});
     }
     toast('✅ Terminé');
     await refreshAll();
   }catch(e){toast('❌ '+(e.message||'échec'),4000);}
+}
+
+async function toggleDone(){
+  showDone=!showDone;
+  document.getElementById('done-btn').textContent=showDone?'Masquer les tâches terminées':'Afficher les tâches terminées';
+  await refreshAll();
+}
+
+/* ═══════════ Fiche tâche : modifier / supprimer ═══════════ */
+let edIdx=null, edWho=null;
+/* Le nom d'une personne sans compte CRM est écrit en tête du titre
+   (« 👤 Moche — … ») : on l'enlève pour l'édition, il sera reposé au besoin. */
+function stripPerson(titre){return String(titre||'').replace(/^👤\s*[^—]+—\s*/,'');}
+const ST_TO_FR={a_faire:'À faire',en_cours:'En cours',fait:'Terminé'};
+const FR_TO_ST=t=>(t==='Terminé'?'fait':(t==='En cours'?'en_cours':'a_faire'));
+
+function openEdit(i){
+  const t=myTasks[i]; if(!t)return;
+  edIdx=i;
+  const e=entById(t.ent), r=t.raw||{};
+  document.getElementById('ed-title').textContent='✏️ '+e.icon+' '+e.label;
+  document.getElementById('ed-titre').value=stripPerson(t.src==='lmdk'?r.titre:r.action);
+  document.getElementById('ed-ent-view').innerHTML=
+    `<span class="chip on" style="background:${e.hex};display:inline-flex">${e.icon} ${esc(e.label)}</span>`;
+  // On lit l'enregistrement source (r), pas la ligne de liste : enregistrer
+  // ne doit jamais effacer un horaire que la liste n'aurait pas repris.
+  const heure=(t.src==='lmdk'?r.heure:r.time)||t.time||'';
+  document.getElementById('ed-date').value=(t.src==='lmdk'?r.echeance:r.date)||t.date||'';
+  document.getElementById('ed-time').value=hhmm(heure);
+  document.getElementById('ed-end').value=(t.src==='lmdk')
+    ? (heure&&r.duree_min?addMin(heure,r.duree_min):'')
+    : hhmm(r.end||'');
+  document.getElementById('ed-note').value=r.description||'';
+  document.getElementById('ed-statut').value=(t.src==='lmdk')
+    ? (['a_faire','en_cours','fait'].includes(r.statut)?r.statut:'a_faire')
+    : FR_TO_ST(r.status);
+  // personne : on repart du nom stocké
+  const nomActuel=(t.src==='lmdk')?r.assignee:r.personne;
+  const liste=peopleOf(t.ent);
+  edWho=(liste.find(p=>normName(p.name)===normName(nomActuel))||liste[0]||{}).id||null;
+  renderEditWho(t.ent);
+  document.getElementById('edit').classList.remove('hidden');
+}
+/* Postgres renvoie « 09:30:00 » ; l'input time veut « 09:30 » */
+function hhmm(v){const s=String(v||'');return /^\d{1,2}:\d{2}/.test(s)?s.slice(0,5):'';}
+function addMin(t,min){
+  const[h,m]=String(t).split(':').map(Number);
+  let tot=h*60+m+(min||0); if(tot>=1440)tot=1439;
+  return String(Math.floor(tot/60)).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');
+}
+function renderEditWho(ent){
+  const box=document.getElementById('ed-who');
+  const list=peopleOf(ent);
+  document.getElementById('ed-who-wrap').classList.toggle('hidden',list.length<2);
+  box.innerHTML=list.map(p=>
+    `<button type="button" class="chip${p.id===edWho?' on':''}" style="${p.id===edWho?'background:'+p.color:''}" onclick="pickEditWho('${esc(p.id)}')">`
+    +`<span class="dot" style="background:${p.color}"></span>${esc(firstName(p))}</button>`
+  ).join('');
+}
+function pickEditWho(id){const t=myTasks[edIdx];edWho=id;renderEditWho(t.ent);}
+function closeEdit(){document.getElementById('edit').classList.add('hidden');edIdx=null;}
+
+async function saveEdit(){
+  const t=myTasks[edIdx]; if(!t)return;
+  const titre=document.getElementById('ed-titre').value.trim();
+  if(!titre){toast('⚠️ Le titre ne peut pas être vide');return;}
+  const date=document.getElementById('ed-date').value||'';
+  const time=document.getElementById('ed-time').value||'';
+  const end=document.getElementById('ed-end').value||'';
+  const note=document.getElementById('ed-note').value.trim();
+  const st=document.getElementById('ed-statut').value;
+  const who=personById(t.ent,edWho);
+  const btn=document.getElementById('ed-save');
+  btn.disabled=true;btn.textContent='Enregistrement…';
+  try{
+    if(t.src==='lmdk'){
+      const patch={titre,echeance:date||null,description:note||null,statut:st,
+                   assignee:who?who.name:null};
+      const full=Object.assign({},patch,{heure:time||null,duree_min:durMin(time,end)});
+      let{error}=await lmdk.from('taches').update(full).eq('id',t.id);
+      if(error&&(error.code==='PGRST204'||/column|colonne/i.test(error.message||'')))
+        ({error}=await lmdk.from('taches').update(patch).eq('id',t.id));
+      if(error)throw new Error(error.message);
+    }else{
+      const meId=(currentUser&&currentUser.id)||'admin';
+      const linked=who&&who.memberId&&members.find(m=>m.id===who.memberId)?who.memberId:null;
+      const action=(who&&!linked&&t.ent==='KIPSAFE')?('👤 '+firstName(who)+' — '+titre):titre;
+      const patch={action,date,dateFin:date,time,end,dur:calcDur(time,end),
+                   description:note,status:ST_TO_FR[st],done:st==='fait',
+                   personne:who?who.name:''};
+      if(t.ent==='KIPSAFE')patch.assignees=(linked&&linked!==meId)?[linked]:[];
+      await cloudPatch(t.key,t.id,patch);
+    }
+    closeEdit();
+    toast('✅ Tâche modifiée');
+    await refreshAll();
+  }catch(e){
+    toast('❌ '+(e.message||'échec de la modification'),4500);
+  }finally{
+    btn.disabled=false;btn.textContent='Enregistrer';
+  }
+}
+async function deleteEdit(){
+  const t=myTasks[edIdx]; if(!t)return;
+  const e=entById(t.ent);
+  if(!confirm('Supprimer définitivement cette tâche ?\n\n« '+stripPerson(t.titre)+' »\n'+e.icon+' '+e.label+'\n\nElle disparaîtra aussi du planning.'))return;
+  try{
+    if(t.src==='lmdk'){
+      const{error}=await lmdk.from('taches').delete().eq('id',t.id);
+      if(error)throw new Error(error.message);
+    }else{
+      await cloudRemove(t.key,t.id);
+    }
+    closeEdit();
+    toast('🗑️ Tâche supprimée');
+    await refreshAll();
+  }catch(e){toast('❌ '+(e.message||'échec de la suppression'),4500);}
 }
 
 /* ═══════════ Réglages › Personnes ═══════════ */
