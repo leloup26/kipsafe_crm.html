@@ -3148,5 +3148,26 @@
   "mail_corps": "Bonjour,\nKipsafe travaille depuis 10 ans avec des groupes d'édition sur la sécurité de leur informatique. Premier éditeur de manga en France, vous manipulez des fichiers sous accords de confidentialité japonais : une planche qui sort avant parution, et c'est la licence qui est en jeu. Sur des postes PAO répartis entre Grenoble et Boulogne, nous détectons logiciels non autorisés et supports de stockage non conformes, sans agent à installer. Seriez-vous à l'écoute d'un échange rapide ? Je peux aussi vous envoyer notre plaquette de présentation (2 minutes de lecture).\nBien cordialement,",
   "effectif": "100-199 (2023, annuaire-entreprises.data.gouv.fr)",
   "ville": "Grenoble"
+ },
+ {
+  "societe": "TEST — Kipsafe (interne)",
+  "secteur": "Test · Vérification du circuit d'envoi",
+  "nom": "Samuel Galin (test)",
+  "poste": "Dirigeant Kipsafe",
+  "dsi_revalider": false,
+  "tel": "01 84 23 27 37",
+  "email": "sgalin@kipsafe.fr",
+  "linkedin": "",
+  "site_web": "https://kipsafe.fr",
+  "dirigeant": "",
+  "dsi_source": "",
+  "emails_publies": "",
+  "email_format": "",
+  "email_probable": "",
+  "angle": "Fiche de TEST : sert à vérifier le circuit complet — programmation, envoi 8h30, pixel d'ouverture, passage en « Mail ouvert ». À supprimer une fois le test validé.",
+  "mail_objet": "TEST Kipsafe — circuit d'envoi de la campagne",
+  "mail_corps": "Bonjour Samuel,\n\nCeci est le mail de TEST du circuit de campagne du CRM KIPSAFE. S'il arrive dans ta boîte avec la signature et la ligne de désinscription, l'envoi fonctionne. Ouvre-le et affiche les images : la fiche « TEST — Kipsafe (interne) » doit alors passer en « Mail ouvert » dans le CRM (au plus tard 1 minute après retour sur l'onglet Prospects).\n\nBien cordialement,",
+  "effectif": "",
+  "ville": "Paris"
  }
 ]
