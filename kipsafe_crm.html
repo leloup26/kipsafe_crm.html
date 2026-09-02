@@ -603,6 +603,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
       <div class="more-dropdown" id="more-dropdown">
         <button class="more-item more-phone" data-tab="debrief" onclick="showTab('debrief')">📝 Débrief réunion</button>
         <button class="more-item more-phone" data-tab="documents" onclick="showTab('documents')">📁 Documents</button>
+        <button class="more-item" data-tab="linkedin" onclick="showTab('linkedin')">🔵 LinkedIn</button>
         <button class="more-item" data-tab="pitch" onclick="showTab('pitch')">📢 Pitch commercial</button>
         <button class="more-item" data-tab="offres" onclick="showTab('offres')">💼 Offres</button>
         <button class="more-item" data-tab="marches" onclick="showTab('marches')">🏛️ Marchés publics</button>
@@ -667,7 +668,6 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
           <option value="">🎯 Pool : tous</option>
           <option value="libre">🟢 Disponibles</option>
           <option value="mine">👤 Mes prospects</option>
-          <option value="complete">✅ Fiches complètes</option>
         </select>
         <div class="view-toggle">
           <button id="view-kanban-btn" class="active" onclick="setView('kanban')">🗂 Kanban</button>
@@ -825,6 +825,9 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
         <div class="card"><div id="dt-list" style="min-height:80px;overflow-x:auto"></div></div>
       </div>
     </div>
+
+    <!-- LINKEDIN -->
+    <div id="panel-linkedin" class="panel"><div id="linkedin-content"></div></div>
 
     <!-- PITCH COMMERCIAL -->
     <div id="panel-pitch" class="panel">
@@ -1682,7 +1685,7 @@ function showTab(tab){
   const moreBtn=document.getElementById('more-btn');
   if(moreBtn) moreBtn.classList.toggle('has-active',!MAIN_TABS.includes(tab));
   closeMoreMenu();
-  if(tab==='dashboard')renderDashboard();if(tab==='planning')renderObjectifDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='dispos')renderDispos();if(tab==='pitch')renderPitch();if(tab==='debrief')renderDebrief();if(tab==='documents'){loadDocuments();loadDocLinks();}if(tab==='settings')renderMembers();if(tab==='integrations')renderLushaKeyStatus();
+  if(tab==='dashboard')renderDashboard();if(tab==='planning')renderObjectifDashboard();if(tab==='calendrier')renderCalendrierTab();if(tab==='dispos')renderDispos();if(tab==='pitch')renderPitch();if(tab==='debrief')renderDebrief();if(tab==='documents'){loadDocuments();loadDocLinks();}if(tab==='settings')renderMembers();if(tab==='integrations')renderLushaKeyStatus();if(tab==='linkedin')renderLinkedIn();
 }
 function toggleMoreMenu(e){e.stopPropagation();document.getElementById('more-dropdown').classList.toggle('open');}
 function closeMoreMenu(){const d=document.getElementById('more-dropdown');if(d)d.classList.remove('open');}
@@ -2268,13 +2271,7 @@ function togglePlanDone(date){if(planDone.includes(date))planDone=planDone.filte
 
 // ═══ PROSPECTS ══════════════════════════════════════════════
 function setView(v){currentView=v;document.getElementById('view-kanban-btn').classList.toggle('active',v==='kanban');document.getElementById('view-list-btn').classList.toggle('active',v==='list');renderProspects();}
-// ── Complétude d'une fiche (fait remonter les prospects les plus aboutis) ──
-function _v(x){return !!(x&&(''+x).trim());}
-function prospectDecideur(p){return _v(p.nom)&&(''+p.nom).trim()!=='(DSI à identifier)';}
-function prospectHasEmail(p){return _v(p.email)||_v(p.emails_publies)||_v(p.email_probable);}
-function prospectComplet(p){return prospectDecideur(p)&&prospectHasEmail(p)&&_v(p.tel);}
-function prospectScore(p){let s=0;if(prospectDecideur(p))s+=4;if(_v(p.email))s+=3;else if(_v(p.emails_publies)||_v(p.email_probable))s+=2;if(_v(p.tel))s+=2;if(_v(p.dirigeant))s+=1;if(_v(p.mail_corps))s+=1;if(_v(p.angle))s+=0.5;if(_v(p.linkedin))s+=0.5;return s;}
-function getFiltered(){const q=(document.getElementById('search-prospect')?.value||'').toLowerCase();const fo=document.getElementById('filter-offre')?.value||'';const fs=document.getElementById('filter-source')?.value||'';const fc=document.getElementById('filter-cat')?.value||'';const fpool=document.getElementById('filter-pool')?.value||'';return prospects.filter(p=>{const match=!q||(p.nom+' '+(p.societe||'')+' '+(p.poste||'')).toLowerCase().includes(q);const mo=!fo||p.offre===fo;const ms=!fs||p.source===fs;const mc=!fc||(p.categorie||'Prospect')===fc;const mm=!window._memberFilter||(p.owner||'admin')===window._memberFilter;const mpool=!fpool||(fpool==='mine'?(p.owner||'admin')===(currentUser?currentUser.id:'admin'):fpool==='complete'?prospectComplet(p):(p.pool&&!p.pris_par));return inScope(p)&&match&&mo&&ms&&mc&&mm&&mpool;}).sort((a,b)=>prospectScore(b)-prospectScore(a));}
+function getFiltered(){const q=(document.getElementById('search-prospect')?.value||'').toLowerCase();const fo=document.getElementById('filter-offre')?.value||'';const fs=document.getElementById('filter-source')?.value||'';const fc=document.getElementById('filter-cat')?.value||'';const fpool=document.getElementById('filter-pool')?.value||'';return prospects.filter(p=>{const match=!q||(p.nom+' '+(p.societe||'')+' '+(p.poste||'')).toLowerCase().includes(q);const mo=!fo||p.offre===fo;const ms=!fs||p.source===fs;const mc=!fc||(p.categorie||'Prospect')===fc;const mm=!window._memberFilter||(p.owner||'admin')===window._memberFilter;const mpool=!fpool||(fpool==='mine'?(p.owner||'admin')===(currentUser?currentUser.id:'admin'):(p.pool&&!p.pris_par));return inScope(p)&&match&&mo&&ms&&mc&&mm&&mpool;});}
 function renderProspects(){if(currentView==='kanban')renderKanban(getFiltered());else renderList(getFiltered());if(!window._campSyncAt||Date.now()-window._campSyncAt>60000){window._campSyncAt=Date.now();if(typeof campSync==='function')campSync();}}
 
 function searchLinks(p){
@@ -2301,7 +2298,7 @@ function renderKanban(fp){
       const srcColor=p.source==='LinkedIn'?'#0A66C2':p.source==='Lusha'?'#8B5CF6':p.source==='Apollo'?'#2563EB':p.source==='Pappers'?'#E11D48':'#6b7280';
       const cat=p.categorie||'Prospect';const cc=CAT_CONFIG[cat]||CAT_CONFIG.Prospect;
       html+=`<div class="kanban-card" onclick="viewProspect(${p.id})" style="border-left:3px solid ${cc.color}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px"><div class="kc-name">${prospectComplet(p)?'<span title="Fiche complète : décideur nommé + email + téléphone">✅ </span>':''}${esc(p.nom)}</div><span style="font-size:9px;padding:1px 6px;border-radius:99px;background:${cc.bg};color:${cc.color};border:1px solid ${cc.border};font-weight:700;white-space:nowrap">${cc.icon} ${cat}</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px"><div class="kc-name">${esc(p.nom)}</div><span style="font-size:9px;padding:1px 6px;border-radius:99px;background:${cc.bg};color:${cc.color};border:1px solid ${cc.border};font-weight:700;white-space:nowrap">${cc.icon} ${cat}</span></div>
         ${p.poste?`<div class="kc-poste">${esc(p.poste)}</div>`:''}
         <div class="kc-company">🏢 ${esc(p.societe||'—')}</div>
         <span class="kc-offre ${oClass}">${esc(p.offre)}</span>
@@ -2330,7 +2327,7 @@ function renderList(fp){
   fp.forEach(p=>{
     const stCls='st-'+p.statut.toLowerCase().replace(/[éèê]/g,'e').replace(/\s/g,'');
     html+=`<tr>
-      <td>${prospectComplet(p)?'<span title="Fiche complète : décideur nommé + email + téléphone">✅ </span>':''}<strong>${esc(p.nom)}</strong>${p.poste?`<br><span style="font-size:10px;color:var(--secondary)">${esc(p.poste)}</span>`:''}</td>
+      <td><strong>${esc(p.nom)}</strong>${p.poste?`<br><span style="font-size:10px;color:var(--secondary)">${esc(p.poste)}</span>`:''}</td>
       <td>${esc(p.societe||'—')}</td>
       <td><span class="axe-badge" style="background:#dbeafe;color:#1d4ed8">${esc(p.offre)}</span></td>
       <td style="font-size:11px">${p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:''}<br>${esc(p.tel||'')}</td>
@@ -2346,6 +2343,74 @@ function renderList(fp){
 }
 
 function changeStatut(id,s){prospects=prospects.map(p=>p.id===id?{...p,statut:s}:p);save('prospects',prospects);prospectLog(id,'🔁','Statut → '+s);renderProspects();renderDashboard();}
+// ═══ ONGLET LINKEDIN (prospection sociale) ═══
+const LI_LIMIT=20; // invitations/jour max (sécurité anti-ban)
+const LI_TASKS=[
+  {k:'profil',t:'Profil à jour (bannière, titre, section Infos)'},
+  {k:'invit',t:'Envoyer mes invitations du jour (note personnalisée)'},
+  {k:'comment',t:'Commenter 2-3 posts de DSI/RSSI ou d\'acteurs cyber'},
+  {k:'post',t:'Publier / préparer mon post de la semaine'},
+  {k:'crm',t:'Basculer les connexions acceptées dans le pool CRM'}
+];
+function liData(){return load('linkedin_track',{});}
+function liToday(){return localDate();}
+function liGet(){const d=liData();return d[liToday()]||{checks:{},invits:0};}
+function liSave(day){const d=liData();d[liToday()]=day;save('linkedin_track',d);}
+function liToggle(k){const day=liGet();day.checks=day.checks||{};day.checks[k]=!day.checks[k];liSave(day);renderLinkedIn();}
+function liInvit(n){const day=liGet();day.invits=Math.max(0,(day.invits||0)+n);if(day.invits>LI_LIMIT)day.invits=LI_LIMIT;liSave(day);renderLinkedIn();}
+function liWeek(){const d=liData();let inv=0,days=0;const now=new Date();for(let i=0;i<7;i++){const dt=new Date(now);dt.setDate(now.getDate()-i);const ds=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;if(d[ds]){inv+=d[ds].invits||0;if((d[ds].invits||0)>0)days++;}}return {inv,days};}
+function renderLinkedIn(){
+  const el=document.getElementById('linkedin-content');if(!el)return;
+  const day=liGet();const inv=day.invits||0;const pct=Math.round(inv/LI_LIMIT*100);
+  const rest=LI_LIMIT-inv;const wk=liWeek();
+  const barColor=inv>=LI_LIMIT?'var(--red)':inv>=15?'var(--secondary)':'var(--green)';
+  const checks=LI_TASKS.map(t=>{const done=day.checks&&day.checks[t.k];return `<label style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:14px"><input type="checkbox" ${done?'checked':''} onchange="liToggle('${t.k}')" style="width:18px;height:18px;accent-color:var(--accent)"><span style="${done?'text-decoration:line-through;color:var(--muted)':''}">${t.t}</span></label>`;}).join('');
+  // prospects issus de LinkedIn
+  const liProsp=prospects.filter(p=>inScope(p)&&(p.source==='LinkedIn')).length;
+  el.innerHTML=`
+    <div style="max-width:1000px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:22px">🔵</span><h2 style="margin:0;font-size:20px">Prospection LinkedIn</h2></div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:18px">Ta routine quotidienne — 15 à 20 min. La régularité prime sur le volume.</p>
+
+      <div class="grid-2" style="gap:16px;align-items:start">
+        <div class="card" style="text-align:left;padding:18px">
+          <div class="section-title" style="margin-bottom:10px">✅ Checklist du jour · ${liToday()}</div>
+          ${checks}
+        </div>
+        <div class="card" style="text-align:left;padding:18px">
+          <div class="section-title" style="margin-bottom:10px">📨 Invitations envoyées aujourd'hui</div>
+          <div style="font-size:34px;font-weight:800;color:${barColor}">${inv}<span style="font-size:16px;color:var(--muted);font-weight:600"> / ${LI_LIMIT}</span></div>
+          <div class="progress-bar" style="margin:10px 0"><div class="progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
+          ${inv>=LI_LIMIT?`<div style="color:var(--red);font-size:13px;font-weight:700;margin-bottom:10px">⛔ Limite atteinte — stoppe les invitations aujourd'hui (risque de blocage LinkedIn).</div>`:`<div style="font-size:13px;color:var(--muted);margin-bottom:10px">Encore ${rest} possible(s) aujourd'hui.</div>`}
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary btn-sm" onclick="liInvit(1)" ${inv>=LI_LIMIT?'disabled':''}>+1 invitation</button>
+            <button class="btn btn-outline btn-sm" onclick="liInvit(5)" ${inv>=LI_LIMIT?'disabled':''}>+5</button>
+            <button class="btn btn-outline btn-sm" onclick="liInvit(-1)">−1</button>
+          </div>
+          <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;font-size:13px;color:var(--muted)">
+            Cette semaine : <b style="color:var(--ink)">${wk.inv}</b> invitations sur <b style="color:var(--ink)">${wk.days}</b> jour(s) actifs · <b style="color:var(--ink)">${liProsp}</b> prospect(s) source LinkedIn dans le CRM
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="text-align:left;padding:18px;margin-top:16px">
+        <div class="section-title" style="margin-bottom:10px">🔎 Trouver le DSI/RSSI d'un prospect &amp; l'inviter</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:8px">Ouvre la fiche d'un prospect → bouton « 🔍 Chercher le DSI » (recherche LinkedIn pré-remplie). Ajoute une note personnalisée courte à chaque invitation.</p>
+        <div style="background:var(--light);border-radius:8px;padding:10px 12px;font-size:13px;font-style:italic;color:var(--ink)">« Bonjour [Prénom], je suis chez Kipsafe, nous accompagnons les [secteur] sur la sécurité de leurs postes de travail. Ravi d'échanger si le sujet vous parle. »</div>
+      </div>
+
+      <div class="card" style="text-align:left;padding:18px;margin-top:16px">
+        <div class="section-title" style="margin-bottom:10px">🗓️ Plan du 1er mois</div>
+        <div style="font-size:13px;line-height:1.7">
+          <b>Sem. 1 — Socle :</b> profil irréprochable (bannière ✓, titre, Infos).<br>
+          <b>Sem. 2 — Réseau :</b> 10-15 invitations/jour aux DSI/RSSI de la liste.<br>
+          <b>Sem. 3 — Crédibilité :</b> 1er post utile + commentaires quotidiens.<br>
+          <b>Sem. 4 — Conversation :</b> messages doux aux connexions → RDV / plaquette.
+        </div>
+      </div>
+    </div>`;
+}
+
 // ── Historique / journal d'activité du prospect ──
 function prospectLog(id,type,texte,qui){
   const nom=qui||((memberById(currentUser?currentUser.id:'admin')||{}).name||'—');
