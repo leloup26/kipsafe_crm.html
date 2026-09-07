@@ -561,6 +561,13 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .undo-at{font-size:11px;color:var(--muted,#64748b)}
 .undo-go{font-size:11px;font-weight:700;color:#0a83b4;flex-shrink:0}
 .undo-empty{padding:22px 16px;text-align:center;color:var(--muted,#64748b);font-size:12.5px;line-height:1.5}
+.status-bar{display:flex;gap:8px;overflow-x:auto;padding:2px 0 14px;margin-bottom:4px}
+.status-bar .st{border:1px solid var(--border);background:#fff;border-radius:999px;padding:8px 15px;cursor:pointer;white-space:nowrap;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:8px;font-size:13px;font-family:inherit;transition:all .15s}
+.status-bar .st:hover{border-color:var(--accent);color:var(--secondary)}
+.status-bar .st.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.status-bar .st .cnt{background:var(--light);color:var(--muted);border-radius:999px;font-size:11px;font-weight:700;padding:1px 8px;min-width:22px;text-align:center}
+.status-bar .st.active .cnt{background:rgba(255,255,255,.22);color:#fff}
+.prospects-table tbody tr:hover{background:#f0f9ff}
 </style>
 </head>
 <body>
@@ -669,13 +676,14 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
           <option value="complete">✅ Fiches complètes</option>
         </select>
         <div class="view-toggle">
-          <button id="view-kanban-btn" class="active" onclick="setView('kanban')">🗂 Kanban</button>
-          <button id="view-list-btn" onclick="setView('list')">☰ Liste</button>
+          <button id="view-kanban-btn" onclick="setView('kanban')">🗂 Kanban</button>
+          <button id="view-list-btn" class="active" onclick="setView('list')">☰ Liste</button>
         </div>
         <button class="btn btn-primary" onclick="openAddProspect()">+ Ajouter</button>
         <button class="btn btn-outline" onclick="importProspection()" title="Importer la liste de prospection 2026 dans le pool partagé (admin uniquement)">📥 Importer campagne</button>
         <button class="btn btn-outline" onclick="campDiag()" title="Qui est en file, qui est parti, quelles erreurs">🩺 Diagnostic</button><button class="btn btn-outline" onclick="campRunNow()" title="Déclenche immédiatement l'envoi des mails en file (admin — sinon le cron envoie chaque matin ouvré à 8h30)">▶️ Envoyer la file</button>
       </div>
+      <div id="status-bar" class="status-bar"></div>
       <div id="prospects-container"></div>
     </div>
 
@@ -1271,7 +1279,7 @@ function updateLockTimerDisplay(){
 }
 
 // ═══ APP ════════════════════════════════════════════════════
-let currentView='kanban';
+let currentView='list';let activeStatut='';
 function seedDefaultEvents(){ /* CRM vierge : aucun seed */ }
 
 function initApp(){updateHeaderDate();setInterval(updateHeaderDate,60000);seedDefaultEvents();renderDashboard();renderProspects();renderPlanning();renderOffres();renderMarches();updateUndoBtn();bindUndoShortcut();initSupabase();}
@@ -2113,7 +2121,9 @@ function prospectHasEmail(p){return _v(p.email)||_v(p.emails_publies)||_v(p.emai
 function prospectComplet(p){return prospectDecideur(p)&&prospectHasEmail(p)&&_v(p.tel);}
 function prospectScore(p){let s=0;if(prospectDecideur(p))s+=4;if(_v(p.email))s+=3;else if(_v(p.emails_publies)||_v(p.email_probable))s+=2;if(_v(p.tel))s+=2;if(_v(p.dirigeant))s+=1;if(_v(p.mail_corps))s+=1;if(_v(p.angle))s+=0.5;if(_v(p.linkedin))s+=0.5;return s;}
 function getFiltered(){const q=(document.getElementById('search-prospect')?.value||'').toLowerCase();const fo=document.getElementById('filter-offre')?.value||'';const fs=document.getElementById('filter-source')?.value||'';const fc=document.getElementById('filter-cat')?.value||'';const fpool=document.getElementById('filter-pool')?.value||'';return prospects.filter(p=>{const match=!q||(p.nom+' '+(p.societe||'')+' '+(p.poste||'')).toLowerCase().includes(q);const mo=!fo||p.offre===fo;const ms=!fs||p.source===fs;const mc=!fc||(p.categorie||'Prospect')===fc;const mm=!window._memberFilter||(p.owner||'admin')===window._memberFilter;const mpool=!fpool||(fpool==='mine'?(p.owner||'admin')===(currentUser?currentUser.id:'admin'):fpool==='complete'?prospectComplet(p):(p.pool&&!p.pris_par));return match&&mo&&ms&&mc&&mm&&mpool;}).sort((a,b)=>prospectScore(b)-prospectScore(a));}
-function renderProspects(){if(currentView==='kanban')renderKanban(getFiltered());else renderList(getFiltered());if(!window._campSyncAt||Date.now()-window._campSyncAt>60000){window._campSyncAt=Date.now();if(typeof campSync==='function')campSync();}}
+function setStatut(s){activeStatut=s;renderProspects();}
+function renderStatusBar(base){const bar=document.getElementById('status-bar');if(!bar)return;bar.style.display=(currentView==='kanban')?'none':'flex';if(currentView==='kanban')return;const cnt={};base.forEach(p=>{cnt[p.statut]=(cnt[p.statut]||0)+1;});let h=`<button class="st${activeStatut===''?' active':''}" onclick="setStatut('')">Tous <span class="cnt">${base.length}</span></button>`;STATUTS.forEach(s=>{h+=`<button class="st${activeStatut===s?' active':''}" onclick="setStatut('${s}')">${s} <span class="cnt">${cnt[s]||0}</span></button>`;});bar.innerHTML=h;}
+function renderProspects(){const base=getFiltered();renderStatusBar(base);if(currentView==='kanban')renderKanban(base);else renderList(activeStatut?base.filter(p=>p.statut===activeStatut):base);if(!window._campSyncAt||Date.now()-window._campSyncAt>60000){window._campSyncAt=Date.now();if(typeof campSync==='function')campSync();}}
 
 function searchLinks(p){
   const name=encodeURIComponent(p.nom||'');
@@ -2160,19 +2170,19 @@ function renderKanban(fp){
 
 function renderList(fp){
   if(!fp.length){document.getElementById('prospects-container').innerHTML='<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Aucun prospect</div></div>';return;}
-  let html=`<div class="card" style="overflow-x:auto"><table class="prospects-table"><thead><tr><th>Nom / Poste</th><th>Société</th><th>Offre</th><th>Contact</th><th>Source</th><th>Statut</th><th>Valeur</th><th>Liens</th><th></th></tr></thead><tbody>`;
+  let html=`<div class="card" style="overflow-x:auto"><table class="prospects-table prospects-table--clickable"><thead><tr><th>Nom / Poste</th><th>Société</th><th>Offre</th><th>Contact</th><th>Source</th><th>Statut</th><th>Valeur</th><th>Liens</th><th></th></tr></thead><tbody>`;
   fp.forEach(p=>{
     const stCls='st-'+p.statut.toLowerCase().replace(/[éèê]/g,'e').replace(/\s/g,'');
-    html+=`<tr>
+    html+=`<tr onclick="viewProspect(${p.id})" style="cursor:pointer" title="Ouvrir la fiche">
       <td>${prospectComplet(p)?'<span title="Fiche complète : décideur nommé + email + téléphone">✅ </span>':''}<strong>${esc(p.nom)}</strong> ${prospectOwnerBadge(p)}${p.poste?`<br><span style="font-size:10px;color:var(--secondary)">${esc(p.poste)}</span>`:''}</td>
       <td>${esc(p.societe||'—')}</td>
       <td><span class="axe-badge" style="background:#dbeafe;color:#1d4ed8">${esc(p.offre)}</span></td>
-      <td style="font-size:11px">${p.email?`<a href="#" title="Écrire via Outlook Web" onclick="event.preventDefault();outlookProspect(${p.id})">${esc(p.email)}</a>`:''}<br>${esc(p.tel||'')}</td>
+      <td style="font-size:11px">${p.email?`<a href="#" title="Écrire via Outlook Web" onclick="event.stopPropagation();event.preventDefault();outlookProspect(${p.id})">${esc(p.email)}</a>`:''}<br>${esc(p.tel||'')}</td>
       <td><span class="status-badge" style="background:var(--light)">${p.source||'—'}</span></td>
       <td><span class="status-badge ${stCls}">${p.statut}</span></td>
       <td>${p.valeur?p.valeur+'€':'—'}</td>
       <td><div style="display:flex;gap:3px">${searchLinks(p)}</div></td>
-      <td><div style="display:flex;gap:4px"><button class="btn btn-sm btn-outline" onclick="editProspect(${p.id})">✏️</button><button class="btn btn-sm btn-danger" onclick="deleteProspect(${p.id})">🗑️</button></div></td>
+      <td><div style="display:flex;gap:4px"><button class="btn btn-sm btn-outline" onclick="event.stopPropagation();editProspect(${p.id})">✏️</button><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteProspect(${p.id})">🗑️</button></div></td>
     </tr>`;
   });
   html+='</tbody></table></div>';
