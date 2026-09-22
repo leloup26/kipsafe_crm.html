@@ -47,17 +47,20 @@
 // Les cartes s'affichent selon les PDF réellement présents dans ce même dossier public.
 const BASE='https://graujqkrxxceskgnqfin.supabase.co/storage/v1/object/public/plaquettes/';
 const DOCS=[
-  {file:'kipsafe-presentation.pdf', icon:'🏢', titre:'Présentation KIPSAFE',
+  {k:'p', file:'kipsafe-presentation.pdf', icon:'🏢', titre:'Présentation KIPSAFE',
    desc:'Qui nous sommes, notre approche et nos services de cybersécurité & infogérance.'},
-  {file:'kipsafe-audit.pdf', icon:'🔍', titre:'Plaquette Audit',
+  {k:'a', file:'kipsafe-audit.pdf', icon:'🔍', titre:'Plaquette Audit',
    desc:'Nos audits de sécurité : périmètre, méthode et livrables.'},
-  {file:'Kipsafe - Promisec PEM.pdf', icon:'🛡️', titre:'PEM — Promisec Endpoint Manager',
+  {k:'m', file:'Kipsafe - Promisec PEM.pdf', icon:'🛡️', titre:'PEM — Promisec Endpoint Manager',
    desc:'La visibilité et la conformité de votre parc en continu, sans agent.'},
 ];
 (async()=>{
   const zone=document.getElementById('cards');
   const cards=[];
-  for(const d of DOCS){
+  // ?d=pam : lettres des plaquettes à montrer (p=présentation, a=audit, m=PEM) — sans ?d : toutes
+  const sel=(new URLSearchParams(location.search).get('d')||'').toLowerCase();
+  const keep=/^[pam]{1,3}$/.test(sel)?DOCS.filter(d=>sel.includes(d.k)):DOCS;
+  for(const d of keep){
     const url=BASE+encodeURIComponent(d.file);
     try{
       const r=await fetch(url,{method:'HEAD'});
