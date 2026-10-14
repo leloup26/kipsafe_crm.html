@@ -123,7 +123,7 @@ textarea{resize:vertical;min-height:64px}
 <!-- ══════════════ APP ══════════════ -->
 <div id="app" class="hidden">
   <header>
-    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.4</span></div>
+    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.5</span></div>
     <button class="icon-btn" onclick="refreshAll()" title="Actualiser">↻</button>
     <button class="icon-btn" onclick="openSettings()" title="Réglages">⚙️</button>
   </header>
@@ -174,15 +174,20 @@ textarea{resize:vertical;min-height:64px}
       <button class="btn btn-primary" id="f-submit" onclick="createTask()">Ajouter au planning</button>
     </div>
 
-    <!-- ---------- Liste ---------- -->
+    <!-- ---------- Liste (section dépliable : À venir / En retard / Passé) ---------- -->
     <div class="card">
-      <h2 style="display:flex;justify-content:space-between;align-items:center">
-        <span>À venir</span>
-        <span class="small" id="list-count" style="text-transform:none;letter-spacing:0;font-weight:600"></span>
+      <h2 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleListOpen()">
+        <span><span id="list-arrow">▾</span> Mes tâches</span>
+        <span style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0">
+          <span class="small" id="list-count" style="font-weight:600"></span>
+          <button class="btn btn-ghost btn-xs" id="sync-btn" title="Synchroniser avec les 3 CRM" onclick="event.stopPropagation();manualSync()">↻ Sync</button>
+        </span>
       </h2>
-      <div id="list"><div class="empty"><span class="ico">⏳</span>Chargement…</div></div>
-      <button class="btn btn-ghost" style="width:100%;margin-top:12px" id="done-btn" onclick="toggleDone()">Afficher les tâches terminées</button>
-      <p class="small" style="margin:10px 0 0">Touche une tâche pour la modifier ou la supprimer.</p>
+      <div id="list-body">
+        <div class="chips" id="list-tabs" style="margin-bottom:12px"></div>
+        <div id="list"><div class="empty"><span class="ico">⏳</span>Chargement…</div></div>
+        <p class="small" style="margin:10px 0 0">Touche une tâche pour la modifier ou la supprimer. La liste se synchronise toute seule (ouverture, retour sur l'app, temps réel).</p>
+      </div>
     </div>
   </div>
 </div>
@@ -216,7 +221,14 @@ textarea{resize:vertical;min-height:64px}
         <div class="field"><label>Email CRM LMDK</label><input type="email" id="lm-email" autocomplete="off"></div>
         <div class="field"><label>Mot de passe</label><input type="password" id="lm-pw" autocomplete="off"></div>
         <button class="btn btn-primary" onclick="lmdkLogin()">Connecter LMDK</button>
+        <p class="small" style="margin:10px 0 0">Mot de passe oublié ? Dashboard Supabase LMDK → Authentication → Users → ⋯ → « Send password recovery » (ou définis-en un nouveau directement).</p>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>🔧 Diagnostic des 3 connexions</h2>
+      <div class="status-line" id="diag-out">Teste les lectures/écritures et la vitesse vers KIPSAFE, Perso et LMDK.</div>
+      <button class="btn btn-ghost" style="width:100%" onclick="runDiag()">Lancer le diagnostic</button>
       <p class="small" style="margin:12px 0 0">Nécessaire uniquement pour créer des tâches LMDK : le CRM LMDK est sur une base Supabase distincte. La session reste mémorisée.</p>
     </div>
 
@@ -302,7 +314,7 @@ textarea{resize:vertical;min-height:64px}
    partagée depuis un cache local. Toute écriture = relecture cloud
    fraîche → append → upsert. Voir cloudAppend().
    ════════════════════════════════════════════════════════════════ */
-const VERSION='v1.4';
+const VERSION='v1.5';
 
 /* ---------- Base KIPSAFE (partagée KIPSAFE + Perso) ---------- */
 const SB_URL='https://graujqkrxxceskgnqfin.supabase.co';
@@ -314,8 +326,11 @@ const LMDK_KEY='sb_publishable_DeaIffrmBM3Q8E0rdYaOFw_LBdsXfn5';
 let sb=null, lmdk=null, lmdkStatus='off';
 let members=[], me=null, currentUser=null;   // members = annuaire RÉEL du CRM KIPSAFE (comptes)
 let people={};                               // annuaire de l'app, par entité (noms simples)
-let myTasks=[];          // vue agrégée pour la liste
-let showDone=false;      // inclure les tâches déjà terminées
+let myTasks=[];          // tâches de l'onglet actif (affichées)
+let buckets={avenir:[],retard:[],passe:[],plus:[]};   // tri par onglet
+let listTab='avenir', listOpen=true, showLater=false;
+const AVENIR_J=2;        // « À venir » = jusqu'à aujourd'hui + 2 jours
+const PASSE_J=10;        // anciens : 10 jours maximum en arrière
 let selEnt='KIPSAFE', selWho=null;
 let advOpen=false;
 
@@ -342,8 +357,7 @@ const PEOPLE_SEED={
   KIPSAFE:[
     {id:'p_samuel',   name:'Samuel Galin',           color:'#0A2E5C', memberId:'admin'},
     {id:'p_moche',    name:'Moche Medioni',          color:'#C9A227', memberId:null},
-    {id:'p_florian',  name:'Florian Casalta',        color:'#0891b2', memberId:null},
-    {id:'p_jseb',     name:'Jean-Sébastien Orsoni',  color:'#7c3aed', memberId:null}
+    {id:'p_florian',  name:'Florian Casalta',        color:'#0891b2', memberId:null}
   ],
   LMDK:[
     {id:'p_samuel',   name:'Samuel Galin',           color:'#0A2E5C', memberId:null},
@@ -464,6 +478,9 @@ async function boot(){
   document.getElementById('li-auto').checked=!!auto||!localStorage.getItem('taches_email');
   document.getElementById('f-date').value=localDate();
   if(!initClients()){showLogin();return;}
+  // Réveil anticipé du projet Supabase LMDK (démarrage à froid = plusieurs secondes) :
+  // on ouvre la connexion dès le boot pour que la 1re validation soit rapide.
+  try{fetch(LMDK_URL+'/rest/v1/',{headers:{apikey:LMDK_KEY}}).catch(()=>{});}catch(e){}
 
   try{
     // 1) session déjà valide
@@ -534,6 +551,8 @@ async function enterApp(user){
   renderWhoChips();
   await lmdkResume();
   await refreshAll();
+  setupSync();
+  setupLmdkRealtime();
 }
 
 /* ═══════════ Membres (viennent du CRM KIPSAFE) ═══════════ */
@@ -552,7 +571,8 @@ async function loadPeople(){
   people=(p&&typeof p==='object'&&!Array.isArray(p))?p:JSON.parse(JSON.stringify(PEOPLE_SEED));
   // Une entité sans liste retombe sur la graine (ex. entité ajoutée après coup)
   ENTS.forEach(e=>{if(!Array.isArray(people[e.id]))people[e.id]=JSON.parse(JSON.stringify(PEOPLE_SEED[e.id]||[]));});
-  if(autoLinkMembers()||!p)await savePeople();
+  const a=autoLinkMembers(), b=syncPeopleFromCrm();
+  if(a||b||!p)await savePeople();
   selWho=(peopleOf(selEnt)[0]||{}).id||null;
 }
 async function savePeople(){await cloudSet('taches_people',people);}
@@ -562,6 +582,22 @@ async function savePeople(){await cloudSet('taches_people',people);}
  * l'assignation devient réelle (notification incluse) sans rien resaisir.
  * Renvoie true si au moins un rattachement a changé.
  */
+/* Annuaire KIPSAFE aligné sur le CRM : retrait demandé (Jean-Sébastien, 14/10)
+   + IMPORT AUTOMATIQUE de tout compte du CRM absent de l'annuaire. Les nouveaux
+   collaborateurs ajoutés dans le CRM apparaissent donc ici sans resaisie. */
+function syncPeopleFromCrm(){
+  let changed=false;
+  const n0=(people.KIPSAFE||[]).length;
+  people.KIPSAFE=(people.KIPSAFE||[]).filter(p=>p.id!=='p_jseb');
+  if(people.KIPSAFE.length!==n0)changed=true;
+  (members||[]).forEach(m=>{
+    if(!m||!m.name)return;
+    if(people.KIPSAFE.some(p=>p.memberId===m.id||normName(p.name)===normName(m.name)))return;
+    people.KIPSAFE.push({id:'p_m_'+m.id,name:m.name,color:m.color||PALETTE[people.KIPSAFE.length%PALETTE.length],memberId:m.id});
+    changed=true;
+  });
+  return changed;
+}
 function autoLinkMembers(){
   let changed=false;
   peopleOf('KIPSAFE').forEach(p=>{
@@ -648,7 +684,7 @@ async function createTask(){
     document.getElementById('f-end').value='';
     document.getElementById('f-note').value='';
     document.getElementById('f-titre').focus();
-    await refreshAll();
+    refreshSoon(80);   // rafraîchissement en arrière-plan : la main revient tout de suite
   }catch(e){
     console.error(e);
     toast('❌ '+(e.message||'Échec de l\'enregistrement'),4500);
@@ -733,7 +769,9 @@ async function createLmdk(titre,date,time,end,type,note,who){
   const base={titre,echeance:date||null,description:note||null,type:'admin',
               priorite:'moyenne',statut:'a_faire',assignee:who?who.name:null};
   const full=Object.assign({},base,{heure:time||null,duree_min:durMin(time,end),categorie:LMDK_CAT[type]||'autre'});
+  const t0=performance.now();
   let{error}=await lmdk.from('taches').insert(full);
+  window._perfLmdkInsert=Math.round(performance.now()-t0);
   if(error&&(error.code==='PGRST204'||/column|colonne/i.test(error.message||''))){
     // migration agenda 20260720 non appliquée côté LMDK → repli sans les colonnes horaires
     ({error}=await lmdk.from('taches').insert(Object.assign({},base,{type:'autre'})));
@@ -772,7 +810,7 @@ async function lmdkLogin(){
   if(error){lmdkStatus='error';renderLmdkStatus();toast('❌ LMDK : '+error.message,4000);return;}
   document.getElementById('lm-pw').value='';
   if(readAuto('taches_auto'))writeAuto('taches_lmdk_auto',{email,pw});  // suit le réglage principal
-  lmdkStatus='on';renderLmdkStatus();toast('✅ CRM LMDK connecté');
+  lmdkStatus='on';renderLmdkStatus();setupLmdkRealtime();toast('✅ CRM LMDK connecté');
   await refreshAll();
 }
 function renderLmdkStatus(){
@@ -786,7 +824,59 @@ function renderLmdkStatus(){
   else{el.innerHTML='<span style="color:var(--muted)">Non connecté</span> — impossible de créer des tâches LMDK.';form.classList.remove('hidden');}
 }
 
-/* ═══════════ Liste « À venir » ═══════════ */
+/* ═══════════ Diagnostic des 3 connexions ═══════════ */
+async function runDiag(){
+  const el=document.getElementById('diag-out'); if(!el)return;
+  el.textContent='⏳ Tests en cours…';
+  const out=[];
+  const T=async(nom,fn)=>{const t0=performance.now();try{const r=await fn();out.push('✅ '+nom+' — '+Math.round(performance.now()-t0)+' ms'+(r?' · '+r:''));return true;}catch(e){out.push('❌ '+nom+' — '+(e&&e.message||e));return false;}};
+  await T('KIPSAFE · lecture planning',async()=>{const a=await cloudGet('schedule_custom',null);if(!Array.isArray(a))throw new Error('clé illisible');return a.length+' éléments';});
+  await T('Perso · lecture planning',async()=>{const a=await cloudGet('perso_schedule_custom',null);return Array.isArray(a)?(a.length+' éléments'):'clé vide ou accès refusé';});
+  const persoOK=await T('Perso · ÉCRITURE (test sans risque)',async()=>{await cloudSet('perso_diag_ping',{t:Date.now(),par:'taches-app '+VERSION});return 'tes clés perso_* sont accessibles';});
+  if(lmdkStatus==='on'){
+    await T('LMDK · 1re requête (connexion à froid)',async()=>{const{error}=await lmdk.from('taches').select('id').limit(1);if(error)throw new Error(error.message);return 'OK';});
+    await T('LMDK · 2e requête (à chaud)',async()=>{const{error}=await lmdk.from('taches').select('id').limit(1);if(error)throw new Error(error.message);return 'OK';});
+    if(window._perfLmdkInsert)out.push('ℹ️ Dernier enregistrement LMDK : '+window._perfLmdkInsert+' ms');
+  }else{
+    out.push('⚠️ LMDK non connecté — renseigne tes identifiants ci-dessus pour tester.');
+  }
+  let html=out.map(esc).join('<br>');
+  if(!persoOK)html+='<br><strong style="color:var(--red)">→ Cause probable : la règle de sécurité n\'autorise que l\'ancien compte. Ré-exécute PERSO_SECURISATION.sql (celui de ~/Documents/CRM Perso v2, version avec galinsamuel@gmail.com) dans Supabase KIPSAFE → SQL Editor.</strong>';
+  el.innerHTML=html;
+}
+
+/* ═══════════ Synchronisation continue ═══════════
+   La liste est resynchronisée : à l'ouverture, au retour sur l'app (iOS),
+   toutes les 60 s quand l'app est visible, en TEMPS RÉEL quand un CRM
+   modifie les plannings, et à la main via le bouton ↻ Sync. */
+let _lastRef=0,_refT=null;
+function refreshSoon(d){clearTimeout(_refT);_refT=setTimeout(()=>refreshAll(),d||700);}
+async function manualSync(){
+  const b=document.getElementById('sync-btn');
+  if(b){b.disabled=true;b.textContent='⏳';}
+  await refreshAll();
+  if(b){b.disabled=false;b.textContent='↻ Sync';}
+  toast('✅ Synchronisé avec les 3 CRM');
+}
+function setupSync(){
+  if(window._syncOn)return; window._syncOn=true;
+  setInterval(()=>{if(document.visibilityState==='visible'&&Date.now()-_lastRef>55000)refreshAll();},60000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-_lastRef>8000)refreshAll();});
+  window.addEventListener('focus',()=>{if(Date.now()-_lastRef>8000)refreshAll();});
+  try{
+    sb.channel('taches-app')
+      .on('postgres_changes',{event:'*',schema:'public',table:'kipsafe_data'},p=>{
+        const k=p&&p.new&&p.new.key;
+        if(k==='schedule_custom'||k==='perso_schedule_custom'||k==='taches_people'||k==='members')refreshSoon(900);
+      }).subscribe();
+  }catch(e){console.warn('realtime',e);}
+}
+function setupLmdkRealtime(){
+  if(window._lmdkRt||lmdkStatus!=='on'||!lmdk)return; window._lmdkRt=true;
+  try{lmdk.channel('taches-lmdk').on('postgres_changes',{event:'*',schema:'public',table:'taches'},()=>refreshSoon(900)).subscribe();}catch(e){}
+}
+
+/* ═══════════ Liste des tâches ═══════════ */
 async function refreshAll(){
   const box=document.getElementById('list');
   try{
@@ -813,34 +903,75 @@ async function refreshAll(){
         who:x.personne?firstName({name:x.personne}):null,icon:x.icon,raw:x});
     });
 
-    // LMDK
+    // LMDK — requête ALLÉGÉE : fenêtre utile seulement (vitesse)
     if(lmdkStatus==='on'){
       try{
-        const{data}=await lmdk.from('taches').select('*').order('echeance',{ascending:true});
+        const t0=performance.now();
+        const minP=localDate(new Date(Date.now()-PASSE_J*864e5));
+        const{data,error}=await lmdk.from('taches').select('*')
+          .or('echeance.is.null,echeance.gte.'+minP)
+          .order('echeance',{ascending:true}).limit(300);
+        window._perfLmdkList=Math.round(performance.now()-t0);
+        if(error)throw error;
         (data||[]).forEach(t=>out.push({src:'lmdk',key:'taches',id:t.id,ent:'LMDK',
-          titre:t.titre,date:t.echeance,time:t.heure||'',done:t.statut==='fait'||t.statut==='annulee',
+          titre:t.titre,date:t.echeance,time:hhmm(t.heure),done:t.statut==='fait'||t.statut==='annulee',
           who:t.assignee?firstName({name:t.assignee}):null,icon:'👑',raw:t}));
       }catch(e){console.warn('LMDK list',e);}
     }
 
-    // Tri : non terminées d'abord, puis par date/heure
+    // Tri en 4 paquets : À venir (→ J+2) / En retard / Passé (10 j max) / Plus tard
     const today=localDate();
-    myTasks=out
-      .filter(t=>t.titre&&(showDone||!t.done||(t.date||'')>=today))
-      .sort((a,b)=>(a.done?1:0)-(b.done?1:0)||String(a.date||'9999').localeCompare(String(b.date||'9999'))||String(a.time||'99').localeCompare(String(b.time||'99')))
-      .slice(0,showDone?120:40);
-    renderList();
+    const maxA=localDate(new Date(Date.now()+AVENIR_J*864e5));
+    const minP=localDate(new Date(Date.now()-PASSE_J*864e5));
+    const all=out.filter(t=>t.titre);
+    const byDate=(a,b)=>String(a.date||'9999').localeCompare(String(b.date||'9999'))||String(a.time||'99').localeCompare(String(b.time||'99'));
+    buckets={
+      retard:all.filter(t=>!t.done&&t.date&&t.date<today&&t.date>=minP).sort(byDate),
+      avenir:all.filter(t=>!t.done&&(!t.date||(t.date>=today&&t.date<=maxA))).sort(byDate),
+      plus:  all.filter(t=>!t.done&&t.date&&t.date>maxA).sort(byDate),
+      passe: all.filter(t=>t.done&&(!t.date||t.date>=minP)).sort((a,b)=>byDate(b,a)).slice(0,80)
+    };
+    _lastRef=Date.now();
+    renderTabs();applyTab();
   }catch(e){
     console.error(e);
     box.innerHTML='<div class="empty"><span class="ico">⚠️</span>Impossible de charger : '+esc(e.message||'')+'</div>';
   }
 }
+function toggleListOpen(){
+  listOpen=!listOpen;
+  document.getElementById('list-body').style.display=listOpen?'':'none';
+  document.getElementById('list-arrow').textContent=listOpen?'▾':'▸';
+}
+function renderTabs(){
+  const el=document.getElementById('list-tabs'); if(!el)return;
+  const tabs=[
+    {id:'avenir',label:'📅 À venir',  n:buckets.avenir.length},
+    {id:'retard',label:'⚠️ En retard',n:buckets.retard.length},
+    {id:'passe', label:'✓ Passé',    n:buckets.passe.length}
+  ];
+  el.innerHTML=tabs.map(t=>{
+    const on=listTab===t.id;
+    const warn=t.id==='retard'&&t.n>0;
+    const bg=on?('background:'+(t.id==='retard'?'var(--red,#b91c1c)':'var(--navy,#0A2E5C)')):(warn?'color:var(--red);border-color:var(--red)':'');
+    return `<button class="chip${on?' on':''}" style="${bg}" onclick="pickTab('${t.id}')">${t.label}${t.n?' · '+t.n:''}</button>`;
+  }).join('');
+  const cnt=document.getElementById('list-count');
+  if(cnt)cnt.textContent=buckets.retard.length?('⚠️ '+buckets.retard.length+' en retard'):(buckets.avenir.length+' à venir');
+}
+function pickTab(id){listTab=id;showLater=false;applyTab();renderTabs();}
+function applyTab(){
+  myTasks=(listTab==='avenir'&&showLater)?buckets.avenir.concat(buckets.plus):buckets[listTab]||[];
+  renderList();
+}
+function toggleLater(){showLater=!showLater;applyTab();}
 function renderList(){
-  const box=document.getElementById('list'), cnt=document.getElementById('list-count');
-  const open=myTasks.filter(t=>!t.done).length;
-  cnt.textContent=open?open+' en cours':'';
+  const box=document.getElementById('list');
+  const laterBtn=(listTab==='avenir'&&buckets.plus.length)
+    ?`<button class="btn btn-ghost btn-xs" style="width:100%;margin-top:8px" onclick="toggleLater()">${showLater?'Masquer':'Afficher'} les ${buckets.plus.length} tâche(s) prévues après-demain +</button>`:'';
   if(!myTasks.length){
-    box.innerHTML='<div class="empty"><span class="ico">🎉</span>Rien à faire pour le moment.</div>';
+    const msg={avenir:'🎉 Rien à venir d\'ici 2 jours.',retard:'👍 Aucun retard.',passe:'Aucune tâche terminée ces 10 derniers jours.'}[listTab]||'Rien.';
+    box.innerHTML='<div class="empty"><span class="ico">'+(listTab==='retard'?'👍':'🎉')+'</span>'+msg+'</div>'+laterBtn;
     return;
   }
   // Le corps de la ligne ouvre la fiche ; le bouton « Fait » reste indépendant
@@ -860,7 +991,7 @@ function renderList(){
       ${t.done?`<button class="btn btn-ghost btn-xs" onclick="openEdit(${i})">✓ Ouvrir</button>`
              :`<button class="btn btn-ghost btn-xs" onclick="markDone(${i})">Fait</button>`}
     </div>`;
-  }).join('');
+  }).join('')+laterBtn;
 }
 async function markDone(i){
   const t=myTasks[i]; if(!t)return;
@@ -874,12 +1005,6 @@ async function markDone(i){
     toast('✅ Terminé');
     await refreshAll();
   }catch(e){toast('❌ '+(e.message||'échec'),4000);}
-}
-
-async function toggleDone(){
-  showDone=!showDone;
-  document.getElementById('done-btn').textContent=showDone?'Masquer les tâches terminées':'Afficher les tâches terminées';
-  await refreshAll();
 }
 
 /* ═══════════ Fiche tâche : modifier / supprimer ═══════════ */
