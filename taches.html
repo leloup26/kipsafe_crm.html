@@ -123,7 +123,7 @@ textarea{resize:vertical;min-height:64px}
 <!-- ══════════════ APP ══════════════ -->
 <div id="app" class="hidden">
   <header>
-    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.5</span></div>
+    <div class="title">✅ Mes tâches <span class="ver" id="ver-badge">v1.6</span></div>
     <button class="icon-btn" onclick="refreshAll()" title="Actualiser">↻</button>
     <button class="icon-btn" onclick="openSettings()" title="Réglages">⚙️</button>
   </header>
@@ -314,7 +314,7 @@ textarea{resize:vertical;min-height:64px}
    partagée depuis un cache local. Toute écriture = relecture cloud
    fraîche → append → upsert. Voir cloudAppend().
    ════════════════════════════════════════════════════════════════ */
-const VERSION='v1.5';
+const VERSION='v1.6';
 
 /* ---------- Base KIPSAFE (partagée KIPSAFE + Perso) ---------- */
 const SB_URL='https://graujqkrxxceskgnqfin.supabase.co';
@@ -553,6 +553,28 @@ async function enterApp(user){
   await refreshAll();
   setupSync();
   setupLmdkRealtime();
+  applyLinkPrefill();
+}
+
+/* Pré-remplissage depuis un lien (agent matinal « mail → planning », partages…)
+   taches.html?t=Titre&d=2026-10-20&h=09:30&f=10:30&e=YSIOM&p=Mordehai&n=Note */
+function applyLinkPrefill(){
+  try{
+    const u=new URLSearchParams(location.search);
+    const t=u.get('t'); if(!t)return;
+    document.getElementById('f-titre').value=t.slice(0,200);
+    if(u.get('d'))document.getElementById('f-date').value=u.get('d');
+    if(u.get('h'))document.getElementById('f-time').value=u.get('h');
+    if(u.get('f'))document.getElementById('f-end').value=u.get('f');
+    if(u.get('n'))document.getElementById('f-note').value=u.get('n').slice(0,500);
+    const e=(u.get('e')||'').toUpperCase();
+    if(ENTS.some(x=>x.id===e))pickEnt(e);
+    const p=u.get('p');
+    if(p){const hit=peopleOf(selEnt).find(x=>normName(x.name)===normName(p)||normName(firstName(x))===normName(p));if(hit)pickWho(hit.id);}
+    history.replaceState(null,'',location.pathname); // ne pas re-remplir au prochain rechargement
+    toast('📩 Pré-rempli depuis le lien — vérifie puis « Ajouter au planning »',4500);
+    document.getElementById('f-titre').scrollIntoView({behavior:'smooth',block:'center'});
+  }catch(e){console.warn('prefill',e);}
 }
 
 /* ═══════════ Membres (viennent du CRM KIPSAFE) ═══════════ */
