@@ -2792,7 +2792,7 @@ async function campQueueConfirm(id){
   const docsLbl=noLink?' — sans lien plaquette':(docs?(' — plaquettes : '+[docs.includes('p')?'Présentation':null,docs.includes('a')?'Audit':null,docs.includes('m')?'PEM':null].filter(Boolean).join(' + ')):'');
   if(!ds){alert('Choisis un jour d\'envoi.');return;}
   const {error}=await sbClient.from('camp_queue').insert({prospect_id:p.id,societe:p.societe||'',dest,objet:_p2.mail_objet||'(sans objet)',corps:_p2.mail_corps,sender,scheduled_date:ds,scheduled_time:ts,created_by:(currentUser?currentUser.id:''),no_link:noLink,docs:docs,no_sig:noSig});
-  if(error){logErr('campagne','programmation : '+error.message);alert('Erreur file d\'envoi : '+error.message+'\n\nSi le message parle de scheduled_time : exécuter CAMPAGNE_PATCH_HEURE.sql dans Supabase.');return;}
+  if(error){logErr('campagne','programmation : '+error.message);let _aide='';if(/out of range.*integer/i.test(error.message))_aide='\n\n→ Fiche à numéro long (b77+) : exécuter KIPSAFE_PATCH_BIGINT_A_COLLER.sql (Bureau) dans Supabase, puis reprogrammer.';else if(/scheduled_time/i.test(error.message))_aide='\n\n→ Exécuter CAMPAGNE_PATCH_HEURE.sql dans Supabase.';alert('Erreur file d\'envoi : '+error.message+_aide);return;}
   prospects=prospects.map(x=>x.id===id?{...x,camp_prog:ds+' '+ts}:x);save('prospects',prospects);
   prospectLog(id,'🕗',`Mail programmé pour le ${ds} à ${ts} (${dest})${docsLbl}`);
   closeModal();renderProspects();toast('🕗 Envoi programmé : '+ds+' à '+ts);
