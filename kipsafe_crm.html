@@ -625,7 +625,7 @@ select.status-badge{max-width:130px;text-overflow:ellipsis}
 
 <div id="app" style="display:none;flex-direction:column;height:100vh;height:100dvh">
   <header>
-    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v25/11·b85</span></div>
+    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v25/11·b86</span></div>
     <div class="h-right"><span id="sync-indic" style="font-size:11px;opacity:.75;margin-right:4px" title="Dernière synchronisation avec le serveur"></span><button id="notif-bell" onclick="openNotifPanel()" title="Notifications" style="position:relative;background:none;border:none;color:#fff;font-size:14px;cursor:pointer;margin-right:10px;padding:0;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:14px;height:14px;line-height:14px;border-radius:99px;text-align:center;padding:0 2px"></span></button><select id="header-viewas" style="display:none;font-size:11px;padding:3px 6px;border-radius:6px;border:none;margin-right:8px" onchange="setMemberFilter(this.value)"></select><span id="header-user" style="font-size:12px;color:#fff;margin-right:8px"></span><button id="admin-mode-btn" onclick="toggleAdminMode()" style="display:none;font-size:10px;padding:3px 8px;border:none;border-radius:99px;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;margin-right:6px;font-weight:700">🔑</button><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span id="lock-timer" style="font-size:10px;color:rgba(255,255,255,.6);margin-right:6px"></span><span class="h-date" id="header-date"></span><span class="undo-wrap"><button id="undo-btn" class="undo-btn" onclick="undoLast()">↩️ Annuler<span id="undo-count" class="undo-count" style="display:none"></span></button><button id="undo-more" class="undo-more" onclick="undoTogglePanel()" title="Historique / points de restauration">▾</button></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
     <div id="undo-panel" class="undo-panel"><div class="undo-head"><span>↩️ Points de restauration</span><button class="undo-close" onclick="undoClosePanel()" aria-label="Fermer">×</button></div><div class="undo-hint">Clique une action pour revenir à cet état. Sans risque : rien n'est réellement perdu.</div><div id="undo-list" class="undo-listbox"></div></div>
   </header>
@@ -1149,7 +1149,7 @@ function isSuperAdminMode(){return isSuperAdmin()&&adminMode;} // b81 : = super 
 function canDeleteProspectUI(p){if(isDirection())return adminMode;return canEditProspect(p);} // b81 : la direction doit activer la clé pour voir/utiliser 🗑️
 function roleLabel(r){return ({admin:'👑 Super admin',co_admin:'⭐ Admin',resp_pole:'🧭 Resp. pôle',collab:'Commercial'})[r]||r;}
 function newProspectId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
-const BUILD_NUM=85; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
+const BUILD_NUM=86; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
 function checkMinBuild(){try{
   const mb=Number(load('min_build',0)||0);
   if(mb<=BUILD_NUM||document.getElementById('upd-overlay'))return;
@@ -2490,7 +2490,7 @@ function renderStatusBar(base){const bar=document.getElementById('status-bar');i
   const hotN=base.filter(p=>prospectHeat(p)>0&&(isDirection()||!prospectHolder(p)||prospectHolder(p)===me)).length;
   h+=`<button class="st${activeStatut==='__hot'?' active':''}" onclick="setStatut('__hot')" title="Prospects avec activité (ouvertures, clics, plaquettes vues ou téléchargées) — du plus chaud au plus froid">🔥 À appeler <span class="cnt">${hotN}</span></button>`;
   h+=`<button class="st" onclick="campQueueList()" title="La file réelle du serveur : tout ce qui va partir, annulable ligne par ligne">🕗 En file</button>`;
-  STATUTS.forEach(s=>{h+=`<button class="st${activeStatut===s?' active':''}" onclick="setStatut('${s}')" title="Vos fiches au statut ${s}">${s} <span class="cnt">${cnt[s]||0}</span></button>`;});
+  STATUTS.forEach(s=>{if(s==='Mail programmé')return;h+=`<button class="st${activeStatut===s?' active':''}" onclick="setStatut('${s}')" title="Vos fiches au statut ${s}">${s} <span class="cnt">${cnt[s]||0}</span></button>`;});
   bar.innerHTML=h;}
 function renderProspects(){const base=getFiltered();const _fk=[document.getElementById('search-prospect')?.value||'',activeStatut,document.getElementById('filter-offre')?.value||'',document.getElementById('filter-source')?.value||'',document.getElementById('filter-cat')?.value||'',document.getElementById('filter-pool')?.value||'',document.getElementById('filter-taille')?.value||'',document.getElementById('filter-secteur')?.value||'',window._memberFilter||''].join('|');if(_fk!==window._listKey){window._listKey=_fk;window._listShow=200;}renderStatusBar(base);if(currentView==='kanban')renderKanban(base);else renderList((function(){const _me=currentUser?currentUser.id:'admin';if(activeStatut==='__mine')return base.filter(p=>prospectHolder(p)===_me);if(activeStatut==='__hot')return base.filter(p=>prospectHeat(p)>0&&(isDirection()||!prospectHolder(p)||prospectHolder(p)===_me)).sort((a,b)=>prospectHeat(b)-prospectHeat(a));if(activeStatut)return base.filter(p=>p.statut===activeStatut&&prospectHolder(p)===_me);return base;})());if(!window._campSyncAt||Date.now()-window._campSyncAt>60000){window._campSyncAt=Date.now();if(typeof campSync==='function')campSync();}}
 
@@ -2783,6 +2783,25 @@ function campGenMail(id){
   viewProspect(id);
   toast('✍️ Mail généré — relis-le (Modifier) puis 🕗 Programme l\'envoi');
 }
+// ── b86 : lire le MAIL COMPLET en file (objet + texte), depuis la fiche ou la liste ──
+async function campViewQueued(pid,back){
+  if(!sbClient)return;
+  openModal('✉️ Mail programmé — contenu exact en file','<div id="cvq-body" style="font-size:13px;color:var(--muted)">Chargement…</div>',
+    [{label:'← Retour',cls:'btn-outline',fn:back||'closeModal()'},{label:'✖️ Annuler cet envoi',cls:'btn-danger',fn:`campCancelQueued(${pid})`},{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
+  try{
+    const {data,error}=await sbClient.from('camp_queue').select('objet,corps,dest,sender,scheduled_date,scheduled_time,docs,no_link').eq('prospect_id',pid).eq('statut','queued').order('created_at',{ascending:false}).limit(1);
+    if(error)throw error;
+    const el=document.getElementById('cvq-body');if(!el)return;
+    if(!data||!data.length){el.innerHTML='<span style="color:var(--red)">Aucun envoi en attente pour cette fiche (déjà parti ou annulé).</span>';return;}
+    const r=data[0];
+    el.innerHTML=`<div style="font-size:12px;color:#7c3aed;font-weight:700;margin-bottom:8px">🕗 Partira le ${esc(r.scheduled_date||'')} à ${esc(String(r.scheduled_time||'').slice(0,5))} — vers ${esc(r.dest||'')} (boîte de ${r.sender==='florian'?'Florian':r.sender==='hugues'?'Hugues':'Samuel'})</div>
+      <div style="background:#e8f5e9;border:1px solid #c8e6c9;border-radius:8px;padding:12px 14px;color:var(--text)">
+        <div style="margin-bottom:8px"><strong>Objet : ${esc(r.objet||'(sans objet)')}</strong></div>
+        <div style="white-space:pre-line;font-size:12.5px;line-height:1.55">${esc(r.corps||'(corps vide)')}</div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">${r.no_link?'Sans bouton plaquette (seule l\'ouverture sera détectée).':'Avec le bouton « Découvrir la plaquette » (lien tracé'+(r.docs?' — plaquettes : '+r.docs.toUpperCase():'')+').'} La signature KIPSAFE est ajoutée à l'envoi.</div>`;
+  }catch(e){const el=document.getElementById('cvq-body');if(el)el.textContent='Erreur : '+(e&&e.message||e);}
+}
 // ── b85 : transparence totale sur la file d'envoi — voir, vérifier, annuler ──
 function cqApercu(id){const p=prospects.find(x=>x.id===id);const el=document.getElementById('cq-apercu');if(!p||!el)return;const m=document.getElementById('cq-modele')?.value||'';const obj=m?campModele(m,p.societe).objet:(p.mail_objet||'(sans objet)');el.textContent='✉️ Partira avec l\'objet : « '+obj+' »'+(m?' — le modèle ⚡ remplacera le texte de la fiche':' — texte actuel de la fiche');}
 async function campProgInfo(id){
@@ -2790,7 +2809,7 @@ async function campProgInfo(id){
   try{
     const {data}=await sbClient.from('camp_queue').select('objet').eq('prospect_id',id).eq('statut','queued').order('created_at',{ascending:false}).limit(1);
     const el=document.getElementById('camp-prog-objet');if(!el)return;
-    if(data&&data.length)el.innerHTML='<br>Objet en file : « '+esc(data[0].objet||'(sans objet)')+' »';
+    if(data&&data.length)el.innerHTML='<br>Objet en file : « '+esc(data[0].objet||'(sans objet)')+' » — <a href="#" style="color:#7c3aed" onclick="event.preventDefault();campViewQueued('+id+',\'viewProspect('+id+')\')">👁 lire le mail complet</a>';
     else el.innerHTML='<br><span style="color:var(--red)">⚠️ Aucune ligne en attente côté serveur (déjà partie ou annulée)</span>';
   }catch(e){}
 }
@@ -2815,7 +2834,7 @@ async function campQueueList(){
     if(error)throw error;
     const el=document.getElementById('cql-body');if(!el)return;
     if(!data||!data.length){el.innerHTML='Aucun envoi en attente — la file est vide.';return;}
-    el.innerHTML=data.map(r=>`<div style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--light)"><div style="min-width:82px;font-weight:700;color:#7c3aed">${esc(r.scheduled_date||'')}<br><span style="font-weight:400">${esc(String(r.scheduled_time||'').slice(0,5))}</span></div><div style="flex:1;min-width:0"><strong>${esc(r.societe||'—')}</strong> <span style="color:var(--muted);font-size:11px">${esc(r.dest||'')}</span><br><span style="font-size:11.5px">${esc(r.objet||'(sans objet)')}</span></div><button class="btn btn-xs btn-outline" style="border-color:var(--red);color:var(--red)" title="Annuler cet envoi" onclick="campCancelRow('${r.id}',${r.prospect_id})">✖️</button></div>`).join('')+`<div style="margin-top:8px;font-size:11px;color:var(--muted)">${data.length} envoi(s) en attente. L'automate expédie à l'heure dite, de 5h à minuit, jamais le samedi.</div>`;
+    el.innerHTML=data.map(r=>`<div style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--light)"><div style="min-width:82px;font-weight:700;color:#7c3aed">${esc(r.scheduled_date||'')}<br><span style="font-weight:400">${esc(String(r.scheduled_time||'').slice(0,5))}</span></div><div style="flex:1;min-width:0"><strong>${esc(r.societe||'—')}</strong> <span style="color:var(--muted);font-size:11px">${esc(r.dest||'')}</span><br><span style="font-size:11.5px">${esc(r.objet||'(sans objet)')}</span></div><button class="btn btn-xs btn-outline" title="Lire le mail complet" onclick="campViewQueued(${r.prospect_id},'campQueueList()')">👁</button><button class="btn btn-xs btn-outline" style="border-color:var(--red);color:var(--red)" title="Annuler cet envoi" onclick="campCancelRow('${r.id}',${r.prospect_id})">✖️</button></div>`).join('')+`<div style="margin-top:8px;font-size:11px;color:var(--muted)">${data.length} envoi(s) en attente. L'automate expédie à l'heure dite, de 5h à minuit, jamais le samedi.</div>`;
   }catch(e){const el=document.getElementById('cql-body');if(el)el.textContent='Erreur : '+(e&&e.message||e);}
 }
 async function campCancelRow(qid,pid){
@@ -5259,7 +5278,7 @@ function escJs(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 // ═══ START ══════════════════════════════════════════════════
 async function boot(){
   try{const _fv=document.querySelector('link[rel="icon"]');const _hl=document.getElementById('hdr-logo');if(_fv&&_hl)_hl.src=_fv.href;}catch(e){} // b83 : le logo du header réutilise le PNG du favicon (déduplication, −35 Ko)
-  console.log('%cKIPSAFE CRM — v25/11·b85 (File d envoi transparente : bouton En file, apercu de l objet avant programmation, annulation d un envoi, ancien mail garde en historique)','color:#00AEEF;font-weight:bold');
+  console.log('%cKIPSAFE CRM — v25/11·b86 (Lecture du mail complet en file : bouton 👁 depuis la fiche et depuis la liste En file)','color:#00AEEF;font-weight:bold');
   // Authentification Supabase (session persistante, lien de réinitialisation, ou écran de connexion)
   await initPin();
 }
