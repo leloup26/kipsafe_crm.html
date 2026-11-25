@@ -625,8 +625,8 @@ select.status-badge{max-width:130px;text-overflow:ellipsis}
 
 <div id="app" style="display:none;flex-direction:column;height:100vh;height:100dvh">
   <header>
-    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v25/11·b84</span></div>
-    <div class="h-right"><button id="notif-bell" onclick="openNotifPanel()" title="Notifications" style="position:relative;background:none;border:none;color:#fff;font-size:14px;cursor:pointer;margin-right:10px;padding:0;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:14px;height:14px;line-height:14px;border-radius:99px;text-align:center;padding:0 2px"></span></button><select id="header-viewas" style="display:none;font-size:11px;padding:3px 6px;border-radius:6px;border:none;margin-right:8px" onchange="setMemberFilter(this.value)"></select><span id="header-user" style="font-size:12px;color:#fff;margin-right:8px"></span><button id="admin-mode-btn" onclick="toggleAdminMode()" style="display:none;font-size:10px;padding:3px 8px;border:none;border-radius:99px;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;margin-right:6px;font-weight:700">🔑</button><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span id="lock-timer" style="font-size:10px;color:rgba(255,255,255,.6);margin-right:6px"></span><span class="h-date" id="header-date"></span><span class="undo-wrap"><button id="undo-btn" class="undo-btn" onclick="undoLast()">↩️ Annuler<span id="undo-count" class="undo-count" style="display:none"></span></button><button id="undo-more" class="undo-more" onclick="undoTogglePanel()" title="Historique / points de restauration">▾</button></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
+    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v25/11·b85</span></div>
+    <div class="h-right"><span id="sync-indic" style="font-size:11px;opacity:.75;margin-right:4px" title="Dernière synchronisation avec le serveur"></span><button id="notif-bell" onclick="openNotifPanel()" title="Notifications" style="position:relative;background:none;border:none;color:#fff;font-size:14px;cursor:pointer;margin-right:10px;padding:0;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:14px;height:14px;line-height:14px;border-radius:99px;text-align:center;padding:0 2px"></span></button><select id="header-viewas" style="display:none;font-size:11px;padding:3px 6px;border-radius:6px;border:none;margin-right:8px" onchange="setMemberFilter(this.value)"></select><span id="header-user" style="font-size:12px;color:#fff;margin-right:8px"></span><button id="admin-mode-btn" onclick="toggleAdminMode()" style="display:none;font-size:10px;padding:3px 8px;border:none;border-radius:99px;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;margin-right:6px;font-weight:700">🔑</button><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span id="lock-timer" style="font-size:10px;color:rgba(255,255,255,.6);margin-right:6px"></span><span class="h-date" id="header-date"></span><span class="undo-wrap"><button id="undo-btn" class="undo-btn" onclick="undoLast()">↩️ Annuler<span id="undo-count" class="undo-count" style="display:none"></span></button><button id="undo-more" class="undo-more" onclick="undoTogglePanel()" title="Historique / points de restauration">▾</button></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
     <div id="undo-panel" class="undo-panel"><div class="undo-head"><span>↩️ Points de restauration</span><button class="undo-close" onclick="undoClosePanel()" aria-label="Fermer">×</button></div><div class="undo-hint">Clique une action pour revenir à cet état. Sans risque : rien n'est réellement perdu.</div><div id="undo-list" class="undo-listbox"></div></div>
   </header>
   <nav>
@@ -1149,7 +1149,7 @@ function isSuperAdminMode(){return isSuperAdmin()&&adminMode;} // b81 : = super 
 function canDeleteProspectUI(p){if(isDirection())return adminMode;return canEditProspect(p);} // b81 : la direction doit activer la clé pour voir/utiliser 🗑️
 function roleLabel(r){return ({admin:'👑 Super admin',co_admin:'⭐ Admin',resp_pole:'🧭 Resp. pôle',collab:'Commercial'})[r]||r;}
 function newProspectId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
-const BUILD_NUM=84; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
+const BUILD_NUM=85; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
 function checkMinBuild(){try{
   const mb=Number(load('min_build',0)||0);
   if(mb<=BUILD_NUM||document.getElementById('upd-overlay'))return;
@@ -2489,6 +2489,7 @@ function renderStatusBar(base){const bar=document.getElementById('status-bar');i
   h+=`<button class="st${activeStatut==='__mine'?' active':''}" onclick="setStatut('__mine')">👤 Mes prospects <span class="cnt">${mine.length}</span></button>`;
   const hotN=base.filter(p=>prospectHeat(p)>0&&(isDirection()||!prospectHolder(p)||prospectHolder(p)===me)).length;
   h+=`<button class="st${activeStatut==='__hot'?' active':''}" onclick="setStatut('__hot')" title="Prospects avec activité (ouvertures, clics, plaquettes vues ou téléchargées) — du plus chaud au plus froid">🔥 À appeler <span class="cnt">${hotN}</span></button>`;
+  h+=`<button class="st" onclick="campQueueList()" title="La file réelle du serveur : tout ce qui va partir, annulable ligne par ligne">🕗 En file</button>`;
   STATUTS.forEach(s=>{h+=`<button class="st${activeStatut===s?' active':''}" onclick="setStatut('${s}')" title="Vos fiches au statut ${s}">${s} <span class="cnt">${cnt[s]||0}</span></button>`;});
   bar.innerHTML=h;}
 function renderProspects(){const base=getFiltered();const _fk=[document.getElementById('search-prospect')?.value||'',activeStatut,document.getElementById('filter-offre')?.value||'',document.getElementById('filter-source')?.value||'',document.getElementById('filter-cat')?.value||'',document.getElementById('filter-pool')?.value||'',document.getElementById('filter-taille')?.value||'',document.getElementById('filter-secteur')?.value||'',window._memberFilter||''].join('|');if(_fk!==window._listKey){window._listKey=_fk;window._listShow=200;}renderStatusBar(base);if(currentView==='kanban')renderKanban(base);else renderList((function(){const _me=currentUser?currentUser.id:'admin';if(activeStatut==='__mine')return base.filter(p=>prospectHolder(p)===_me);if(activeStatut==='__hot')return base.filter(p=>prospectHeat(p)>0&&(isDirection()||!prospectHolder(p)||prospectHolder(p)===_me)).sort((a,b)=>prospectHeat(b)-prospectHeat(a));if(activeStatut)return base.filter(p=>p.statut===activeStatut&&prospectHolder(p)===_me);return base;})());if(!window._campSyncAt||Date.now()-window._campSyncAt>60000){window._campSyncAt=Date.now();if(typeof campSync==='function')campSync();}}
@@ -2782,6 +2783,54 @@ function campGenMail(id){
   viewProspect(id);
   toast('✍️ Mail généré — relis-le (Modifier) puis 🕗 Programme l\'envoi');
 }
+// ── b85 : transparence totale sur la file d'envoi — voir, vérifier, annuler ──
+function cqApercu(id){const p=prospects.find(x=>x.id===id);const el=document.getElementById('cq-apercu');if(!p||!el)return;const m=document.getElementById('cq-modele')?.value||'';const obj=m?campModele(m,p.societe).objet:(p.mail_objet||'(sans objet)');el.textContent='✉️ Partira avec l\'objet : « '+obj+' »'+(m?' — le modèle ⚡ remplacera le texte de la fiche':' — texte actuel de la fiche');}
+async function campProgInfo(id){
+  if(!sbClient)return;
+  try{
+    const {data}=await sbClient.from('camp_queue').select('objet').eq('prospect_id',id).eq('statut','queued').order('created_at',{ascending:false}).limit(1);
+    const el=document.getElementById('camp-prog-objet');if(!el)return;
+    if(data&&data.length)el.innerHTML='<br>Objet en file : « '+esc(data[0].objet||'(sans objet)')+' »';
+    else el.innerHTML='<br><span style="color:var(--red)">⚠️ Aucune ligne en attente côté serveur (déjà partie ou annulée)</span>';
+  }catch(e){}
+}
+async function campCancelQueued(id){
+  const p=prospects.find(x=>x.id===id);if(!p)return;
+  if(!canEditProspect(p)&&!isDirection()){toast('🔒 Réservé au détenteur ou à la direction');return;}
+  if(!confirm('Annuler l\'envoi programmé de cette fiche ?\n(Le mail ne partira pas ; tu pourras corriger le texte et reprogrammer.)'))return;
+  try{
+    const {error}=await sbClient.from('camp_queue').update({statut:'cancelled'}).eq('prospect_id',id).eq('statut','queued');
+    if(error)throw error;
+    prospects=prospects.map(x=>x.id===id?{...x,camp_prog:'',statut:x.statut==='Mail programmé'?'Nouveau':x.statut}:x);save('prospects',prospects);
+    prospectLog(id,'✖️','Envoi programmé ANNULÉ');
+    renderProspects();renderDashboard();viewProspect(id);
+    toast('✖️ Envoi annulé — corrige le mail puis reprogramme');
+  }catch(e){logErr('campagne','annulation : '+(e&&e.message||e));alert('Annulation impossible : '+(e&&e.message||e));}
+}
+async function campQueueList(){
+  if(!sbClient){toast('Hors ligne');return;}
+  openModal('🕗 Envois programmés — file réelle du serveur','<div id="cql-body" style="font-size:12.5px;color:var(--muted)">Chargement…</div>',[{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);
+  try{
+    const {data,error}=await sbClient.from('camp_queue').select('id,prospect_id,societe,dest,objet,scheduled_date,scheduled_time,sender').eq('statut','queued').order('scheduled_date').order('scheduled_time').limit(200);
+    if(error)throw error;
+    const el=document.getElementById('cql-body');if(!el)return;
+    if(!data||!data.length){el.innerHTML='Aucun envoi en attente — la file est vide.';return;}
+    el.innerHTML=data.map(r=>`<div style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--light)"><div style="min-width:82px;font-weight:700;color:#7c3aed">${esc(r.scheduled_date||'')}<br><span style="font-weight:400">${esc(String(r.scheduled_time||'').slice(0,5))}</span></div><div style="flex:1;min-width:0"><strong>${esc(r.societe||'—')}</strong> <span style="color:var(--muted);font-size:11px">${esc(r.dest||'')}</span><br><span style="font-size:11.5px">${esc(r.objet||'(sans objet)')}</span></div><button class="btn btn-xs btn-outline" style="border-color:var(--red);color:var(--red)" title="Annuler cet envoi" onclick="campCancelRow('${r.id}',${r.prospect_id})">✖️</button></div>`).join('')+`<div style="margin-top:8px;font-size:11px;color:var(--muted)">${data.length} envoi(s) en attente. L'automate expédie à l'heure dite, de 5h à minuit, jamais le samedi.</div>`;
+  }catch(e){const el=document.getElementById('cql-body');if(el)el.textContent='Erreur : '+(e&&e.message||e);}
+}
+async function campCancelRow(qid,pid){
+  if(!confirm('Annuler cet envoi ?'))return;
+  try{
+    const {error}=await sbClient.from('camp_queue').update({statut:'cancelled'}).eq('id',qid).eq('statut','queued');
+    if(error)throw error;
+    const _has=await sbClient.from('camp_queue').select('id').eq('prospect_id',pid).eq('statut','queued').limit(1);
+    if(!(_has.data&&_has.data.length))prospects=prospects.map(x=>x.id===pid?{...x,camp_prog:'',statut:x.statut==='Mail programmé'?'Nouveau':x.statut}:x);
+    save('prospects',prospects);
+    prospectLog(pid,'✖️','Envoi programmé ANNULÉ (depuis la file)');
+    renderProspects();renderDashboard();campQueueList();
+    toast('✖️ Envoi annulé');
+  }catch(e){alert('Annulation impossible : '+(e&&e.message||e));}
+}
 async function campGetToken(id){
   const p=prospects.find(x=>x.id===id);if(!p||!sbClient)return '';
   const {data:ex}=await sbClient.from('camp_queue').select('token').eq('prospect_id',p.id).neq('statut','cancelled').order('created_at',{ascending:false}).limit(1);
@@ -2823,7 +2872,7 @@ function campQueueOne(id){
   const sender=campSenderOf(p);
   openModal('🕗 Programmer l\'envoi',`
     <p style="font-size:13px;margin-bottom:10px;background:#eef6ff;border:1px solid #cfe3ff;border-radius:8px;padding:8px 10px">📨 Mail à <strong>${esc(dest)}</strong> — il partira de la boîte de <strong style="color:var(--accent)">${sender==='florian'?'Florian':sender==='hugues'?'Hugues':'Samuel'}</strong> (le détenteur de la fiche).</p>
-    <div class="form-group"><label class="form-label">✉️ Mail à envoyer</label><select id="cq-modele" class="form-select"><option value="" selected>Mail de la fiche (actuel)</option><option value="Debal Cyber">⚡ Modèle Cyber</option><option value="Infogérance">⚡ Modèle Infogérance</option><option value="PEM Promisec">⚡ Modèle PEM Promisec</option><option value="Multi-offres">⚡ Modèle Multi-offres</option></select><div style="font-size:11px;color:var(--muted);margin-top:3px">Un modèle ⚡ remplace l'objet et le texte de la fiche au moment de programmer.</div></div>
+    <div class="form-group"><label class="form-label">✉️ Mail à envoyer</label><select id="cq-modele" class="form-select" onchange="cqApercu(${id})"><option value="" selected>Mail de la fiche (actuel)</option><option value="Debal Cyber">⚡ Modèle Cyber</option><option value="Infogérance">⚡ Modèle Infogérance</option><option value="PEM Promisec">⚡ Modèle PEM Promisec</option><option value="Multi-offres">⚡ Modèle Multi-offres</option></select><div style="font-size:11px;color:var(--muted);margin-top:3px">Un modèle ⚡ remplace l'objet et le texte de la fiche au moment de programmer.</div><div id="cq-apercu" style="font-size:11.5px;margin-top:5px;color:#7c3aed;font-weight:600"></div></div>
     <div class="grid-2"><div class="form-group"><label class="form-label">📅 Jour d'envoi</label><input id="cq-date" type="date" class="form-input" value="${ds}"></div>
     <div class="form-group"><label class="form-label">⏰ Heure</label><div style="display:flex;gap:6px"><input id="cq-time" type="time" class="form-input" value="08:30" step="60"><button type="button" class="btn btn-outline btn-xs" style="white-space:nowrap" title="L'heure où les décideurs lisent leurs mails" onclick="document.getElementById('cq-time').value='08:30'">⏰ 8h30 conseillé</button></div></div></div>
     <label style="display:flex;align-items:center;gap:7px;margin:8px 0 4px;font-size:13px;cursor:pointer"><input type="checkbox" id="cq-sig" checked style="width:16px;height:16px;accent-color:var(--accent)"> ✍️ Terminer par la signature KIPSAFE (logo, fonction, coordonnées)</label>
@@ -2836,12 +2885,13 @@ function campQueueOne(id){
     <div style="font-size:11px;color:var(--muted);margin-bottom:6px">La page ouverte par le prospect ne montrera que les plaquettes cochées. Case du haut décochée : mail sans aucun lien — l'ouverture reste détectée par le pixel (sauf messagerie qui bloque les images).</div>
     <div style="font-size:11px;color:var(--muted)">L'automate vérifie chaque minute, de 5h à minuit, 6j/7 (jamais le samedi) : le mail part à l'heure choisie, à la minute près.</div>`,
     [{label:'🕗 Programmer',cls:'btn-primary',fn:`campQueueConfirm(${id})`},{label:'Annuler',cls:'btn-outline',fn:'discardModal()'}]);
+  cqApercu(id); // b85 : montrer tout de suite l'objet qui partira
 }
 async function campQueueConfirm(id){
   const p=prospects.find(x=>x.id===id);if(!p)return;
   const dest=(p.email||'').trim();const sender=campSenderOf(p);
   const ds=document.getElementById('cq-date')?.value;const ts=document.getElementById('cq-time')?.value||'08:30';const _mod=document.getElementById('cq-modele')?.value||'';
-  if(_mod){const _t=campModele(_mod,p.societe);const _nc='Bonjour,\n\n'+_t.pitch+'\n\nSeriez-vous à l\'écoute d\'un échange rapide ? Je peux vous transmettre notre plaquette (2 minutes de lecture).\n\nBien cordialement,';prospects=prospects.map(x=>x.id===id?{...x,mail_objet:_t.objet,mail_corps:_nc}:x);save('prospects',prospects);}
+  if(_mod){const _t=campModele(_mod,p.societe);const _nc='Bonjour,\n\n'+_t.pitch+'\n\nSeriez-vous à l\'écoute d\'un échange rapide ? Je peux vous transmettre notre plaquette (2 minutes de lecture).\n\nBien cordialement,';if(p.mail_corps&&p.mail_corps!==_nc)prospectLog(id,'📝','Ancien mail conservé (remplacé par le modèle ⚡ '+_mod+') — objet : « '+(p.mail_objet||'')+' » — texte : « '+String(p.mail_corps).slice(0,180)+(String(p.mail_corps).length>180?'…':'')+' »');const _n2=new Date();const _mj2=String(_n2.getDate()).padStart(2,'0')+'/'+String(_n2.getMonth()+1).padStart(2,'0')+' '+String(_n2.getHours()).padStart(2,'0')+':'+String(_n2.getMinutes()).padStart(2,'0');prospects=prospects.map(x=>x.id===id?{...x,mail_objet:_t.objet,mail_corps:_nc,mail_maj:_mj2}:x);save('prospects',prospects);}
   const _p2=prospects.find(x=>x.id===id);
   const noSig=!(document.getElementById('cq-sig')?.checked);
   const noLink=!(document.getElementById('cq-plaq')?.checked);
@@ -2912,6 +2962,11 @@ async function campDiag(){
 function campDocsCount(s){const c={p:0,a:0,m:0,P:0,A:0,M:0};String(s||'').split('').forEach(function(L){if(c[L]!==undefined)c[L]++;});return c;}
 function campDlLabel(s){const c=campDocsCount(s);const NM={P:'Présentation',A:'Audit',M:'PEM'};return ['P','A','M'].filter(function(L){return c[L]>0;}).map(function(L){return NM[L]+(c[L]>1?' ×'+c[L]:'');}).join(' + ');}
 function campDocsLabel(s){const c=campDocsCount(s);const NM={p:'Présentation',a:'Audit',m:'PEM'};return ['p','a','m'].filter(function(L){return c[L]>0;}).map(function(L){return NM[L]+(c[L]>1?' ×'+c[L]:'');}).join(' + ');}
+// ── b85 : l'écran se remet à jour tout seul quand on revient sur l'onglet, et l'en-tête affiche l'heure de la dernière synchro ──
+function syncStamp(){const el=document.getElementById('sync-indic');if(!el)return;const n=new Date();el.textContent='☁️ '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');}
+let _lastVisSync=0;
+function _visSync(){if(document.hidden||!currentUser)return;const n=Date.now();if(n-_lastVisSync<10000)return;_lastVisSync=n;try{campSync();}catch(e){}try{renderProspects();renderDashboard();}catch(e){}}
+document.addEventListener('visibilitychange',_visSync);window.addEventListener('focus',_visSync);
 async function campSync(){
   if(!sbClient)return;
   try{
@@ -2931,6 +2986,7 @@ async function campSync(){
       else if(r.statut==='error'&&!p.camp_err){p.camp_err=true;h.unshift({d:dd,qui:'auto',type:'⚠️',texte:'Échec d\'envoi automatique — voir camp_queue'});changed=true;}
     });
     if(changed){save('prospects',prospects);renderProspects();renderDashboard();}
+    syncStamp();
   }catch(_){/* silencieux */}
 }
 async function campRunNow(){
@@ -3015,7 +3071,7 @@ function prospectCampagneHtml(p){
   if(p.email_format)h+=`<div style="font-size:12px;margin-bottom:4px"><strong>Format d'adresse prouvé :</strong> ${esc(p.email_format)}</div>`;
   if(p.email_probable)h+=`<div style="font-size:12px;background:#fff3e0;border:1px solid #ffe0b2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Email DSI probable :</strong> ${esc(p.email_probable)} <span style="color:#e65100;font-weight:700">⚠️ à vérifier (Hunter) avant envoi</span></div>`;
   if(p.angle)h+=`<div class="form-label">🧭 Angle d'approche</div><div style="font-size:12px;background:var(--light);border-radius:8px;padding:8px 12px;margin-bottom:8px">${esc(p.angle)}</div>`;
-  if(p.mail_corps)h+=`<div class="form-label">✉️ Mail de prospection prêt</div><div style="font-size:12px;background:#e8f5e9;border:1px solid #c8e6c9;border-radius:8px;padding:10px 12px;margin-bottom:6px"><strong>Objet : <span id="fv-mail_objet">${esc(p.mail_objet||'')}</span>${canEditProspect(p)?` <button class="btn-pen" id="pen-mail_objet" title="Modifier l'objet" onclick="penEdit(${p.id},'mail_objet','text')">✏️</button>`:''}</strong>${canEditProspect(p)?` <button class="btn-pen" id="pen-mail_corps" title="Modifier le texte du mail" onclick="penEdit(${p.id},'mail_corps','area')">✏️ texte</button>`:''}<div style="white-space:pre-line;margin-top:6px"><span id="fv-mail_corps">${esc(p.mail_corps)}</span></div></div>${p.camp_prog?`<div style="font-size:12px;color:#7c3aed;font-weight:700;margin-bottom:6px">🕗 Envoi programmé le ${p.camp_prog} (boîte de ${campSenderOf(p)==='florian'?'Florian':'Samuel'})</div>`:''}${(p.camp_clicks||p.camp_open||p.camp_docs)?`<div style="font-size:12px;color:#7c3aed;font-weight:700;margin-bottom:6px">📬 Mail ouvert${(p.camp_open||0)>1?' ×'+p.camp_open:' ✓'}${p.camp_clicks?` · 🖱️ lien cliqué${p.camp_clicks>1?' ×'+p.camp_clicks:''}`:''}${campDocsLabel(p.camp_docs||'')?` · 📄 vu : ${campDocsLabel(p.camp_docs)}`:''}${campDlLabel(p.camp_docs||'')?` · ⬇️ téléchargé : ${campDlLabel(p.camp_docs)}`:''}</div>`:``}<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-sm" style="background:#7c3aed;color:#fff;font-weight:700" onclick="campQueueOne(${p.id})">🕗 Programmer l'envoi</button><button class="btn btn-sm btn-primary" onclick="openProspectMail(${p.id})">✉️ Ouvrir dans Outlook</button><button class="btn btn-sm btn-outline" onclick="copyProspectMail(${p.id})">📋 Copier le mail</button><button class="btn btn-sm btn-outline" style="border-color:#7c3aed;color:#7c3aed" onclick="campCopyTrackedLink(${p.id})">🔗 Copier le lien</button></div>`;
+  if(p.mail_corps)h+=`<div class="form-label">✉️ Mail de prospection prêt${p.mail_maj?` <span style="font-weight:400;font-size:11px;color:var(--muted)">— dernière version : ${p.mail_maj}</span>`:''}</div><div style="font-size:12px;background:#e8f5e9;border:1px solid #c8e6c9;border-radius:8px;padding:10px 12px;margin-bottom:6px"><strong>Objet : <span id="fv-mail_objet">${esc(p.mail_objet||'')}</span>${canEditProspect(p)?` <button class="btn-pen" id="pen-mail_objet" title="Modifier l'objet" onclick="penEdit(${p.id},'mail_objet','text')">✏️</button>`:''}</strong>${canEditProspect(p)?` <button class="btn-pen" id="pen-mail_corps" title="Modifier le texte du mail" onclick="penEdit(${p.id},'mail_corps','area')">✏️ texte</button>`:''}<div style="white-space:pre-line;margin-top:6px"><span id="fv-mail_corps">${esc(p.mail_corps)}</span></div></div>${p.camp_prog?`<div style="font-size:12px;color:#7c3aed;font-weight:700;margin-bottom:6px">🕗 Envoi programmé le ${p.camp_prog} (boîte de ${campSenderOf(p)==='florian'?'Florian':'Samuel'}) <button class="btn btn-xs btn-outline" style="border-color:var(--red);color:var(--red)" onclick="campCancelQueued(${p.id})">✖️ Annuler</button><span id="camp-prog-objet" style="font-weight:400;color:var(--text)"></span></div>`:''}${(p.camp_clicks||p.camp_open||p.camp_docs)?`<div style="font-size:12px;color:#7c3aed;font-weight:700;margin-bottom:6px">📬 Mail ouvert${(p.camp_open||0)>1?' ×'+p.camp_open:' ✓'}${p.camp_clicks?` · 🖱️ lien cliqué${p.camp_clicks>1?' ×'+p.camp_clicks:''}`:''}${campDocsLabel(p.camp_docs||'')?` · 📄 vu : ${campDocsLabel(p.camp_docs)}`:''}${campDlLabel(p.camp_docs||'')?` · ⬇️ téléchargé : ${campDlLabel(p.camp_docs)}`:''}</div>`:``}<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-sm" style="background:#7c3aed;color:#fff;font-weight:700" onclick="campQueueOne(${p.id})">🕗 Programmer l'envoi</button><button class="btn btn-sm btn-primary" onclick="openProspectMail(${p.id})">✉️ Ouvrir dans Outlook</button><button class="btn btn-sm btn-outline" onclick="copyProspectMail(${p.id})">📋 Copier le mail</button><button class="btn btn-sm btn-outline" style="border-color:#7c3aed;color:#7c3aed" onclick="campCopyTrackedLink(${p.id})">🔗 Copier le lien</button></div>`;
   if(!p.mail_corps)h+=`<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 12px;margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:#8d6e00;margin-bottom:6px">✉️ Aucun mail de prospection rédigé — l'envoi automatique 🕗 apparaîtra dès qu'il y en aura un.</div><div style="display:flex;gap:6px;flex-wrap:wrap">${canEditProspect(p)?`<button class="btn btn-sm btn-primary" onclick="campGenMail(${p.id})">⚡ Générer le mail type (${esc(p.offre||'offre')})</button><button class="btn btn-sm btn-outline" onclick="closeModal();editProspect(${p.id})">✍️ Rédiger à la main</button>`:`<span style="font-size:11px;color:var(--muted)">🔒 fiche assignée — seul son détenteur peut rédiger</span>`}</div></div>`;
   return `<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">${h}</div>`;
 }
@@ -3046,7 +3102,9 @@ function penSave(id,f){
   let v=el.value;
   if(f==='valeur')v=String(v).replace(/[^0-9]/g,'');
   if(typeof v==='string'&&f!=='mail_corps'&&f!=='notes')v=v.trim();
-  prospects=prospects.map(x=>x.id===id?{...x,[f]:v}:x);
+  if(f==='mail_objet'||f==='mail_corps'){const _o=prospects.find(x=>x.id===id);const _ov=String((_o&&_o[f])||'');if(_o&&_ov.trim()&&_ov!==String(v)){const _ex=f==='mail_objet'?('objet : « '+_ov+' »'):('texte : « '+_ov.slice(0,180)+(_ov.length>180?'…':'')+' »');prospectLog(id,'📝','Ancien mail conservé avant modification — '+_ex);}} // b85 : l'ancien texte reste dans l'historique
+  const _mmj=(f==='mail_objet'||f==='mail_corps')?{mail_maj:(function(){const n=new Date();return String(n.getDate()).padStart(2,'0')+'/'+String(n.getMonth()+1).padStart(2,'0')+' '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})()}:{};
+  prospects=prospects.map(x=>x.id===id?{...x,[f]:v,..._mmj}:x);
   save('prospects',prospects);
   renderProspects();renderDashboard();
   viewProspect(id);
@@ -3056,7 +3114,7 @@ function viewProspect(id){const p=prospects.find(x=>x.id===id);if(!p)return;if(!
   openModal('Fiche prospect',`${_assign}<div class="grid-2" style="gap:10px;margin-bottom:12px"><div><div class="form-label">Nom${PEN('nom','text')}</div><span id="fv-nom"><strong>${esc(p.nom)}</strong></span></div><div><div class="form-label">Poste${PEN('poste','text')}</div><span id="fv-poste">${esc(p.poste||'—')}</span></div><div><div class="form-label">Société${PEN('societe','text')}</div><span id="fv-societe">${esc(p.societe||'—')}</span></div><div><div class="form-label">Email${PEN('email','text')}</div><span id="fv-email">${p.email?`<a href="#" title="Écrire via Outlook Web (compte kipsafe.fr)" onclick="event.preventDefault();outlookProspect(${p.id})">${esc(p.email)}</a> <span style='font-size:10px'>↗</span> <button class="btn btn-xs btn-outline" style="padding:1px 7px;font-size:11px" title="Copier l'email" onclick="copyFieldP(${p.id},'email')">📋</button>`:'—'}</span></div><div><div class="form-label">Téléphone${PEN('tel','text')}</div><span id="fv-tel">${p.tel?`${esc(p.tel)} <button class="btn btn-xs btn-outline" style="padding:1px 7px;font-size:11px" title="Copier le téléphone" onclick="copyFieldP(${p.id},'tel')">📋</button>`:'—'}</span></div><div><div class="form-label">Offre${PEN('offre','offre')}</div><span id="fv-offre">${esc(p.offre)}</span></div><div><div class="form-label">Statut${PEN('statut','statut')}</div><span id="fv-statut">${prospectStatutControl(p)}</span></div><div><div class="form-label">Source</div>${esc(p.source||'Manuel')}</div><div><div class="form-label">Valeur${PEN('valeur','text')}</div><span id="fv-valeur">${p.valeur?p.valeur+'€':'—'}</span></div><div><div class="form-label">1er contact</div>${p.date||'—'}</div></div><div class="form-label">LinkedIn${PEN('linkedin','text')}</div><div style="margin-bottom:10px"><span id="fv-linkedin">${p.linkedin?`<a href="${esc(safeUrl(p.linkedin))}" target="_blank">${esc(p.linkedin)}</a>`:'—'}</span></div><div class="form-label">Notes${PEN('notes','area')}</div><div style="background:var(--light);border-radius:8px;padding:12px;font-size:13px;min-height:50px"><span id="fv-notes">${esc(p.notes||'Aucune note')}</span></div>${prospectCampagneHtml(p)}${prospectHistoHtml(p)}<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
       <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">🔗 Recherche LinkedIn</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">${searchLinks(p)}</div>
-    </div>`,_canEdit?[{label:'⚙️',cls:'btn-outline',fn:`closeModal();editProspect(${p.id})`},...(canDeleteProspectUI(p)?[{label:'Supprimer',cls:'btn-danger',fn:`deleteProspect(${p.id});closeModal()`}]:[]),{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]:[{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);}
+    </div>`,_canEdit?[{label:'⚙️',cls:'btn-outline',fn:`closeModal();editProspect(${p.id})`},...(canDeleteProspectUI(p)?[{label:'Supprimer',cls:'btn-danger',fn:`deleteProspect(${p.id});closeModal()`}]:[]),{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]:[{label:'Fermer',cls:'btn-outline',fn:'closeModal()'}]);if(p.camp_prog)campProgInfo(p.id);}
 function openAddProspect(){openProspectModal(null);}
 let _enrichRunning=false;
 function editProspect(id){const p=prospects.find(x=>x.id===id);if(!p)return;if(!canEditProspect(p)){toast('🔒 Assigné à '+firstName(prospectHolder(p))+' — seul(e) lui/elle (ou l\'admin) peut modifier');return;}openProspectModal(p);}
@@ -5201,7 +5259,7 @@ function escJs(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 // ═══ START ══════════════════════════════════════════════════
 async function boot(){
   try{const _fv=document.querySelector('link[rel="icon"]');const _hl=document.getElementById('hdr-logo');if(_fv&&_hl)_hl.src=_fv.href;}catch(e){} // b83 : le logo du header réutilise le PNG du favicon (déduplication, −35 Ko)
-  console.log('%cKIPSAFE CRM — v25/11·b84 (Priorisation des appels : bouton 🔥 A appeler, score de chaleur par activite, top 5 au tableau de bord, telephone cliquable)','color:#00AEEF;font-weight:bold');
+  console.log('%cKIPSAFE CRM — v25/11·b85 (File d envoi transparente : bouton En file, apercu de l objet avant programmation, annulation d un envoi, ancien mail garde en historique)','color:#00AEEF;font-weight:bold');
   // Authentification Supabase (session persistante, lien de réinitialisation, ou écran de connexion)
   await initPin();
 }
