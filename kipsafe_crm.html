@@ -625,7 +625,7 @@ select.status-badge{max-width:130px;text-overflow:ellipsis}
 
 <div id="app" style="display:none;flex-direction:column;height:100vh;height:100dvh">
   <header>
-    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v25/11·b87</span></div>
+    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v25/11·b88</span></div>
     <div class="h-right"><span id="sync-indic" style="font-size:11px;opacity:.75;margin-right:4px" title="Dernière synchronisation avec le serveur"></span><button id="notif-bell" onclick="openNotifPanel()" title="Notifications" style="position:relative;background:none;border:none;color:#fff;font-size:14px;cursor:pointer;margin-right:10px;padding:0;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:14px;height:14px;line-height:14px;border-radius:99px;text-align:center;padding:0 2px"></span></button><select id="header-viewas" style="display:none;font-size:11px;padding:3px 6px;border-radius:6px;border:none;margin-right:8px" onchange="setMemberFilter(this.value)"></select><span id="header-user" style="font-size:12px;color:#fff;margin-right:8px"></span><button id="admin-mode-btn" onclick="toggleAdminMode()" style="display:none;font-size:10px;padding:3px 8px;border:none;border-radius:99px;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;margin-right:6px;font-weight:700">🔑</button><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span id="lock-timer" style="font-size:10px;color:rgba(255,255,255,.6);margin-right:6px"></span><span class="h-date" id="header-date"></span><span class="undo-wrap"><button id="undo-btn" class="undo-btn" onclick="undoLast()">↩️ Annuler<span id="undo-count" class="undo-count" style="display:none"></span></button><button id="undo-more" class="undo-more" onclick="undoTogglePanel()" title="Historique / points de restauration">▾</button></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
     <div id="undo-panel" class="undo-panel"><div class="undo-head"><span>↩️ Points de restauration</span><button class="undo-close" onclick="undoClosePanel()" aria-label="Fermer">×</button></div><div class="undo-hint">Clique une action pour revenir à cet état. Sans risque : rien n'est réellement perdu.</div><div id="undo-list" class="undo-listbox"></div></div>
   </header>
@@ -1149,7 +1149,7 @@ function isSuperAdminMode(){return isSuperAdmin()&&adminMode;} // b81 : = super 
 function canDeleteProspectUI(p){if(isDirection())return adminMode;return canEditProspect(p);} // b81 : la direction doit activer la clé pour voir/utiliser 🗑️
 function roleLabel(r){return ({admin:'👑 Super admin',co_admin:'⭐ Admin',resp_pole:'🧭 Resp. pôle',collab:'Commercial'})[r]||r;}
 function newProspectId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
-const BUILD_NUM=87; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
+const BUILD_NUM=88; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
 function checkMinBuild(){try{
   const mb=Number(load('min_build',0)||0);
   if(mb<=BUILD_NUM||document.getElementById('upd-overlay'))return;
@@ -2941,7 +2941,7 @@ async function campQueueConfirm(id){
   if(error){logErr('campagne','programmation : '+error.message);let _aide='';if(/out of range.*integer/i.test(error.message))_aide='\n\n→ Fiche à numéro long (b77+) : exécuter KIPSAFE_PATCH_BIGINT_A_COLLER.sql (Bureau) dans Supabase, puis reprogrammer.';else if(/scheduled_time/i.test(error.message))_aide='\n\n→ Exécuter CAMPAGNE_PATCH_HEURE.sql dans Supabase.';alert('Erreur file d\'envoi : '+error.message+_aide);return;}
   const _advP=['À rappeler','Contacté','Intéressé','Pas intéressé','RDV','Proposition','Signé','Perdu'];
   prospects=prospects.map(x=>x.id===id?{...x,camp_prog:ds+' '+ts,statut:(_advP.indexOf(x.statut)<0&&x.statut!=='Mail ouvert'&&x.statut!=='Mail envoyé')?'Mail programmé':x.statut}:x);save('prospects',prospects); // b84 : la fiche affiche « Mail programmé » dès la mise en file
-  prospectLog(id,'🕗',`Mail programmé pour le ${ds} à ${ts} (${dest})${docsLbl}`);
+  prospectLog(id,'🕗',`Mail programmé pour le ${ds} à ${ts} (${dest})${docsLbl} — objet : « ${(_p2.mail_objet||'(sans objet)')} »`);
   closeModal();renderProspects();toast('🕗 Envoi programmé : '+ds+' à '+ts);
 }
 // ═══ 🩺 DIAGNOSTIC CAMPAGNE : lit la file et explique pourquoi ça part (ou pas) ═══
@@ -3006,14 +3006,14 @@ document.addEventListener('visibilitychange',_visSync);window.addEventListener('
 async function campSync(){
   if(!sbClient)return;
   try{
-    const {data,error}=await sbClient.from('camp_queue').select('prospect_id,statut,open_count,click_count,objet,docs_vus').in('statut',['sent','opened','error']);
+    const {data,error}=await sbClient.from('camp_queue').select('id,prospect_id,statut,open_count,click_count,objet,docs_vus').in('statut',['sent','opened','error']);
     if(error||!data)return;
     let changed=false;const advanced=['À rappeler','Contacté','Intéressé','Pas intéressé','RDV','Proposition','Signé','Perdu'];
     data.forEach(r=>{
       const p=prospects.find(x=>x.id===r.prospect_id);if(!p)return;
       const h=Array.isArray(p.historique)?p.historique:(p.historique=[]);
       const now=new Date();const dd=`${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-      if((r.statut==='sent'||r.statut==='opened')&&String(r.objet||'').indexOf('(suivi manuel')!==0&&!h.some(e=>e&&(e.texte||'').startsWith('Mail envoyé automatiquement'))){if(advanced.indexOf(p.statut)<0&&p.statut!=='Mail ouvert')p.statut='Mail envoyé';h.unshift({d:dd,qui:'auto',type:'📤',texte:'Mail envoyé automatiquement — bien parti ✓'});changed=true;}
+      if((r.statut==='sent'||r.statut==='opened')&&String(r.objet||'').indexOf('(suivi manuel')!==0&&!h.some(e=>e&&e.qid===r.id)){if(advanced.indexOf(p.statut)<0&&p.statut!=='Mail ouvert')p.statut='Mail envoyé';h.unshift({d:dd,qui:'auto',type:'📤',qid:r.id,texte:'Mail envoyé automatiquement — bien parti ✓ (objet : « '+String(r.objet||'(sans objet)').slice(0,120)+' »)'});changed=true;} // b88 : UNE trace par envoi, avec l'objet — l'historique des relances est conservé
       if(r.statut==='opened'&&p.statut!=='Mail ouvert'&&!advanced.includes(p.statut)){p.statut='Mail ouvert';p.camp_open=r.open_count;h.unshift({d:dd,qui:'auto',type:'📬',texte:'Mail OUVERT par le prospect ('+(r.open_count||1)+'×) — à rappeler en priorité'});changed=true;}
       if(r.statut==='opened'&&(r.open_count||0)>(p.camp_open||0)){p.camp_open=r.open_count;changed=true;}
       const _dv=String(r.docs_vus||'');
@@ -5295,7 +5295,7 @@ function escJs(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 // ═══ START ══════════════════════════════════════════════════
 async function boot(){
   try{const _fv=document.querySelector('link[rel="icon"]');const _hl=document.getElementById('hdr-logo');if(_fv&&_hl)_hl.src=_fv.href;}catch(e){} // b83 : le logo du header réutilise le PNG du favicon (déduplication, −35 Ko)
-  console.log('%cKIPSAFE CRM — v25/11·b87 (Priorite d appel manuelle : urgent / moyen / faible / retirer, top 10 au tableau de bord avec Tout voir)','color:#00AEEF;font-weight:bold');
+  console.log('%cKIPSAFE CRM — v25/11·b88 (Historique des relances : chaque envoi laisse sa trace avec son objet, la programmation note aussi l objet)','color:#00AEEF;font-weight:bold');
   // Authentification Supabase (session persistante, lien de réinitialisation, ou écran de connexion)
   await initPin();
 }
