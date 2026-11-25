@@ -143,7 +143,7 @@ nav{background:#fff;display:flex;gap:2px;padding:0 12px;border-bottom:2px solid 
 .st-nouveau{background:#f0f9ff;color:#0369a1}.st-contacte{background:#eff6ff;color:#1d4ed8}
 .st-rdv{background:#ecfdf5;color:#059669}.st-proposition{background:#fffbeb;color:#d97706}
 .st-signe{background:#f0fdf4;color:var(--green)}.st-perdu{background:#fef2f2;color:var(--red)}
-.st-mailenvoye{background:#eef2ff;color:#4338ca}.st-mailouvert{background:#fdf4ff;color:#a21caf}.st-arappeler{background:#fff7ed;color:#c2410c}.st-interesse{background:#f0fdf4;color:#15803d}.st-pasinteresse{background:#f1f5f9;color:#64748b}
+.st-mailprogramme{background:#fefce8;color:#a16207}.st-mailenvoye{background:#eef2ff;color:#4338ca}.st-mailouvert{background:#fdf4ff;color:#a21caf}.st-arappeler{background:#fff7ed;color:#c2410c}.st-interesse{background:#f0fdf4;color:#15803d}.st-pasinteresse{background:#f1f5f9;color:#64748b}
 select.status-badge{max-width:130px;text-overflow:ellipsis}
 .plan-table{width:100%;border-collapse:collapse;font-size:13px}
 .plan-table th{background:var(--primary);color:#fff;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
@@ -625,7 +625,7 @@ select.status-badge{max-width:130px;text-overflow:ellipsis}
 
 <div id="app" style="display:none;flex-direction:column;height:100vh;height:100dvh">
   <header>
-    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v24/11·b83</span></div>
+    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v25/11·b84</span></div>
     <div class="h-right"><button id="notif-bell" onclick="openNotifPanel()" title="Notifications" style="position:relative;background:none;border:none;color:#fff;font-size:14px;cursor:pointer;margin-right:10px;padding:0;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:14px;height:14px;line-height:14px;border-radius:99px;text-align:center;padding:0 2px"></span></button><select id="header-viewas" style="display:none;font-size:11px;padding:3px 6px;border-radius:6px;border:none;margin-right:8px" onchange="setMemberFilter(this.value)"></select><span id="header-user" style="font-size:12px;color:#fff;margin-right:8px"></span><button id="admin-mode-btn" onclick="toggleAdminMode()" style="display:none;font-size:10px;padding:3px 8px;border:none;border-radius:99px;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;margin-right:6px;font-weight:700">🔑</button><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span id="lock-timer" style="font-size:10px;color:rgba(255,255,255,.6);margin-right:6px"></span><span class="h-date" id="header-date"></span><span class="undo-wrap"><button id="undo-btn" class="undo-btn" onclick="undoLast()">↩️ Annuler<span id="undo-count" class="undo-count" style="display:none"></span></button><button id="undo-more" class="undo-more" onclick="undoTogglePanel()" title="Historique / points de restauration">▾</button></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
     <div id="undo-panel" class="undo-panel"><div class="undo-head"><span>↩️ Points de restauration</span><button class="undo-close" onclick="undoClosePanel()" aria-label="Fermer">×</button></div><div class="undo-hint">Clique une action pour revenir à cet état. Sans risque : rien n'est réellement perdu.</div><div id="undo-list" class="undo-listbox"></div></div>
   </header>
@@ -664,6 +664,10 @@ select.status-badge{max-width:130px;text-overflow:ellipsis}
           <div class="schedule" id="schedule-today"></div>
         </div>
         <div>
+          <div class="card" id="hot-top-card" style="display:none;margin-bottom:16px;border-left:3px solid #c2410c">
+            <div class="section-title">🔥 À appeler en priorité</div>
+            <div id="hot-top"></div>
+          </div>
           <div class="section-title">🎯 Pipeline en cours</div>
           <div id="pipeline-summary"></div>
           <div style="margin-top:16px"><div class="section-title">📋 Action du jour (Plan 30J)</div><div id="plan-today-action"></div></div>
@@ -945,7 +949,7 @@ const SCHEDULE_TODAY=[];
 const SCHEDULE_SOIR=[];
 const SCHEDULE_DIMANCHE=[];
 const SCHEDULES_PAR_DATE={};
-const STATUTS=['Nouveau','Mail envoyé','Mail ouvert','À rappeler','Contacté','Intéressé','Pas intéressé','RDV','Proposition','Signé','Perdu']; // b82 : + Intéressé / Pas intéressé (demande Samuel 23/11)
+const STATUTS=['Nouveau','Mail programmé','Mail envoyé','Mail ouvert','À rappeler','Contacté','Intéressé','Pas intéressé','RDV','Proposition','Signé','Perdu']; // b84 : + Mail programmé (envoi en file, pas encore parti)
 const OFFRES=['Debal Cyber','Infogérance','PEM Promisec','Multi'];
 const SOURCES=['Manuel','LinkedIn','Lusha','Apollo','Pappers','Référence','Prospection 2026','Autre'];
 const CATEGORIES=['Prospect','Partenaire','Collaborateur'];
@@ -1145,7 +1149,7 @@ function isSuperAdminMode(){return isSuperAdmin()&&adminMode;} // b81 : = super 
 function canDeleteProspectUI(p){if(isDirection())return adminMode;return canEditProspect(p);} // b81 : la direction doit activer la clé pour voir/utiliser 🗑️
 function roleLabel(r){return ({admin:'👑 Super admin',co_admin:'⭐ Admin',resp_pole:'🧭 Resp. pôle',collab:'Commercial'})[r]||r;}
 function newProspectId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
-const BUILD_NUM=83; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
+const BUILD_NUM=84; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
 function checkMinBuild(){try{
   const mb=Number(load('min_build',0)||0);
   if(mb<=BUILD_NUM||document.getElementById('upd-overlay'))return;
@@ -1878,7 +1882,7 @@ function renderSecretBanner(){
   const html=`<div id="secret-exp-banner" style="background:${urgent?'#fef2f2':'#fff8e1'};border:1px solid ${urgent?'#fecaca':'#ffe082'};border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px"><strong>${j<=0?'⛔ Secret d&apos;envoi Microsoft EXPIRÉ depuis le 07/03/2027':'⚠️ Le secret d&apos;envoi Microsoft expire le 07/03/2027'+(j>0?' — dans '+j+' jour(s)':'')}</strong> — sans renouvellement, plus aucun mail de prospection ne partira. À faire : Entra → « KIPSAFE CRM Mailer » → Certificats &amp; secrets → nouveau secret → remplacer GRAPH_CLIENT_SECRET dans Supabase (ou demander à Claude de guider la rotation).</div>`;
   if(b)b.outerHTML=html;else panel.insertAdjacentHTML('afterbegin',html);
 }
-function renderDashboard(){renderSecretBanner();renderSoirBanner();renderRemindersBanner();renderRelanceBanner();renderObjReviewBanner();renderRetentionBanner();renderKPIs();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
+function renderDashboard(){renderSecretBanner();renderSoirBanner();renderRemindersBanner();renderRelanceBanner();renderObjReviewBanner();renderRetentionBanner();renderKPIs();renderHotTop();renderScheduleToday();renderPipelineSummary();renderPlanTodayAction();renderQuickTasks();}
 
 // ═══ CONSERVATION RGPD DES PROSPECTS (6 mois) ═══════════════════
 const RETENTION_MONTHS=6;
@@ -2483,9 +2487,11 @@ function renderStatusBar(base){const bar=document.getElementById('status-bar');i
   const cnt={};mine.forEach(p=>{cnt[p.statut]=(cnt[p.statut]||0)+1;});
   let h=`<button class="st${activeStatut===''?' active':''}" onclick="setStatut('')">Tous <span class="cnt">${base.length}</span></button>`;
   h+=`<button class="st${activeStatut==='__mine'?' active':''}" onclick="setStatut('__mine')">👤 Mes prospects <span class="cnt">${mine.length}</span></button>`;
-  STATUTS.forEach(s=>{if(s==='Nouveau')return;h+=`<button class="st${activeStatut===s?' active':''}" onclick="setStatut('${s}')" title="Vos fiches au statut ${s}">${s} <span class="cnt">${cnt[s]||0}</span></button>`;});
+  const hotN=base.filter(p=>prospectHeat(p)>0&&(isDirection()||!prospectHolder(p)||prospectHolder(p)===me)).length;
+  h+=`<button class="st${activeStatut==='__hot'?' active':''}" onclick="setStatut('__hot')" title="Prospects avec activité (ouvertures, clics, plaquettes vues ou téléchargées) — du plus chaud au plus froid">🔥 À appeler <span class="cnt">${hotN}</span></button>`;
+  STATUTS.forEach(s=>{h+=`<button class="st${activeStatut===s?' active':''}" onclick="setStatut('${s}')" title="Vos fiches au statut ${s}">${s} <span class="cnt">${cnt[s]||0}</span></button>`;});
   bar.innerHTML=h;}
-function renderProspects(){const base=getFiltered();const _fk=[document.getElementById('search-prospect')?.value||'',activeStatut,document.getElementById('filter-offre')?.value||'',document.getElementById('filter-source')?.value||'',document.getElementById('filter-cat')?.value||'',document.getElementById('filter-pool')?.value||'',document.getElementById('filter-taille')?.value||'',document.getElementById('filter-secteur')?.value||'',window._memberFilter||''].join('|');if(_fk!==window._listKey){window._listKey=_fk;window._listShow=200;}renderStatusBar(base);if(currentView==='kanban')renderKanban(base);else renderList((function(){const _me=currentUser?currentUser.id:'admin';if(activeStatut==='__mine')return base.filter(p=>prospectHolder(p)===_me);if(activeStatut)return base.filter(p=>p.statut===activeStatut&&prospectHolder(p)===_me);return base;})());if(!window._campSyncAt||Date.now()-window._campSyncAt>60000){window._campSyncAt=Date.now();if(typeof campSync==='function')campSync();}}
+function renderProspects(){const base=getFiltered();const _fk=[document.getElementById('search-prospect')?.value||'',activeStatut,document.getElementById('filter-offre')?.value||'',document.getElementById('filter-source')?.value||'',document.getElementById('filter-cat')?.value||'',document.getElementById('filter-pool')?.value||'',document.getElementById('filter-taille')?.value||'',document.getElementById('filter-secteur')?.value||'',window._memberFilter||''].join('|');if(_fk!==window._listKey){window._listKey=_fk;window._listShow=200;}renderStatusBar(base);if(currentView==='kanban')renderKanban(base);else renderList((function(){const _me=currentUser?currentUser.id:'admin';if(activeStatut==='__mine')return base.filter(p=>prospectHolder(p)===_me);if(activeStatut==='__hot')return base.filter(p=>prospectHeat(p)>0&&(isDirection()||!prospectHolder(p)||prospectHolder(p)===_me)).sort((a,b)=>prospectHeat(b)-prospectHeat(a));if(activeStatut)return base.filter(p=>p.statut===activeStatut&&prospectHolder(p)===_me);return base;})());if(!window._campSyncAt||Date.now()-window._campSyncAt>60000){window._campSyncAt=Date.now();if(typeof campSync==='function')campSync();}}
 
 function searchLinks(p){
   const name=encodeURIComponent(p.nom||'');
@@ -2538,10 +2544,10 @@ function renderList(fp){
   fp.forEach(p=>{
     const stCls='st-'+String(p.statut||'').toLowerCase().replace(/[éèê]/g,'e').replace(/à/g,'a').replace(/\s/g,'');
     html+=`<tr onclick="viewProspect(${p.id})" style="cursor:pointer" title="Ouvrir la fiche">
-      <td>${niveauBadge(p)} <strong>${esc(p.nom)}</strong> ${prospectOwnerBadge(p)}${p.poste?`<br><span style="font-size:10px;color:var(--secondary)">${esc(p.poste)}</span>`:''}</td>
+      <td>${niveauBadge(p)} <strong>${esc(p.nom)}</strong> ${prospectOwnerBadge(p)}${p.poste?`<br><span style="font-size:10px;color:var(--secondary)">${esc(p.poste)}</span>`:''}${prospectHeat(p)>0?`<br><span style="font-size:10px;color:#c2410c;font-weight:600" title="Score d'activité campagne — plaquette téléchargée > consultée > clic > ouverture, doublé si moins de 48 h">🔥${prospectHeat(p)} · ${heatBadges(p)}</span>`:''}</td>
       <td>${esc(p.societe||'—')}</td>
       <td><span class="axe-badge" style="background:#dbeafe;color:#1d4ed8">${esc(p.offre)}</span></td>
-      <td style="font-size:11px">${p.email?`<a href="#" title="Écrire via Outlook Web" onclick="event.stopPropagation();event.preventDefault();outlookProspect(${p.id})">${esc(p.email)}</a>`:''}<br>${esc(p.tel||'')}</td>
+      <td style="font-size:11px">${p.email?`<a href="#" title="Écrire via Outlook Web" onclick="event.stopPropagation();event.preventDefault();outlookProspect(${p.id})">${esc(p.email)}</a>`:''}<br>${telLink(p)}</td>
       <td><span class="status-badge" style="background:var(--light)">${p.source||'—'}</span></td>
       <td>${prospectStatutControl(p)}</td>
       <td>${p.valeur?p.valeur+'€':'—'}</td>
@@ -2654,6 +2660,48 @@ function campMarkMailEnvoye(id,motif){
   p.statut='Mail envoyé';
   prospectLog(id,'🔖','Statut → Mail envoyé ('+motif+')');
   renderProspects();renderDashboard();
+}
+// ── b84 : score de chaleur 🔥 — prioriser les appels sur l'activité réelle du prospect ──
+function _heatLast(p){
+  const h=Array.isArray(p.historique)?p.historique:[];
+  const e=h.find(x=>x&&x.qui==='auto'&&x.type!=='📤'&&x.type!=='⚠️');
+  if(!e||!e.d)return null;
+  const m=/^(\d{2})\/(\d{2})(?: (\d{2}):(\d{2}))?/.exec(String(e.d));if(!m)return null;
+  const now=new Date();
+  let dt=new Date(now.getFullYear(),+m[2]-1,+m[1],+(m[3]||0),+(m[4]||0));
+  if(dt>now)dt=new Date(now.getFullYear()-1,+m[2]-1,+m[1],+(m[3]||0),+(m[4]||0));
+  return dt;
+}
+function prospectHeat(p){
+  const c=campDocsCount(p.camp_docs||'');
+  let s=(c.P+c.A+c.M)*5+(c.p+c.a+c.m)*3+Math.min(p.camp_clicks||0,4)*2+Math.min(p.camp_open||0,5);
+  if(!s)return 0;
+  const d=_heatLast(p);
+  if(d&&(Date.now()-d.getTime())<172800000)s*=2; // activité < 48 h : c'est maintenant qu'un appel convertit
+  return s;
+}
+function heatBadges(p){
+  const c=campDocsCount(p.camp_docs||'');
+  const b=[];
+  if(p.camp_open)b.push('📬×'+p.camp_open);
+  if(p.camp_clicks)b.push('🖱️×'+p.camp_clicks);
+  const NM={p:'Prés.',a:'Audit',m:'PEM'};
+  const vus=['p','a','m'].filter(k=>c[k]>0).map(k=>NM[k]).join(', ');
+  const dls=['p','a','m'].filter(k=>c[k.toUpperCase()]>0).map(k=>NM[k]).join(', ');
+  if(vus)b.push('👁 '+vus);
+  if(dls)b.push('⬇️ '+dls);
+  const d=_heatLast(p);
+  if(d)b.push(String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'));
+  return b.join(' · ');
+}
+function telLink(p){const t=String(p.tel||'').trim();if(!t)return '';const n=t.replace(/[^+\d]/g,'');return n.length>=6?`<a href="tel:${n}" onclick="event.stopPropagation()" style="white-space:nowrap;font-weight:600">📞 ${esc(t)}</a>`:esc(t);}
+function renderHotTop(){
+  const el=document.getElementById('hot-top');const card=document.getElementById('hot-top-card');if(!el||!card)return;
+  const _me=currentUser?currentUser.id:'admin';
+  const hot=prospects.filter(p=>prospectVisible(p)&&prospectHeat(p)>0&&(isDirection()||!prospectHolder(p)||prospectHolder(p)===_me)).sort((a,b)=>prospectHeat(b)-prospectHeat(a)).slice(0,5);
+  if(!hot.length){card.style.display='none';return;}
+  card.style.display='';
+  el.innerHTML=hot.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--light);cursor:pointer" onclick="showTab('prospects');viewProspect(${p.id})"><span style="font-weight:700;color:#c2410c;min-width:46px">🔥 ${prospectHeat(p)}</span><div style="flex:1;min-width:0"><strong>${esc(p.societe||p.nom||'—')}</strong> <span style="color:var(--muted);font-size:11px">${esc(p.nom||'')}</span><br><span style="font-size:10.5px;color:#c2410c">${heatBadges(p)}</span></div>${telLink(p)}</div>`).join('');
 }
 function prospectHistoHtml(p){
   const h=Array.isArray(p.historique)?p.historique:[];
@@ -2805,7 +2853,8 @@ async function campQueueConfirm(id){
   if(!ds){alert('Choisis un jour d\'envoi.');return;}
   const {error}=await sbClient.from('camp_queue').insert({prospect_id:p.id,societe:p.societe||'',dest,objet:_p2.mail_objet||'(sans objet)',corps:_p2.mail_corps,sender,scheduled_date:ds,scheduled_time:ts,created_by:(currentUser?currentUser.id:''),no_link:noLink,docs:docs,no_sig:noSig});
   if(error){logErr('campagne','programmation : '+error.message);let _aide='';if(/out of range.*integer/i.test(error.message))_aide='\n\n→ Fiche à numéro long (b77+) : exécuter KIPSAFE_PATCH_BIGINT_A_COLLER.sql (Bureau) dans Supabase, puis reprogrammer.';else if(/scheduled_time/i.test(error.message))_aide='\n\n→ Exécuter CAMPAGNE_PATCH_HEURE.sql dans Supabase.';alert('Erreur file d\'envoi : '+error.message+_aide);return;}
-  prospects=prospects.map(x=>x.id===id?{...x,camp_prog:ds+' '+ts}:x);save('prospects',prospects);
+  const _advP=['À rappeler','Contacté','Intéressé','Pas intéressé','RDV','Proposition','Signé','Perdu'];
+  prospects=prospects.map(x=>x.id===id?{...x,camp_prog:ds+' '+ts,statut:(_advP.indexOf(x.statut)<0&&x.statut!=='Mail ouvert'&&x.statut!=='Mail envoyé')?'Mail programmé':x.statut}:x);save('prospects',prospects); // b84 : la fiche affiche « Mail programmé » dès la mise en file
   prospectLog(id,'🕗',`Mail programmé pour le ${ds} à ${ts} (${dest})${docsLbl}`);
   closeModal();renderProspects();toast('🕗 Envoi programmé : '+ds+' à '+ts);
 }
@@ -5152,7 +5201,7 @@ function escJs(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 // ═══ START ══════════════════════════════════════════════════
 async function boot(){
   try{const _fv=document.querySelector('link[rel="icon"]');const _hl=document.getElementById('hdr-logo');if(_fv&&_hl)_hl.src=_fv.href;}catch(e){} // b83 : le logo du header réutilise le PNG du favicon (déduplication, −35 Ko)
-  console.log('%cKIPSAFE CRM — v24/11·b83 (Recherche fluide : saisie differee, affichage par pages de 200, accents ignores, kanban allege)','color:#00AEEF;font-weight:bold');
+  console.log('%cKIPSAFE CRM — v25/11·b84 (Priorisation des appels : bouton 🔥 A appeler, score de chaleur par activite, top 5 au tableau de bord, telephone cliquable)','color:#00AEEF;font-weight:bold');
   // Authentification Supabase (session persistante, lien de réinitialisation, ou écran de connexion)
   await initPin();
 }
