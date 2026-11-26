@@ -625,7 +625,7 @@ select.status-badge{max-width:130px;text-overflow:ellipsis}
 
 <div id="app" style="display:none;flex-direction:column;height:100vh;height:100dvh">
   <header>
-    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v26/11·b90</span></div>
+    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v26/11·b91</span></div>
     <div class="h-right"><span id="sync-indic" style="font-size:11px;opacity:.75;margin-right:4px" title="Dernière synchronisation avec le serveur"></span><button id="notif-bell" onclick="openNotifPanel()" title="Notifications" style="position:relative;background:none;border:none;color:#fff;font-size:14px;cursor:pointer;margin-right:10px;padding:0;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:14px;height:14px;line-height:14px;border-radius:99px;text-align:center;padding:0 2px"></span></button><select id="header-viewas" style="display:none;font-size:11px;padding:3px 6px;border-radius:6px;border:none;margin-right:8px" onchange="setMemberFilter(this.value)"></select><span id="header-user" style="font-size:12px;color:#fff;margin-right:8px"></span><button id="admin-mode-btn" onclick="toggleAdminMode()" style="display:none;font-size:10px;padding:3px 8px;border:none;border-radius:99px;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;margin-right:6px;font-weight:700">🔑</button><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span id="lock-timer" style="font-size:10px;color:rgba(255,255,255,.6);margin-right:6px"></span><span class="h-date" id="header-date"></span><span class="undo-wrap"><button id="undo-btn" class="undo-btn" onclick="undoLast()">↩️ Annuler<span id="undo-count" class="undo-count" style="display:none"></span></button><button id="undo-more" class="undo-more" onclick="undoTogglePanel()" title="Historique / points de restauration">▾</button></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
     <div id="undo-panel" class="undo-panel"><div class="undo-head"><span>↩️ Points de restauration</span><button class="undo-close" onclick="undoClosePanel()" aria-label="Fermer">×</button></div><div class="undo-hint">Clique une action pour revenir à cet état. Sans risque : rien n'est réellement perdu.</div><div id="undo-list" class="undo-listbox"></div></div>
   </header>
@@ -1149,7 +1149,7 @@ function isSuperAdminMode(){return isSuperAdmin()&&adminMode;} // b81 : = super 
 function canDeleteProspectUI(p){if(isDirection())return adminMode;return canEditProspect(p);} // b81 : la direction doit activer la clé pour voir/utiliser 🗑️
 function roleLabel(r){return ({admin:'👑 Super admin',co_admin:'⭐ Admin',resp_pole:'🧭 Resp. pôle',collab:'Commercial'})[r]||r;}
 function newProspectId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
-const BUILD_NUM=90; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
+const BUILD_NUM=91; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
 function checkMinBuild(){try{
   const mb=Number(load('min_build',0)||0);
   if(mb<=BUILD_NUM||document.getElementById('upd-overlay'))return;
@@ -2781,11 +2781,13 @@ async function omGo(id){
 }
 // ── Envois programmés du matin (file camp_queue + Edge Function camp-send) ──
 function campSenderOf(p){const m=memberById(p.pris_par||p.owner);const em=((m&&m.email)||'').toLowerCase();const nm=((m&&m.name)||'').toLowerCase();if(em.includes('fcasalta')||em.includes('fcazalta')||em.includes('florian')||nm.includes('florian'))return 'florian';if(em.includes('hugessempere')||em.includes('hsempere')||em.includes('hugues')||nm.includes('hugues'))return 'hugues';return 'samuel';}
-function campModele(cle,soc){
+function prospectPrenom(p){const n=String((p&&p.nom)||'').trim();if(!n)return '';const w=n.split(/\s+/)[0];return /^[A-Za-zÀ-ÿ'-]{2,}$/.test(w)?w:'';} // b91 : « Bonjour Olivier, » quand la fiche a un contact nommé
+function campModele(cle,soc,prenom){
   soc=(soc||'').trim()||'votre entreprise';
+  const _bj='Bonjour'+(prenom?' '+prenom:'')+',';
   const M={
-    'PEM Promisec':{objet:soc+' — visibilité totale sur votre parc, sans agent',
-      pitch:"Notre supervision sans agent (Promisec PEM) donne une visibilité poste par poste sur tout votre parc : logiciels installés, mises à jour, antivirus, conformité — sans rien déployer sur les machines."},
+    'PEM Promisec':{objet:'Pourriez-vous justifier votre conformité demain ?', // b91 : modèle VALIDÉ par Samuel le 26/11
+      corps:_bj+"\n\nComment vérifiez-vous aujourd'hui que votre EDR, votre antivirus et vos autres outils de sécurité sont actifs et à jour sur tous vos équipements ? Que votre politique de sécurité est réellement appliquée ?\n\nEn cas de contrôle, voire d'attaque (ce que je ne vous souhaite pas), pourriez-vous justifier votre conformité ?\n\nNous, oui. Notre solution se déploie sans agent sur votre réseau en moins de 24 h et valide votre conformité, avec un rapport généré à la demande.\n\nJe peux vous proposer une démo de 30 minutes : seriez-vous disponible mardi à 12 h 30 ou jeudi à 18 h ?\n\nBien cordialement,"},
     'Debal Cyber':{objet:soc+' — où en est votre sécurité informatique ?',
       pitch:"Nous réalisons un état des lieux cybersécurité clair et rapide : vos points d'exposition, les risques hiérarchisés, et un plan d'action concret — lisible par la direction comme par l'IT."},
     'Infogérance':{objet:soc+' — une informatique qui tourne, sans y penser',
@@ -2961,7 +2963,7 @@ async function campQueueConfirm(id){
   const p=prospects.find(x=>x.id===id);if(!p)return;
   const dest=(p.email||'').trim();const sender=campSenderOf(p);
   const ds=document.getElementById('cq-date')?.value;const ts=document.getElementById('cq-time')?.value||'08:30';const _mod=document.getElementById('cq-modele')?.value||'';
-  if(_mod){const _t=campModele(_mod,p.societe);const _nc='Bonjour,\n\n'+_t.pitch+'\n\nSeriez-vous à l\'écoute d\'un échange rapide ? Je peux vous transmettre notre plaquette (2 minutes de lecture).\n\nBien cordialement,';if(p.mail_corps&&p.mail_corps!==_nc)prospectLog(id,'📝','Ancien mail conservé (remplacé par le modèle ⚡ '+_mod+') — objet : « '+(p.mail_objet||'')+' » — texte : « '+String(p.mail_corps).slice(0,180)+(String(p.mail_corps).length>180?'…':'')+' »');const _n2=new Date();const _mj2=String(_n2.getDate()).padStart(2,'0')+'/'+String(_n2.getMonth()+1).padStart(2,'0')+' '+String(_n2.getHours()).padStart(2,'0')+':'+String(_n2.getMinutes()).padStart(2,'0');prospects=prospects.map(x=>x.id===id?{...x,mail_objet:_t.objet,mail_corps:_nc,mail_maj:_mj2}:x);save('prospects',prospects);}
+  if(_mod){const _t=campModele(_mod,p.societe,prospectPrenom(p));const _nc=_t.corps?_t.corps:('Bonjour,\n\n'+_t.pitch+'\n\nSeriez-vous à l\'écoute d\'un échange rapide ? Je peux vous transmettre notre plaquette (2 minutes de lecture).\n\nBien cordialement,');if(p.mail_corps&&p.mail_corps!==_nc)prospectLog(id,'📝','Ancien mail conservé (remplacé par le modèle ⚡ '+_mod+') — objet : « '+(p.mail_objet||'')+' » — texte : « '+String(p.mail_corps).slice(0,180)+(String(p.mail_corps).length>180?'…':'')+' »');const _n2=new Date();const _mj2=String(_n2.getDate()).padStart(2,'0')+'/'+String(_n2.getMonth()+1).padStart(2,'0')+' '+String(_n2.getHours()).padStart(2,'0')+':'+String(_n2.getMinutes()).padStart(2,'0');prospects=prospects.map(x=>x.id===id?{...x,mail_objet:_t.objet,mail_corps:_nc,mail_maj:_mj2}:x);save('prospects',prospects);}
   const _p2=prospects.find(x=>x.id===id);
   const noSig=!(document.getElementById('cq-sig')?.checked);
   const noLink=!(document.getElementById('cq-plaq')?.checked);
@@ -5340,7 +5342,7 @@ function escJs(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 // ═══ START ══════════════════════════════════════════════════
 async function boot(){
   try{const _fv=document.querySelector('link[rel="icon"]');const _hl=document.getElementById('hdr-logo');if(_fv&&_hl)_hl.src=_fv.href;}catch(e){} // b83 : le logo du header réutilise le PNG du favicon (déduplication, −35 Ko)
-  console.log('%cKIPSAFE CRM — v26/11·b90 (Validation des envois : un mail programme par un membre ne part qu apres le OK du super admin ; bloc A appeler repliable)','color:#00AEEF;font-weight:bold');
+  console.log('%cKIPSAFE CRM — v26/11·b91 (Modele PEM remplace par le texte valide de Samuel, avec prenom du contact automatique)','color:#00AEEF;font-weight:bold');
   // Authentification Supabase (session persistante, lien de réinitialisation, ou écran de connexion)
   await initPin();
 }
