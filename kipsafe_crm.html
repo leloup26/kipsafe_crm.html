@@ -625,7 +625,7 @@ select.status-badge{max-width:130px;text-overflow:ellipsis}
 
 <div id="app" style="display:none;flex-direction:column;height:100vh;height:100dvh">
   <header>
-    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v25/11·b88</span></div>
+    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v25/11·b89</span></div>
     <div class="h-right"><span id="sync-indic" style="font-size:11px;opacity:.75;margin-right:4px" title="Dernière synchronisation avec le serveur"></span><button id="notif-bell" onclick="openNotifPanel()" title="Notifications" style="position:relative;background:none;border:none;color:#fff;font-size:14px;cursor:pointer;margin-right:10px;padding:0;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:14px;height:14px;line-height:14px;border-radius:99px;text-align:center;padding:0 2px"></span></button><select id="header-viewas" style="display:none;font-size:11px;padding:3px 6px;border-radius:6px;border:none;margin-right:8px" onchange="setMemberFilter(this.value)"></select><span id="header-user" style="font-size:12px;color:#fff;margin-right:8px"></span><button id="admin-mode-btn" onclick="toggleAdminMode()" style="display:none;font-size:10px;padding:3px 8px;border:none;border-radius:99px;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;margin-right:6px;font-weight:700">🔑</button><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span id="lock-timer" style="font-size:10px;color:rgba(255,255,255,.6);margin-right:6px"></span><span class="h-date" id="header-date"></span><span class="undo-wrap"><button id="undo-btn" class="undo-btn" onclick="undoLast()">↩️ Annuler<span id="undo-count" class="undo-count" style="display:none"></span></button><button id="undo-more" class="undo-more" onclick="undoTogglePanel()" title="Historique / points de restauration">▾</button></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
     <div id="undo-panel" class="undo-panel"><div class="undo-head"><span>↩️ Points de restauration</span><button class="undo-close" onclick="undoClosePanel()" aria-label="Fermer">×</button></div><div class="undo-hint">Clique une action pour revenir à cet état. Sans risque : rien n'est réellement perdu.</div><div id="undo-list" class="undo-listbox"></div></div>
   </header>
@@ -1149,7 +1149,7 @@ function isSuperAdminMode(){return isSuperAdmin()&&adminMode;} // b81 : = super 
 function canDeleteProspectUI(p){if(isDirection())return adminMode;return canEditProspect(p);} // b81 : la direction doit activer la clé pour voir/utiliser 🗑️
 function roleLabel(r){return ({admin:'👑 Super admin',co_admin:'⭐ Admin',resp_pole:'🧭 Resp. pôle',collab:'Commercial'})[r]||r;}
 function newProspectId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
-const BUILD_NUM=88; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
+const BUILD_NUM=89; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
 function checkMinBuild(){try{
   const mb=Number(load('min_build',0)||0);
   if(mb<=BUILD_NUM||document.getElementById('upd-overlay'))return;
@@ -2482,7 +2482,7 @@ function getFiltered(){fillSecteurFilter();const ft=document.getElementById('fil
 let _searchT=null;function searchDebounce(){if(_searchT)clearTimeout(_searchT);_searchT=setTimeout(function(){_searchT=null;renderProspects();},180);} // b83 : la liste ne se reconstruit plus à chaque frappe
 function _norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');} // b83 : recherche insensible aux accents (« securite » trouve « sécurité »)
 function setStatut(s){activeStatut=s;renderProspects();}
-function renderStatusBar(base){const bar=document.getElementById('status-bar');if(!bar)return;bar.style.display='flex';
+function renderStatusBar(base){const bar=document.getElementById('status-bar');if(!bar)return;bar.style.display='flex';bar.style.flexWrap='wrap';bar.style.rowGap='6px'; // b89 : sur téléphone, les filtres passent à la ligne au lieu d'être coupés
   const me=currentUser?currentUser.id:'admin';const mine=base.filter(p=>prospectHolder(p)===me);
   const cnt={};mine.forEach(p=>{cnt[p.statut]=(cnt[p.statut]||0)+1;});
   let h=`<button class="st${activeStatut===''?' active':''}" onclick="setStatut('')">Tous <span class="cnt">${base.length}</span></button>`;
@@ -2718,7 +2718,7 @@ function renderHotTop(){
   const hot=tous.slice(0,10);
   if(!hot.length){card.style.display='none';return;}
   card.style.display='';
-  el.innerHTML=hot.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--light)"><span style="font-weight:700;color:#c2410c;min-width:46px;cursor:pointer" onclick="showTab('prospects');viewProspect(${p.id})">${prioDot(p)}🔥${prospectHeat(p)}</span><div style="flex:1;min-width:0;cursor:pointer" onclick="showTab('prospects');viewProspect(${p.id})"><strong>${esc(p.societe||p.nom||'—')}</strong> <span style="color:var(--muted);font-size:11px">${esc(p.nom||'')}</span><br><span style="font-size:10.5px;color:#c2410c">${heatBadges(p)}</span></div>${prioButtons(p)}${telLink(p)}</div>`).join('')
+  el.innerHTML=hot.map(p=>`<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:7px 0;border-bottom:1px solid var(--light)"><span style="font-weight:700;color:#c2410c;min-width:46px;cursor:pointer" onclick="showTab('prospects');viewProspect(${p.id})">${prioDot(p)}🔥${prospectHeat(p)}</span><div style="flex:1;min-width:170px;cursor:pointer" onclick="showTab('prospects');viewProspect(${p.id})"><strong>${esc(p.societe||p.nom||'—')}</strong> <span style="color:var(--muted);font-size:11px">${esc(p.nom||'')}</span><br><span style="font-size:10.5px;color:#c2410c">${heatBadges(p)}</span></div><span style="display:inline-flex;align-items:center;gap:8px;margin-left:auto">${prioButtons(p)}${telLink(p)}</span></div>`).join('')
     +(tous.length>hot.length?`<div style="text-align:center;padding-top:8px"><a href="#" style="color:#7c3aed;font-weight:600;font-size:12px" onclick="event.preventDefault();showTab('prospects');setStatut('__hot')">Tout voir — ${tous.length} à appeler →</a></div>`:'');
 }
 function prospectHistoHtml(p){
@@ -2837,7 +2837,7 @@ async function campCancelQueued(id){
   try{
     const {error}=await sbClient.from('camp_queue').update({statut:'cancelled'}).eq('prospect_id',id).eq('statut','queued');
     if(error)throw error;
-    prospects=prospects.map(x=>x.id===id?{...x,camp_prog:'',statut:x.statut==='Mail programmé'?'Nouveau':x.statut}:x);save('prospects',prospects);
+    prospects=prospects.map(x=>x.id===id?{...x,camp_prog:'',statut:x.statut==='Mail programmé'?(((x.camp_open||0)>0||(x.camp_clicks||0)>0)?'Mail ouvert':'Nouveau'):x.statut}:x);save('prospects',prospects);
     prospectLog(id,'✖️','Envoi programmé ANNULÉ');
     renderProspects();renderDashboard();viewProspect(id);
     toast('✖️ Envoi annulé — corrige le mail puis reprogramme');
@@ -2860,7 +2860,7 @@ async function campCancelRow(qid,pid){
     const {error}=await sbClient.from('camp_queue').update({statut:'cancelled'}).eq('id',qid).eq('statut','queued');
     if(error)throw error;
     const _has=await sbClient.from('camp_queue').select('id').eq('prospect_id',pid).eq('statut','queued').limit(1);
-    if(!(_has.data&&_has.data.length))prospects=prospects.map(x=>x.id===pid?{...x,camp_prog:'',statut:x.statut==='Mail programmé'?'Nouveau':x.statut}:x);
+    if(!(_has.data&&_has.data.length))prospects=prospects.map(x=>x.id===pid?{...x,camp_prog:'',statut:x.statut==='Mail programmé'?(((x.camp_open||0)>0||(x.camp_clicks||0)>0)?'Mail ouvert':'Nouveau'):x.statut}:x);
     save('prospects',prospects);
     prospectLog(pid,'✖️','Envoi programmé ANNULÉ (depuis la file)');
     renderProspects();renderDashboard();campQueueList();
@@ -2940,7 +2940,7 @@ async function campQueueConfirm(id){
   const {error}=await sbClient.from('camp_queue').insert({prospect_id:p.id,societe:p.societe||'',dest,objet:_p2.mail_objet||'(sans objet)',corps:_p2.mail_corps,sender,scheduled_date:ds,scheduled_time:ts,created_by:(currentUser?currentUser.id:''),no_link:noLink,docs:docs,no_sig:noSig});
   if(error){logErr('campagne','programmation : '+error.message);let _aide='';if(/out of range.*integer/i.test(error.message))_aide='\n\n→ Fiche à numéro long (b77+) : exécuter KIPSAFE_PATCH_BIGINT_A_COLLER.sql (Bureau) dans Supabase, puis reprogrammer.';else if(/scheduled_time/i.test(error.message))_aide='\n\n→ Exécuter CAMPAGNE_PATCH_HEURE.sql dans Supabase.';alert('Erreur file d\'envoi : '+error.message+_aide);return;}
   const _advP=['À rappeler','Contacté','Intéressé','Pas intéressé','RDV','Proposition','Signé','Perdu'];
-  prospects=prospects.map(x=>x.id===id?{...x,camp_prog:ds+' '+ts,statut:(_advP.indexOf(x.statut)<0&&x.statut!=='Mail ouvert'&&x.statut!=='Mail envoyé')?'Mail programmé':x.statut}:x);save('prospects',prospects); // b84 : la fiche affiche « Mail programmé » dès la mise en file
+  prospects=prospects.map(x=>x.id===id?{...x,camp_prog:ds+' '+ts,statut:(_advP.indexOf(x.statut)<0)?'Mail programmé':x.statut}:x);save('prospects',prospects); // b89 : une relance passe AUSSI la fiche en « Mail programmé » (l'ouverture de l'ancien mail reste dans 📬 et l'historique)
   prospectLog(id,'🕗',`Mail programmé pour le ${ds} à ${ts} (${dest})${docsLbl} — objet : « ${(_p2.mail_objet||'(sans objet)')} »`);
   closeModal();renderProspects();toast('🕗 Envoi programmé : '+ds+' à '+ts);
 }
@@ -5295,7 +5295,7 @@ function escJs(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 // ═══ START ══════════════════════════════════════════════════
 async function boot(){
   try{const _fv=document.querySelector('link[rel="icon"]');const _hl=document.getElementById('hdr-logo');if(_fv&&_hl)_hl.src=_fv.href;}catch(e){} // b83 : le logo du header réutilise le PNG du favicon (déduplication, −35 Ko)
-  console.log('%cKIPSAFE CRM — v25/11·b88 (Historique des relances : chaque envoi laisse sa trace avec son objet, la programmation note aussi l objet)','color:#00AEEF;font-weight:bold');
+  console.log('%cKIPSAFE CRM — v25/11·b89 (Relance : la fiche passe en Mail programme meme si l ancien mail etait ouvert ; annulation : retour au bon statut)','color:#00AEEF;font-weight:bold');
   // Authentification Supabase (session persistante, lien de réinitialisation, ou écran de connexion)
   await initPin();
 }
