@@ -625,7 +625,7 @@ select.status-badge{max-width:130px;text-overflow:ellipsis}
 
 <div id="app" style="display:none;flex-direction:column;height:100vh;height:100dvh">
   <header>
-    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v26/11·b91</span></div>
+    <div class="h-logo" onclick="showTab('dashboard')" style="cursor:pointer" title="Retour au tableau de bord"><img src="" id="hdr-logo" alt="KIPSAFE" alt="" style="height:30px;width:auto"><span style="font-weight:800;font-size:18px;letter-spacing:1px;color:#fff;margin-left:8px">KIPSAFE</span><span class="badge" style="margin-left:8px">CRM</span><span style="margin-left:6px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.5px" title="Version de l'application">v26/11·b92</span></div>
     <div class="h-right"><span id="sync-indic" style="font-size:11px;opacity:.75;margin-right:4px" title="Dernière synchronisation avec le serveur"></span><button id="notif-bell" onclick="openNotifPanel()" title="Notifications" style="position:relative;background:none;border:none;color:#fff;font-size:14px;cursor:pointer;margin-right:10px;padding:0;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:14px;height:14px;line-height:14px;border-radius:99px;text-align:center;padding:0 2px"></span></button><select id="header-viewas" style="display:none;font-size:11px;padding:3px 6px;border-radius:6px;border:none;margin-right:8px" onchange="setMemberFilter(this.value)"></select><span id="header-user" style="font-size:12px;color:#fff;margin-right:8px"></span><button id="admin-mode-btn" onclick="toggleAdminMode()" style="display:none;font-size:10px;padding:3px 8px;border:none;border-radius:99px;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;margin-right:6px;font-weight:700">🔑</button><span id="sync-pill" class="sync-pill" style="background:#fef9c3;color:#92400e">⏳ Sync...</span>&nbsp;<span id="lock-timer" style="font-size:10px;color:rgba(255,255,255,.6);margin-right:6px"></span><span class="h-date" id="header-date"></span><span class="undo-wrap"><button id="undo-btn" class="undo-btn" onclick="undoLast()">↩️ Annuler<span id="undo-count" class="undo-count" style="display:none"></span></button><button id="undo-more" class="undo-more" onclick="undoTogglePanel()" title="Historique / points de restauration">▾</button></span><button class="lock-btn" onclick="lockApp()">🔓 Verrouiller</button></div>
     <div id="undo-panel" class="undo-panel"><div class="undo-head"><span>↩️ Points de restauration</span><button class="undo-close" onclick="undoClosePanel()" aria-label="Fermer">×</button></div><div class="undo-hint">Clique une action pour revenir à cet état. Sans risque : rien n'est réellement perdu.</div><div id="undo-list" class="undo-listbox"></div></div>
   </header>
@@ -1149,7 +1149,7 @@ function isSuperAdminMode(){return isSuperAdmin()&&adminMode;} // b81 : = super 
 function canDeleteProspectUI(p){if(isDirection())return adminMode;return canEditProspect(p);} // b81 : la direction doit activer la clé pour voir/utiliser 🗑️
 function roleLabel(r){return ({admin:'👑 Super admin',co_admin:'⭐ Admin',resp_pole:'🧭 Resp. pôle',collab:'Commercial'})[r]||r;}
 function newProspectId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
-const BUILD_NUM=91; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
+const BUILD_NUM=92; // b78 : à incrémenter À CHAQUE livraison (avec le badge) — sert au verrou de version
 function checkMinBuild(){try{
   const mb=Number(load('min_build',0)||0);
   if(mb<=BUILD_NUM||document.getElementById('upd-overlay'))return;
@@ -2852,7 +2852,13 @@ async function campViewQueued(pid,back){
   }catch(e){const el=document.getElementById('cvq-body');if(el)el.textContent='Erreur : '+(e&&e.message||e);}
 }
 // ── b85 : transparence totale sur la file d'envoi — voir, vérifier, annuler ──
-function cqApercu(id){const p=prospects.find(x=>x.id===id);const el=document.getElementById('cq-apercu');if(!p||!el)return;const m=document.getElementById('cq-modele')?.value||'';const obj=m?campModele(m,p.societe).objet:(p.mail_objet||'(sans objet)');el.textContent='✉️ Partira avec l\'objet : « '+obj+' »'+(m?' — le modèle ⚡ remplacera le texte de la fiche':' — texte actuel de la fiche');}
+function cqApercu(id){ // b92 : charge l'objet + le texte COMPLET dans des champs éditables (modèle ⚡ ou mail de la fiche)
+  const p=prospects.find(x=>x.id===id);if(!p)return;
+  const m=document.getElementById('cq-modele')?.value||'';
+  const o=document.getElementById('cq-objet'),c=document.getElementById('cq-corps');if(!o||!c)return;
+  if(m){const _t=campModele(m,p.societe,prospectPrenom(p));o.value=_t.objet||'';c.value=_t.corps||('Bonjour,\n\n'+_t.pitch+'\n\nSeriez-vous à l\'écoute d\'un échange rapide ? Je peux vous transmettre notre plaquette (2 minutes de lecture).\n\nBien cordialement,');}
+  else{o.value=p.mail_objet||'';c.value=p.mail_corps||'';}
+}
 async function campProgInfo(id){
   if(!sbClient)return;
   try{
@@ -2944,7 +2950,9 @@ function campQueueOne(id){
   const sender=campSenderOf(p);
   openModal('🕗 Programmer l\'envoi',`
     <p style="font-size:13px;margin-bottom:10px;background:#eef6ff;border:1px solid #cfe3ff;border-radius:8px;padding:8px 10px">📨 Mail à <strong>${esc(dest)}</strong> — il partira de la boîte de <strong style="color:var(--accent)">${sender==='florian'?'Florian':sender==='hugues'?'Hugues':'Samuel'}</strong> (le détenteur de la fiche).</p>
-    <div class="form-group"><label class="form-label">✉️ Mail à envoyer</label><select id="cq-modele" class="form-select" onchange="cqApercu(${id})"><option value="" selected>Mail de la fiche (actuel)</option><option value="Debal Cyber">⚡ Modèle Cyber</option><option value="Infogérance">⚡ Modèle Infogérance</option><option value="PEM Promisec">⚡ Modèle PEM Promisec</option><option value="Multi-offres">⚡ Modèle Multi-offres</option></select><div style="font-size:11px;color:var(--muted);margin-top:3px">Un modèle ⚡ remplace l'objet et le texte de la fiche au moment de programmer.</div><div id="cq-apercu" style="font-size:11.5px;margin-top:5px;color:#7c3aed;font-weight:600"></div></div>
+    <div class="form-group"><label class="form-label">✉️ Mail à envoyer</label><select id="cq-modele" class="form-select" onchange="cqApercu(${id})"><option value="" selected>Mail de la fiche (actuel)</option><option value="Debal Cyber">⚡ Modèle Cyber</option><option value="Infogérance">⚡ Modèle Infogérance</option><option value="PEM Promisec">⚡ Modèle PEM Promisec</option><option value="Multi-offres">⚡ Modèle Multi-offres</option></select><div style="font-size:11px;color:var(--muted);margin-top:3px">Un modèle ⚡ recharge l'objet et le texte ci-dessous — tu peux ensuite les retoucher librement avant de programmer.</div></div>
+    <div class="form-group"><label class="form-label">✉️ Objet du mail</label><input id="cq-objet" class="form-input" style="font-size:12.5px"></div>
+    <div class="form-group"><label class="form-label">Texte du mail <span style="color:var(--muted);font-weight:400">— c'est exactement ce qui partira</span></label><textarea id="cq-corps" class="form-input" rows="9" style="font-size:12.5px;line-height:1.5;resize:vertical"></textarea></div>
     <div class="grid-2"><div class="form-group"><label class="form-label">📅 Jour d'envoi</label><input id="cq-date" type="date" class="form-input" value="${ds}"></div>
     <div class="form-group"><label class="form-label">⏰ Heure</label><div style="display:flex;gap:6px"><input id="cq-time" type="time" class="form-input" value="08:30" step="60"><button type="button" class="btn btn-outline btn-xs" style="white-space:nowrap" title="L'heure où les décideurs lisent leurs mails" onclick="document.getElementById('cq-time').value='08:30'">⏰ 8h30 conseillé</button></div></div></div>
     <label style="display:flex;align-items:center;gap:7px;margin:8px 0 4px;font-size:13px;cursor:pointer"><input type="checkbox" id="cq-sig" checked style="width:16px;height:16px;accent-color:var(--accent)"> ✍️ Terminer par la signature KIPSAFE (logo, fonction, coordonnées)</label>
@@ -2962,8 +2970,16 @@ function campQueueOne(id){
 async function campQueueConfirm(id){
   const p=prospects.find(x=>x.id===id);if(!p)return;
   const dest=(p.email||'').trim();const sender=campSenderOf(p);
-  const ds=document.getElementById('cq-date')?.value;const ts=document.getElementById('cq-time')?.value||'08:30';const _mod=document.getElementById('cq-modele')?.value||'';
-  if(_mod){const _t=campModele(_mod,p.societe,prospectPrenom(p));const _nc=_t.corps?_t.corps:('Bonjour,\n\n'+_t.pitch+'\n\nSeriez-vous à l\'écoute d\'un échange rapide ? Je peux vous transmettre notre plaquette (2 minutes de lecture).\n\nBien cordialement,');if(p.mail_corps&&p.mail_corps!==_nc)prospectLog(id,'📝','Ancien mail conservé (remplacé par le modèle ⚡ '+_mod+') — objet : « '+(p.mail_objet||'')+' » — texte : « '+String(p.mail_corps).slice(0,180)+(String(p.mail_corps).length>180?'…':'')+' »');const _n2=new Date();const _mj2=String(_n2.getDate()).padStart(2,'0')+'/'+String(_n2.getMonth()+1).padStart(2,'0')+' '+String(_n2.getHours()).padStart(2,'0')+':'+String(_n2.getMinutes()).padStart(2,'0');prospects=prospects.map(x=>x.id===id?{...x,mail_objet:_t.objet,mail_corps:_nc,mail_maj:_mj2}:x);save('prospects',prospects);}
+  const ds=document.getElementById('cq-date')?.value;const ts=document.getElementById('cq-time')?.value||'08:30';
+  // b92 : ce qui part = EXACTEMENT ce que montrent les champs Objet/Texte (modèle rechargé puis retouché à la main, ou mail de la fiche)
+  const _obj=(document.getElementById('cq-objet')?.value||'').trim();
+  const _cor=document.getElementById('cq-corps')?.value||'';
+  if(!_cor.trim()){alert('Le texte du mail est vide — choisis un modèle ⚡ ou écris le mail avant de programmer.');return;}
+  if((p.mail_objet||'')!==_obj||(p.mail_corps||'')!==_cor){
+    if(p.mail_corps&&p.mail_corps!==_cor)prospectLog(id,'📝','Ancien mail conservé avant modification — objet : « '+(p.mail_objet||'')+' » — texte : « '+String(p.mail_corps).slice(0,180)+(String(p.mail_corps).length>180?'…':'')+' »');
+    const _n2=new Date();const _mj2=String(_n2.getDate()).padStart(2,'0')+'/'+String(_n2.getMonth()+1).padStart(2,'0')+' '+String(_n2.getHours()).padStart(2,'0')+':'+String(_n2.getMinutes()).padStart(2,'0');
+    prospects=prospects.map(x=>x.id===id?{...x,mail_objet:_obj,mail_corps:_cor,mail_maj:_mj2}:x);save('prospects',prospects);
+  }
   const _p2=prospects.find(x=>x.id===id);
   const noSig=!(document.getElementById('cq-sig')?.checked);
   const noLink=!(document.getElementById('cq-plaq')?.checked);
@@ -5342,7 +5358,7 @@ function escJs(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 // ═══ START ══════════════════════════════════════════════════
 async function boot(){
   try{const _fv=document.querySelector('link[rel="icon"]');const _hl=document.getElementById('hdr-logo');if(_fv&&_hl)_hl.src=_fv.href;}catch(e){} // b83 : le logo du header réutilise le PNG du favicon (déduplication, −35 Ko)
-  console.log('%cKIPSAFE CRM — v26/11·b91 (Modele PEM remplace par le texte valide de Samuel, avec prenom du contact automatique)','color:#00AEEF;font-weight:bold');
+  console.log('%cKIPSAFE CRM — v26/11·b92 (Fenetre Programmer : objet et texte complets, visibles et modifiables avant l envoi)','color:#00AEEF;font-weight:bold');
   // Authentification Supabase (session persistante, lien de réinitialisation, ou écran de connexion)
   await initPin();
 }
